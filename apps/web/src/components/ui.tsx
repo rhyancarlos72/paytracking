@@ -1,8 +1,8 @@
 import clsx from 'clsx';
 import { AlertTriangle, Check, Copy, Inbox, Loader2, X } from 'lucide-react';
 import {
-  forwardRef, useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes,
-  type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes,
+  cloneElement, forwardRef, isValidElement, useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes,
+  type ReactElement, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes,
 } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -12,7 +12,7 @@ const VARIANTS: Record<Variant, string> = {
   primary: 'bg-primary text-primary-fg hover:bg-primary/90 shadow-sm',
   secondary: 'border border-border bg-surface text-fg hover:bg-surface-2',
   ghost: 'text-muted hover:bg-surface-2 hover:text-fg',
-  danger: 'bg-err text-white hover:bg-err/90',
+  danger: 'bg-err text-err-fg hover:bg-err/90',
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -45,11 +45,17 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
 
 // ------------------------------------------------------------------ Form
 export function Field({ label, hint, error, children, htmlFor }: { label: string; hint?: ReactNode; error?: string; children: ReactNode; htmlFor?: string }) {
+  const descId = useId();
+  const hasDesc = !!error || !!hint;
+  // liga dica/erro ao campo para leitores de tela (o campo é o filho direto)
+  const control = isValidElement(children) && hasDesc
+    ? cloneElement(children as ReactElement<Record<string, unknown>>, { 'aria-describedby': descId, 'aria-invalid': error ? true : undefined })
+    : children;
   return (
     <div>
       <label className="label" htmlFor={htmlFor}>{label}</label>
-      {children}
-      {error ? <p className="mt-1.5 text-xs font-medium text-err" role="alert">{error}</p> : hint ? <p className="hint">{hint}</p> : null}
+      {control}
+      {error ? <p id={descId} className="mt-1.5 text-xs font-medium text-err" role="alert">{error}</p> : hint ? <p id={descId} className="hint">{hint}</p> : null}
     </div>
   );
 }
@@ -200,7 +206,18 @@ export function Modal({ open, onClose, title, description, children, footer, siz
     if (!open) return;
     const prev = document.activeElement as HTMLElement | null;
     const t = setTimeout(() => ref.current?.querySelector<HTMLElement>('input,select,textarea,button')?.focus(), 30);
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') return onClose();
+      if (e.key !== 'Tab' || !ref.current) return;
+      // mantém o foco dentro do diálogo
+      const items = [...ref.current.querySelectorAll<HTMLElement>('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')];
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (!first || !last) return;
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      else if (!ref.current.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+    };
     document.addEventListener('keydown', onKey);
     document.body.style.overflow = 'hidden';
     return () => { clearTimeout(t); document.removeEventListener('keydown', onKey); document.body.style.overflow = ''; prev?.focus?.(); };

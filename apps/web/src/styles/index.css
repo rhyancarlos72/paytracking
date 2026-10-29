@@ -3,7 +3,8 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Tokens do design system (RGB para permitir opacidade no Tailwind) */
+/* Tokens do design system (RGB para permitir opacidade no Tailwind).
+   Todo token de texto tem contraste ≥ 4,5:1 sobre bg e surface (docs/DESIGN-SYSTEM.md). */
 :root {
   --bg: 247 248 250;
   --surface: 255 255 255;
@@ -11,14 +12,15 @@
   --border: 228 231 236;
   --fg: 16 24 40;
   --muted: 102 112 133;
-  --subtle: 152 162 179;
+  --subtle: 110 119 138;
   --primary: 109 74 255;
   --primary-fg: 255 255 255;
   --primary-soft: 240 236 255;
-  --ok: 18 183 106;
-  --warn: 220 104 3;
+  --ok: 6 118 71;
+  --warn: 181 71 8;
   --err: 217 45 32;
-  --info: 46 144 250;
+  --err-fg: 255 255 255;
+  --info: 23 92 211;
   /* séries de gráfico (validadas: CVD e contraste — docs/DESIGN-SYSTEM.md) */
   --series-1: #6d4aff;
   --series-2: #0d9488;
@@ -34,11 +36,12 @@
   --muted: 154 160 173;
   --subtle: 108 114 128;
   --primary: 139 112 255;
-  --primary-fg: 255 255 255;
+  --primary-fg: 10 11 15;   /* texto escuro no botão: branco sobre #8b70ff dá só 3,6:1 */
   --primary-soft: 36 30 66;
   --ok: 50 213 131;
   --warn: 253 176 34;
   --err: 249 112 102;
+  --err-fg: 10 11 15;
   --info: 83 177 253;
   --series-1: #8b70ff;
   --series-2: #0f9e8e;

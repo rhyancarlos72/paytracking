@@ -140,6 +140,7 @@ export function reportRoutes(app: FastifyInstance, ctx: Ctx) {
       byPixel: byPixel.rows, failures: failures.rows,
       latencySeconds: { p50: latency.rows[0]?.p50 ?? null, p95: latency.rows[0]?.p95 ?? null },
       webhooks: receipts.rows,
+      dispatchPaused: ctx.config.CAPI_DISPATCH === 'paused',
     };
   });
 

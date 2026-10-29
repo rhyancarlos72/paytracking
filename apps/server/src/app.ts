@@ -22,6 +22,8 @@ import { AppError } from './lib/errors.js';
 import { SESSION_COOKIE } from './lib/http.js';
 
 /** Rotas públicas chamadas por terceiros (gateways, navegador do visitante, Meta). */
+const SEVERITY: Record<string, string> = { trace: 'DEBUG', debug: 'DEBUG', info: 'INFO', warn: 'WARNING', error: 'ERROR', fatal: 'CRITICAL' };
+
 const PUBLIC_PREFIXES = ['/v1/webhooks', '/api/', '/v1/collect', '/v1/pixel-config', '/v1/meta/callback', '/healthz', '/pixel.js', '/checkout-loader'];
 const isPublic = (url: string) => PUBLIC_PREFIXES.some((p) => url.startsWith(p));
 
@@ -29,13 +31,17 @@ export async function buildApp(ctx: Ctx): Promise<FastifyInstance> {
   const app = Fastify({
     logger: ctx.config.NODE_ENV === 'test' ? false : {
       level: ctx.config.isProd ? 'info' : 'debug',
+      formatters: { level: (label, level) => ({ level, severity: SEVERITY[label] ?? 'DEFAULT' }) },
       redact: ['req.headers.authorization', 'req.headers.cookie', 'req.headers["x-hotmart-hottok"]', 'req.headers["security-token"]'],
       serializers: {
         // nunca registra a querystring (tokens de webhook legados vão na URL)
-        req: (r) => ({ method: r.method, url: String(r.url).split('?')[0]!.replace(/\/(itk_[a-f0-9]+)$/, '/[token]'), id: r.id }),
+        req: (r) => ({ method: r.method, url: String(r.url).split('?')[0]!.replace(/^(\/v1\/webhooks\/[^/]+\/)[^/]+$/, '$1[token]'), id: r.id }),
       },
     },
-    trustProxy: ctx.config.TRUST_PROXY,
+    // número = confia só nos N últimos saltos (o que o proxy acrescentou), igual ao proxy-addr
+    trustProxy: typeof ctx.config.TRUST_PROXY === 'number'
+      ? ((hops: number) => (_addr: string, i: number) => i < hops)(ctx.config.TRUST_PROXY)
+      : ctx.config.TRUST_PROXY,
     bodyLimit: 1_048_576,
     genReqId: () => randomUUID(),
   });

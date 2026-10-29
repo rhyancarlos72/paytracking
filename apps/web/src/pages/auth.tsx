@@ -28,7 +28,7 @@ function AuthLayout({ title, subtitle, children }: { title: string; subtitle?: R
             <li className="flex gap-3"><LineChart className="mt-0.5 h-5 w-5 shrink-0 text-teal-300" />Receita, investimento e ROAS reais, em uma moeda só.</li>
           </ul>
         </div>
-        <p className="relative text-xs text-white/40">Dados protegidos com criptografia em trânsito e em repouso.</p>
+        <p className="relative text-xs text-white/60">Dados protegidos com criptografia em trânsito e em repouso.</p>
       </aside>
       <main className="flex items-center justify-center px-4 py-12 sm:px-8">
         <div className="w-full max-w-[400px]">

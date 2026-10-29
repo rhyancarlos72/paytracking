@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { PeriodPicker, usePeriod } from '../components/period';
 import { PageHeader } from '../components/shell';
 import { useToast } from '../components/toast';
-import { Badge, Button, Card, EmptyState, ErrorState, Skeleton, STATUS_TONE, Tabs } from '../components/ui';
+import { Badge, Button, Callout, Card, EmptyState, ErrorState, Skeleton, STATUS_TONE, Tabs } from '../components/ui';
 import { get, post, qs } from '../lib/api';
 import { dateTime, int, pct, PROVIDER_LABEL, relative, STATUS_LABEL } from '../lib/format';
 import { useSession } from '../lib/session';
@@ -67,6 +67,11 @@ function Capi({ query }: { query: object }) {
   if (!q.data) return <Skeleton className="h-60" />;
   return (
     <div className="space-y-6">
+      {q.data.dispatchPaused && (
+        <Callout tone="warn" title="Envio à Meta pausado (modo sombra)">
+          Os eventos estão sendo recebidos e enfileirados, mas não são enviados. Isso é usado durante a migração, enquanto o sistema antigo ainda envia as conversões.
+        </Callout>
+      )}
       {rec.data && (
         <Card title="Conciliação de vendas" description="Vendas aprovadas no período × Purchase entregue à Meta">
           <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-6">

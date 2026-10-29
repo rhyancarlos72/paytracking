@@ -202,3 +202,19 @@ describe('cenário 19 — banco indisponível', () => {
     void API_URL;
   });
 });
+
+describe('IP do cliente atrás de proxy (TRUST_PROXY=1)', () => {
+  it('início do X-Forwarded-For escrito pelo cliente é ignorado; vale o IP acrescentado pelo proxy', async () => {
+    const e = await setup({ TRUST_PROXY: '1' });
+    try {
+      const { email } = await newAccount(e);
+      const c = new Client(e);
+      c.ip = '6.6.6.6, 200.10.20.30'; // cliente forja "6.6.6.6"; o proxy acrescenta o IP real
+      expect((await c.post('/v1/auth/login', { email, password: 'SenhaForte123' })).status).toBe(200);
+      const s = await c.get('/v1/auth/sessions');
+      expect(s.data.sessions.find((x: { current: boolean }) => x.current).ip).toBe('200.10.20.30');
+    } finally {
+      await e.close();
+    }
+  });
+});

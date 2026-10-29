@@ -45,7 +45,7 @@ export function startWorker(ctx: Ctx, opts: { intervalMs?: number } = {}) {
   const loop = async () => {
     while (!stopped) {
       try {
-        const s = await dispatchBatch(ctx, 50);
+        const s = ctx.config.CAPI_DISPATCH === 'paused' ? { claimed: 0, sent: 0, retried: 0, dead: 0 } : await dispatchBatch(ctx, 50);
         if (s.claimed) ctx.log.info({ ...s }, 'capi dispatch');
         const now = Date.now();
         if (now - lastFx > 6 * 3600_000) {

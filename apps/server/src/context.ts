@@ -21,10 +21,12 @@ export interface Ctx {
 }
 
 export function createCtx(config: Config, db: Pool, overrides: Partial<Ctx> = {}): Ctx {
+  // JSON por linha; `severity` é o campo que o Cloud Logging usa para o nível
+  const line = (level: string, severity: string, o: unknown, m?: string) => JSON.stringify({ level, severity, msg: m, ...(o as object) });
   const log: Logger = overrides.log ?? {
-    info: (o, m) => console.log(JSON.stringify({ level: 'info', msg: m, ...(o as object) })),
-    warn: (o, m) => console.warn(JSON.stringify({ level: 'warn', msg: m, ...(o as object) })),
-    error: (o, m) => console.error(JSON.stringify({ level: 'error', msg: m, ...(o as object) })),
+    info: (o, m) => console.log(line('info', 'INFO', o, m)),
+    warn: (o, m) => console.warn(line('warn', 'WARNING', o, m)),
+    error: (o, m) => console.error(line('error', 'ERROR', o, m)),
   };
   return {
     config,

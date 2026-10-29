@@ -1,6 +1,7 @@
 import { createHmac } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { dispatchBatch } from '../src/capi/dispatcher.js';
+import { startWorker } from '../src/worker.js';
 import { API_URL, json, metaOk, newAccount, newIntegration, newPixel, setup, type TestEnv } from './helpers.js';
 
 let env: TestEnv;
@@ -251,5 +252,33 @@ describe('compatibilidade com o legado', () => {
     await post('/v1/webhooks/checkout', { event: 'paid', transaction_id: 'R-2', value: 10, product_id: 'NOPE' }, { authorization: `Bearer ${ia.token}` });
     const al = await a.client.get('/v1/alerts');
     expect(al.data.alerts.map((x: any) => x.kind)).toContain('sale_without_pixel');
+  });
+});
+
+describe('modo sombra da migração (CAPI_DISPATCH=paused)', () => {
+  it('venda é gravada e o Purchase enfileirado, mas nada sai para a Meta', async () => {
+    const e = await setup({ CAPI_DISPATCH: 'paused' });
+    const w = startWorker(e.ctx, { intervalMs: 10 });
+    try {
+      metaOk(e.fake);
+      e.fake.on(/frankfurter|er-api/, () => json(503, {}));
+      const acc = await newAccount(e);
+      await newPixel(acc.client);
+      const ck = await newIntegration(acc.client, 'checkout');
+      const r = await e.app.inject({
+        method: 'POST', url: '/v1/webhooks/checkout', headers: { 'content-type': 'application/json', authorization: `Bearer ${ck.token}` },
+        payload: JSON.stringify({ event: 'paid', transaction_id: 'SOMBRA-1', value: '97,00' }),
+      });
+      expect(r.json()).toMatchObject({ status: 'approved', queued: true });
+      await new Promise((res) => setTimeout(res, 300));
+      expect(e.fake.calls.filter((c) => c.url.includes('/events'))).toHaveLength(0);
+      const o = await e.db.query(`SELECT status FROM capi_outbox WHERE event_name = 'Purchase'`);
+      expect(o.rows[0].status).toBe('pending');
+      const rep = await acc.client.get('/v1/reports/capi');
+      expect(rep.data.dispatchPaused).toBe(true);
+    } finally {
+      await w.stop();
+      await e.close();
+    }
   });
 });

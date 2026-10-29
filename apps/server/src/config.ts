@@ -15,7 +15,18 @@ const schema = z.object({
   /** 32 bytes em base64 — criptografia de segredos no banco (AES-256-GCM). */
   ENCRYPTION_KEY: z.string().refine((v) => Buffer.from(v, 'base64').length === 32, 'ENCRYPTION_KEY deve ter 32 bytes em base64'),
   SESSION_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(30),
-  TRUST_PROXY: bool.default(false),
+  /**
+   * Proxies confiáveis à frente do servidor. Use o NÚMERO de saltos em produção (Cloud Run = 1):
+   * só o IP acrescentado pelo proxy vale. "true" confia na cadeia inteira de X-Forwarded-For,
+   * cujo início é escrito pelo próprio cliente (falsificável) — aceitável apenas em testes.
+   */
+  TRUST_PROXY: z.string().default('false').transform((v, c) => {
+    if (v === 'true') return true as const;
+    if (v === 'false' || v === '') return false as const;
+    if (/^\d{1,2}$/.test(v)) return Number(v);
+    c.addIssue({ code: 'custom', message: 'use false, true ou o número de proxies (ex.: 1)' });
+    return z.NEVER;
+  }),
   PLATFORM_ADMIN_EMAILS: z.string().default(''),
 
   META_APP_ID: z.string().default(''),
@@ -41,6 +52,11 @@ const schema = z.object({
 
   WEBHOOK_BODY_RETENTION_DAYS: z.coerce.number().int().min(1).default(30),
   TRACKING_RETENTION_DAYS: z.coerce.number().int().min(7).default(180),
+  /**
+   * "paused" = modo sombra da migração: tudo é recebido, gravado e enfileirado, mas nada sai
+   * para a Meta (o sistema antigo continua enviando). Ver docs/PLANO-MIGRACAO.md.
+   */
+  CAPI_DISPATCH: opt(z.enum(['enabled', 'paused']).default('enabled')),
   CAPI_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(30).default(10),
   /** Diretório do build do painel para servir junto da API (deploy em um container). */
   WEB_DIST_DIR: z.string().default(''),
@@ -59,6 +75,9 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   if (c.NODE_ENV === 'production') {
     if (!c.APP_URL.startsWith('https://') || !c.PUBLIC_API_URL.startsWith('https://')) {
       throw new Error('Em produção APP_URL e PUBLIC_API_URL devem usar https://');
+    }
+    if (c.TRUST_PROXY === true) {
+      throw new Error('Em produção use TRUST_PROXY=<número de proxies> (Cloud Run: 1); "true" permite falsificar o IP do cliente');
     }
   }
   return {

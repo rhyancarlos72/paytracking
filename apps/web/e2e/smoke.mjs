@@ -69,6 +69,8 @@ try {
   check(true, 'pixel criado pela UI e snippet exibido');
   const snippet = await page.locator('pre').first().innerText();
   check(snippet.includes('/pixel.js') && snippet.includes('pt_px_'), 'snippet contém pixel.js e chave pública');
+  for (let i = 0; i < 25; i++) await page.keyboard.press('Tab');
+  check(await page.evaluate(() => !!document.activeElement?.closest('[role=dialog]')), 'Tab não escapa do diálogo aberto');
   await page.keyboard.press('Escape');
 
   // 3. integração de checkout próprio (via API, com a sessão do navegador)
