@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+/** variável presente mas vazia (comum em .env) vale como ausente → usa o padrão */
+const opt = <T extends z.ZodTypeAny>(t: T) => z.preprocess((v) => (v === '' ? undefined : v), t);
 const bool = z.enum(['true', 'false', '1', '0']).transform((v) => v === 'true' || v === '1');
 
 const schema = z.object({
@@ -13,20 +15,20 @@ const schema = z.object({
   /** 32 bytes em base64 — criptografia de segredos no banco (AES-256-GCM). */
   ENCRYPTION_KEY: z.string().refine((v) => Buffer.from(v, 'base64').length === 32, 'ENCRYPTION_KEY deve ter 32 bytes em base64'),
   SESSION_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(30),
-  TRUST_PROXY: bool.default('false'),
+  TRUST_PROXY: bool.default(false),
   PLATFORM_ADMIN_EMAILS: z.string().default(''),
 
   META_APP_ID: z.string().default(''),
   META_APP_SECRET: z.string().default(''),
   META_LOGIN_CONFIG_ID: z.string().default(''),
-  META_GRAPH_VERSION: z.string().regex(/^v\d+\.\d+$/).default('v25.0'),
+  META_GRAPH_VERSION: opt(z.string().regex(/^v\d+\.\d+$/).default('v25.0')),
   META_TEST_EVENT_CODE: z.string().default(''),
   /** Base da Graph API — só altere em homologação/testes (mock). */
-  META_GRAPH_BASE_URL: z.string().url().default('https://graph.facebook.com'),
+  META_GRAPH_BASE_URL: opt(z.string().url().default('https://graph.facebook.com')),
 
   WOOVI_APP_ID: z.string().default(''),
   WOOVI_WEBHOOK_SECRET: z.string().default(''),
-  WOOVI_API_BASE: z.string().url().default('https://api.openpix.com.br'),
+  WOOVI_API_BASE: opt(z.string().url().default('https://api.openpix.com.br')),
   PLAN_PRICE_MINOR: z.coerce.number().int().positive().default(4700),
   PLAN_TRIAL_DAYS: z.coerce.number().int().positive().default(7),
 

@@ -1,5 +1,5 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import type { ZodType, ZodTypeDef } from 'zod';
+import type { output, ZodType } from 'zod';
 import { planState, ROLE_RANK, type AuthContext, type Role } from '../auth/service.js';
 import { badRequest, forbidden, paymentRequired, unauthorized } from './errors.js';
 
@@ -11,10 +11,10 @@ declare module 'fastify' {
 
 export const SESSION_COOKIE = 'pt_session';
 
-export function parse<T>(schema: ZodType<T, ZodTypeDef, unknown>, data: unknown): T {
+export function parse<S extends ZodType>(schema: S, data: unknown): output<S> {
   const r = schema.safeParse(data);
   if (!r.success) {
-    const issues = r.error.issues.map((i) => ({ path: i.path.join('.'), message: i.message }));
+    const issues = r.error.issues.map((i) => ({ path: i.path.map(String).join('.'), message: i.message }));
     throw badRequest(issues[0] ? `${issues[0].path ? issues[0].path + ': ' : ''}${issues[0].message}` : 'Dados inválidos.', issues);
   }
   return r.data;

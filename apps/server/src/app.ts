@@ -98,7 +98,7 @@ export async function buildApp(ctx: Ctx): Promise<FastifyInstance> {
     }
     if (err instanceof ZodError) return reply.code(400).send({ error: { code: 'bad_request', message: 'Dados inválidos.' } });
     const status = (err as { statusCode?: number }).statusCode;
-    if (status && status < 500) return reply.code(status).send({ error: { code: 'bad_request', message: err.message } });
+    if (status && status < 500) return reply.code(status).send({ error: { code: 'bad_request', message: (err as Error).message } });
     req.log.error({ err }, 'erro não tratado');
     return reply.code(500).send({ error: { code: 'internal', message: 'Erro interno. Tente novamente.', requestId: req.id } });
   });

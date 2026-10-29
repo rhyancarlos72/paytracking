@@ -1,0 +1,130 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Typecheck, testes e build
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: paytracking
+          POSTGRES_PASSWORD: paytracking
+          POSTGRES_DB: paytracking_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U paytracking" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://paytracking:paytracking@localhost:5432/paytracking_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - name: Tamanho do pixel.js (orçamento 20 KB)
+        run: test $(stat -c%s packages/pixel/dist/pixel.js) -lt 20480
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: |
+            apps/server/dist
+            apps/web/dist
+            packages/pixel/dist
+          retention-days: 7
+
+  e2e:
+    name: Ponta a ponta (Playwright)
+    needs: test
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: paytracking
+          POSTGRES_PASSWORD: paytracking
+          POSTGRES_DB: paytracking_e2e
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U paytracking" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Playwright
+        run: |
+          npm install --no-save --prefix "$RUNNER_TEMP/pw" playwright@1.63.0
+          "$RUNNER_TEMP/pw/node_modules/.bin/playwright" install --with-deps chromium
+          echo "NODE_PATH=$RUNNER_TEMP/pw/node_modules" >> "$GITHUB_ENV"
+      - name: Sobe o servidor (build de produção, worker embutido, Graph API mockada)
+        env:
+          DATABASE_URL: postgres://paytracking:paytracking@localhost:5432/paytracking_e2e
+          APP_URL: http://localhost:8080
+          PUBLIC_API_URL: http://localhost:8080
+          MIGRATE_ON_START: 'true'
+          EMBEDDED_WORKER: 'true'
+          META_GRAPH_BASE_URL: http://localhost:8099
+          MIGRATIONS_DIR: ${{ github.workspace }}/apps/server/dist/migrations
+          WEB_DIST_DIR: ${{ github.workspace }}/apps/web/dist
+          PIXEL_DIST_DIR: ${{ github.workspace }}/packages/pixel/dist
+        run: |
+          export ENCRYPTION_KEY=$(node -e "console.log(require('crypto').randomBytes(32).toString('base64'))")
+          nohup node apps/server/dist/server.js > server.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf localhost:8080/healthz && break; sleep 1; done
+      - run: node apps/web/e2e/smoke.mjs
+        env:
+          SHOTS: e2e-screenshots
+      - if: always()
+        run: cat server.log
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-screenshots
+          path: e2e-screenshots
+          retention-days: 7
+
+  security:
+    name: Segredos e dependências
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: pnpm audit --prod --audit-level high
+
+  docker:
+    name: Imagem Docker
+    needs: test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t paytracking:ci .
