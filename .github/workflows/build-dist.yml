@@ -14,6 +14,9 @@ concurrency:
   group: build-dist
   cancel-in-progress: false
 
+env:
+  COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
+
 jobs:
   build:
     # não reage ao próprio commit
@@ -21,11 +24,11 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
-          cache: pnpm
+      # pnpm na versão de package.json (packageManager), sem action em Node 20
+      - run: corepack enable
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - name: Commita o build se mudou
