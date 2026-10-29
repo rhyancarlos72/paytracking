@@ -66,7 +66,8 @@ const schema = z.object({
 export type Config = z.infer<typeof schema> & { platformAdmins: Set<string>; isProd: boolean };
 
 export function loadConfig(env: Record<string, string | undefined> = process.env): Config {
-  const parsed = schema.safeParse(env);
+  // painéis de hospedagem costumam gravar campos não preenchidos como "": tratamos como ausentes
+  const parsed = schema.safeParse(Object.fromEntries(Object.entries(env).filter(([, v]) => v !== '')));
   if (!parsed.success) {
     const msg = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
     throw new Error(`Configuração inválida — ${msg}`);

@@ -1,6 +1,4 @@
-import { createPool } from '@pt/db';
-import { loadConfig } from './config.js';
-import { createCtx, type Ctx } from './context.js';
+import type { Ctx } from './context.js';
 import { dispatchBatch } from './capi/dispatcher.js';
 import { refreshRates } from './fx/service.js';
 import { raiseAlert } from './capi/outbox.js';
@@ -66,15 +64,4 @@ export function startWorker(ctx: Ctx, opts: { intervalMs?: number } = {}) {
   };
   const done = loop();
   return { stop: async () => { stopped = true; await done; } };
-}
-
-if (import.meta.url === `file://${process.argv[1]}`) {
-  const config = loadConfig();
-  const pool = createPool(config.DATABASE_URL, 5);
-  const ctx = createCtx(config, pool);
-  const w = startWorker(ctx);
-  const shutdown = async () => { await w.stop(); await pool.end(); process.exit(0); };
-  process.on('SIGTERM', shutdown);
-  process.on('SIGINT', shutdown);
-  ctx.log.info({}, 'worker iniciado');
 }

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch --env-file-if-exists=../../.env src/server.ts",
-    "worker": "tsx --env-file-if-exists=../../.env src/worker.ts",
+    "worker": "tsx --env-file-if-exists=../../.env src/worker-main.ts",
     "db:migrate": "tsx --env-file-if-exists=../../.env src/scripts/migrate.ts",
     "seed:demo": "tsx --env-file-if-exists=../../.env src/scripts/seed-demo.ts",
     "import:legacy": "tsx --env-file-if-exists=../../.env src/scripts/import-legacy.ts",

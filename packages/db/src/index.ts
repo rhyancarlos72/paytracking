@@ -1,4 +1,5 @@
 import pg from 'pg';
+import { existsSync } from 'node:fs';
 import { readdir, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -14,7 +15,11 @@ export function createPool(connectionString: string, max = 10): pg.Pool {
   return new pg.Pool({ connectionString, max, idleTimeoutMillis: 30_000, connectionTimeoutMillis: 5_000 });
 }
 
-export const MIGRATIONS_DIR = process.env.MIGRATIONS_DIR ?? path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../migrations');
+const here = path.dirname(fileURLToPath(import.meta.url));
+// fonte (packages/db/src → ../migrations) ou bundle do servidor (apps/server/dist → ./migrations, copiada no build)
+export const MIGRATIONS_DIR = process.env.MIGRATIONS_DIR
+  || [path.join(here, 'migrations'), path.resolve(here, '../migrations')].find((d) => existsSync(d))
+  || path.resolve(here, '../migrations');
 
 /** Aplica migrações SQL versionadas em ordem, cada uma em transação, com trava consultiva. */
 export async function migrate(pool: pg.Pool, dir = MIGRATIONS_DIR, log: (m: string) => void = console.log): Promise<string[]> {

@@ -3,6 +3,7 @@ import cookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { ZodError } from 'zod';
 import type { Ctx } from './context.js';
@@ -131,7 +132,9 @@ export async function buildApp(ctx: Ctx): Promise<FastifyInstance> {
   pushRoutes(app, ctx);
 
   // Scripts do navegador (pixel.js e loaders), com cache curto e CORS aberto.
-  const pixelDir = ctx.config.PIXEL_DIST_DIR || path.resolve(process.cwd(), '../../packages/pixel/dist');
+  // padrões relativos a apps/server/{src,dist}: funcionam sem configurar nada fora do Docker
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const pixelDir = ctx.config.PIXEL_DIST_DIR || path.resolve(here, '../../../packages/pixel/dist');
   const scripts: Record<string, string> = {
     '/pixel.js': 'pixel.js',
     '/checkout-loader.js': 'checkout-loader.js',
@@ -149,8 +152,8 @@ export async function buildApp(ctx: Ctx): Promise<FastifyInstance> {
   }
 
   // Painel (SPA) servido pelo mesmo container quando WEB_DIST_DIR estiver definido.
-  const webDir = ctx.config.WEB_DIST_DIR;
-  if (webDir && existsSync(webDir)) {
+  const webDir = ctx.config.WEB_DIST_DIR || path.resolve(here, '../../web/dist');
+  if (existsSync(path.join(webDir, 'index.html'))) {
     await app.register(fastifyStatic, { root: webDir, wildcard: false, maxAge: '1h', index: false });
     const indexHtml = readFileSync(path.join(webDir, 'index.html'), 'utf8');
     app.setNotFoundHandler((req, reply) => {

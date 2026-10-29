@@ -163,3 +163,21 @@ backup**, então prefira corrigir para frente. Webhooks recebidos ficam em `webh
 - [ ] Alertas do Cloud Monitoring (ver `docs/OPERACAO.md`)
 - [ ] Venda de teste aprovada e reembolsada em cada gateway usado, conferida no painel e na Meta
 - [ ] `META_GRAPH_BASE_URL` e `META_TEST_EVENT_CODE` **vazios** em produção
+
+## Alternativa: hospedagem Node.js por painel (sem Docker)
+
+Para plataformas que pedem “comando de construção / arquivo de entrada” (ex.: hPanel):
+
+| Campo | Valor |
+|---|---|
+| Comando de construção | `pnpm run build` |
+| Gerenciador de pacotes | `pnpm` |
+| Diretório de saída | `apps/server/dist` |
+| Arquivo de entrada | `apps/server/dist/server.js` |
+
+O servidor encontra o painel, o `pixel.js` e as migrações sozinho (caminhos relativos ao build);
+`WEB_DIST_DIR`, `PIXEL_DIST_DIR` e `MIGRATIONS_DIR` só precisam ser definidos se você mover as pastas.
+Variáveis deixadas em branco valem como “não definidas” (usam o padrão). É preciso um
+**PostgreSQL 16+** externo; MySQL não serve. Use `MIGRATE_ON_START=true` (não há job de migração)
+e `EMBEDDED_WORKER=true`. Se a plataforma suspende o app sem tráfego, os eventos ficam na fila
+até o próximo acesso.
