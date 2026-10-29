@@ -134,7 +134,9 @@ export async function buildApp(ctx: Ctx): Promise<FastifyInstance> {
   // Scripts do navegador (pixel.js e loaders), com cache curto e CORS aberto.
   // padrões relativos a apps/server/{src,dist}: funcionam sem configurar nada fora do Docker
   const here = path.dirname(fileURLToPath(import.meta.url));
-  const pixelDir = ctx.config.PIXEL_DIST_DIR || path.resolve(here, '../../../packages/pixel/dist');
+  const firstDir = (...dirs: string[]) => dirs.find((d) => existsSync(d)) ?? dirs[dirs.length - 1]!;
+  // dist/pixel e dist/web: cópias feitas pelo build (pasta dist autossuficiente); depois, o monorepo
+  const pixelDir = ctx.config.PIXEL_DIST_DIR || firstDir(path.join(here, 'pixel'), path.resolve(here, '../../../packages/pixel/dist'));
   const scripts: Record<string, string> = {
     '/pixel.js': 'pixel.js',
     '/checkout-loader.js': 'checkout-loader.js',
@@ -152,7 +154,7 @@ export async function buildApp(ctx: Ctx): Promise<FastifyInstance> {
   }
 
   // Painel (SPA) servido pelo mesmo container quando WEB_DIST_DIR estiver definido.
-  const webDir = ctx.config.WEB_DIST_DIR || path.resolve(here, '../../web/dist');
+  const webDir = ctx.config.WEB_DIST_DIR || firstDir(path.join(here, 'web', 'index.html'), path.resolve(here, '../../web/dist/index.html')).replace(/[\\/]index\.html$/, '');
   if (existsSync(path.join(webDir, 'index.html'))) {
     await app.register(fastifyStatic, { root: webDir, wildcard: false, maxAge: '1h', index: false });
     const indexHtml = readFileSync(path.join(webDir, 'index.html'), 'utf8');
