@@ -36,6 +36,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
+          package-manager-cache: false
       # pnpm na versão de package.json (packageManager), sem action em Node 20
       - run: corepack enable
       - run: pnpm install --frozen-lockfile
@@ -72,6 +73,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
+          package-manager-cache: false
       # pnpm na versão de package.json (packageManager), sem action em Node 20
       - run: corepack enable
       - run: pnpm install --frozen-lockfile
@@ -129,6 +131,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
+          package-manager-cache: false
       # pnpm na versão de package.json (packageManager), sem action em Node 20
       - run: corepack enable
       - run: pnpm audit --prod --audit-level high
