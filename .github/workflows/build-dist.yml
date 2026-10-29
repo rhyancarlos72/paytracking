@@ -1,0 +1,38 @@
+name: Build versionado
+
+# A hospedagem por painel não roda o comando de build: ela executa direto
+# apps/server/dist/server.js. Este workflow mantém os arquivos compilados da main
+# em dia, commitando apps/server/dist, apps/web/dist e packages/pixel/dist.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-dist
+  cancel-in-progress: false
+
+jobs:
+  build:
+    # não reage ao próprio commit
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Commita o build se mudou
+        run: |
+          git add -A apps/server/dist apps/web/dist packages/pixel/dist
+          if git diff --cached --quiet; then echo "build já está em dia"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "build: atualiza arquivos compilados [skip ci]"
+          git push

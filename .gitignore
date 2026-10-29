@@ -11,3 +11,12 @@ test-results/
 apps/server/public/
 gitleaks.json
 .neon
+
+# Build versionado para hospedagens que não rodam o comando de build (o workflow
+# build-dist.yml regenera a cada push na main). Mapas de fonte ficam fora.
+!apps/server/dist/
+!apps/web/dist/
+!packages/pixel/dist/
+apps/server/dist/**/*.map
+packages/pixel/dist/**/*.map
+apps/web/dist/**/*.map
