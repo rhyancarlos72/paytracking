@@ -81,6 +81,9 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       throw new Error('Em produção use TRUST_PROXY=<número de proxies> (Cloud Run: 1); "true" permite falsificar o IP do cliente');
     }
   }
+  // aceita "https://site.com/": sem a barra final os links montados não saem com "//"
+  c.APP_URL = c.APP_URL.replace(/\/+$/, '');
+  c.PUBLIC_API_URL = c.PUBLIC_API_URL.replace(/\/+$/, '');
   return {
     ...c,
     platformAdmins: new Set(c.PLATFORM_ADMIN_EMAILS.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)),
