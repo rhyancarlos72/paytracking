@@ -1,3 +1,10 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+# esbuild precisa do script de instalação (binário da plataforma); o pnpm 11 bloqueia os não aprovados
+allowBuilds:
+  esbuild: true
+
+# Só instala versões publicadas há pelo menos 1 dia (padrão do pnpm 11; protege contra pacote comprometido recém-publicado)
+minimumReleaseAge: 1440
