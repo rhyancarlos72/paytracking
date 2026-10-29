@@ -10,3 +10,4 @@ playwright-report/
 test-results/
 apps/server/public/
 gitleaks.json
+.neon

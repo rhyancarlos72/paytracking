@@ -12,7 +12,25 @@ pg.types.setTypeParser(20, (v) => BigInt(v));
 // NUMERIC permanece string (taxas de câmbio exatas).
 
 export function createPool(connectionString: string, max = 10): pg.Pool {
-  return new pg.Pool({ connectionString, max, idleTimeoutMillis: 30_000, connectionTimeoutMillis: 5_000 });
+  // 10 s: o Neon suspende a compute ociosa e a primeira conexão espera ela acordar
+  return new pg.Pool({ connectionString, max, idleTimeoutMillis: 30_000, connectionTimeoutMillis: 10_000 });
+}
+
+/**
+ * URL direta (sem pooler) para migrações: `pg_advisory_lock` é de sessão e não funciona
+ * atrás do PgBouncer em modo transação. Usa DATABASE_URL_UNPOOLED (gerada pelo `neon env pull`);
+ * sem ela, tira o sufixo `-pooler` do host do Neon (ep-xxx-pooler.região → ep-xxx.região).
+ * Fora do Neon, devolve a própria URL.
+ */
+export function directDatabaseUrl(pooledUrl: string, unpooledUrl?: string): string {
+  if (unpooledUrl) return unpooledUrl;
+  try {
+    const u = new URL(pooledUrl);
+    if (/^ep-[^.]+-pooler\./.test(u.hostname)) u.hostname = u.hostname.replace(/-pooler\./, '.');
+    return u.toString();
+  } catch {
+    return pooledUrl;
+  }
 }
 
 const here = path.dirname(fileURLToPath(import.meta.url));

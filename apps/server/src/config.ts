@@ -8,6 +8,8 @@ const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().default(8080),
   DATABASE_URL: z.string().min(1),
+  /** Conexão direta (sem pooler), usada nas migrações. O `neon env pull` preenche. */
+  DATABASE_URL_UNPOOLED: z.string().optional(),
   /** Origem pública do painel (CORS, cookies, links de e-mail). */
   APP_URL: z.string().url().default('http://localhost:5173'),
   /** Origem pública da API (URLs de webhook, pixel.js, OAuth). */
