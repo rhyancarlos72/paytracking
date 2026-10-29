@@ -1,0 +1,13 @@
+# Regras padrão do gitleaks + exceções EXPLÍCITAS para valores fictícios dos testes.
+# Liste o valor exato (nunca uma pasta inteira): um segredo real colado num teste continua sendo pego.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "senhas e tokens fictícios usados nos testes"
+regexTarget = "match"
+regexes = [
+  '''(SenhaForte|NovaSenha|OutraSenha|Trocada)\d+''',
+  '''tok-projeto-legado-abc123''',
+  '''gw-usuario-legado-xyz789''',
+]
