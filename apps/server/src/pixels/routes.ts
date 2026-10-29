@@ -201,7 +201,7 @@ export function pixelRoutes(app: FastifyInstance, ctx: Ctx) {
     const { id } = parse(z.object({ id: z.string().uuid() }), req.params);
     const p = await loadPixel(ctx, a.org.id, id);
     if (!p.capi_token_enc) return { ok: false, message: 'Token da CAPI não configurado.' };
-    const url = `https://graph.facebook.com/${ctx.config.META_GRAPH_VERSION}/${p.meta_pixel_id}?fields=id,name`;
+    const url = `${ctx.config.META_GRAPH_BASE_URL}/${ctx.config.META_GRAPH_VERSION}/${p.meta_pixel_id}?fields=id,name`;
     try {
       const res = await ctx.fetch(url, { headers: { Authorization: `Bearer ${ctx.box.decrypt(p.capi_token_enc)}` }, signal: AbortSignal.timeout(10_000) });
       const body = (await res.json().catch(() => ({}))) as any;

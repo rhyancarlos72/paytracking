@@ -14,7 +14,7 @@ export function createPool(connectionString: string, max = 10): pg.Pool {
   return new pg.Pool({ connectionString, max, idleTimeoutMillis: 30_000, connectionTimeoutMillis: 5_000 });
 }
 
-export const MIGRATIONS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../migrations');
+export const MIGRATIONS_DIR = process.env.MIGRATIONS_DIR ?? path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../migrations');
 
 /** Aplica migrações SQL versionadas em ordem, cada uma em transação, com trava consultiva. */
 export async function migrate(pool: pg.Pool, dir = MIGRATIONS_DIR, log: (m: string) => void = console.log): Promise<string[]> {

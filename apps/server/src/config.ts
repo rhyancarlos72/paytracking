@@ -21,6 +21,8 @@ const schema = z.object({
   META_LOGIN_CONFIG_ID: z.string().default(''),
   META_GRAPH_VERSION: z.string().regex(/^v\d+\.\d+$/).default('v25.0'),
   META_TEST_EVENT_CODE: z.string().default(''),
+  /** Base da Graph API — só altere em homologação/testes (mock). */
+  META_GRAPH_BASE_URL: z.string().url().default('https://graph.facebook.com'),
 
   WOOVI_APP_ID: z.string().default(''),
   WOOVI_WEBHOOK_SECRET: z.string().default(''),

@@ -94,7 +94,7 @@ async function deliver(ctx: Ctx, row: OutboxRow, pixel: PixelCfg | undefined): P
   let http = 0;
   let outcome: DeliveryOutcome;
   try {
-    const res = await ctx.fetch(`https://graph.facebook.com/${ctx.config.META_GRAPH_VERSION}/${pixel.meta_pixel_id}/events`, {
+    const res = await ctx.fetch(`${ctx.config.META_GRAPH_BASE_URL}/${ctx.config.META_GRAPH_VERSION}/${pixel.meta_pixel_id}/events`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

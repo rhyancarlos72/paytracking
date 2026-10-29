@@ -68,7 +68,7 @@ export class MetaClient {
   constructor(private readonly ctx: Ctx, private readonly token: string) {}
 
   private get base() {
-    return `https://graph.facebook.com/${this.ctx.config.META_GRAPH_VERSION}`;
+    return `${this.ctx.config.META_GRAPH_BASE_URL}/${this.ctx.config.META_GRAPH_VERSION}`;
   }
 
   private withProof(params: URLSearchParams) {
@@ -181,7 +181,7 @@ export const metaRedirectUri = (ctx: Ctx) => `${ctx.config.PUBLIC_API_URL}/v1/me
 
 /** code → token curto → token longo (~60 dias). */
 export async function exchangeCode(ctx: Ctx, code: string): Promise<{ token: string; expiresAt: Date | null }> {
-  const base = `https://graph.facebook.com/${ctx.config.META_GRAPH_VERSION}/oauth/access_token`;
+  const base = `${ctx.config.META_GRAPH_BASE_URL}/${ctx.config.META_GRAPH_VERSION}/oauth/access_token`;
   const call = async (params: Record<string, string>) => {
     const res = await ctx.fetch(`${base}?${new URLSearchParams(params)}`, { signal: AbortSignal.timeout(20_000) });
     const j = (await res.json().catch(() => ({}))) as any;
