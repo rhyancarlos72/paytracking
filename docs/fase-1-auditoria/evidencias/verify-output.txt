@@ -1,0 +1,42 @@
+== 1) Compra aprovada de cada gateway: chega como Purchase no webhook interno?
+  kiwify   normalized.event=purchase   value=197.0    mapped='Purchase' is_paid=false
+  cakto    normalized.event=purchase   value=197.0    mapped='Purchase' is_paid=false
+  kirvano  normalized.event=purchase   value=197.0    mapped='Purchase' is_paid=false
+  lowify   normalized.event=purchase   value=197.0    mapped='Purchase' is_paid=false
+  wiapay   normalized.event=purchase   value=97.0     mapped='Purchase' is_paid=false
+  hotmart  normalized.event=purchase   value=197.0    mapped='Purchase' is_paid=true
+
+== 2) Heurística de centavos do adapter ($money via normalize lowify, campo amount)
+  amount=997     -> value=997.0
+  amount=1000    -> value=10.0
+  amount=1500    -> value=15.0
+  amount=19700   -> value=197.0
+  amount='1000'  -> value=10.0
+  amount='49.90' -> value=49.9
+  amount=4990    -> value=49.9
+
+== 3) pt_parse_money (webhook checkout próprio)
+  '1.234,56' -> 1234.56
+  '1,234.56' -> 1234.56
+  '14,90'    -> 14.9
+  '1,234'    -> 1234.0
+  '19700'    -> 19700.0
+  19700      -> 19700.0
+  '0,5'      -> 0.5
+
+== 4) Status de pagamento ambíguos em paytrack_purchase_is_paid
+  {"status":"disapproved"}                 -> true
+  {"status":"not_paid"}                    -> true
+  {"status":"unpaid"}                      -> true
+  {"status":"paid_out"}                    -> true
+  {"event":"purchase"}                     -> false
+  {"status":"payment_success_pending"}     -> false
+
+== 5) Eventos mapeados aceitos pelo endpoint do NAVEGADOR (track.php só bloqueia Purchase)
+  refund       -> 'Refund'
+  lead         -> 'Lead'
+  add_to_cart  -> 'AddToCart'
+  canceled     -> NULL
+
+== 6) 'canceled' em Lowify/Wiapay vira:
+  event=refund

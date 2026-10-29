@@ -1,0 +1,149 @@
+[
+    {
+        "input": {
+            "event_name": "Purchase",
+            "event_id": "tx-1",
+            "event_time": 1760000000,
+            "event_source_url": "https://loja.com/p",
+            "action_source": "website",
+            "user": {
+                "email": " Maria@Email.COM ",
+                "phone": "+55 (11) 99999-8888",
+                "first_name": "Maria",
+                "last_name": "Silva Souza",
+                "city": "São Paulo",
+                "state": "SP",
+                "zip": "01310-100",
+                "country": "BR",
+                "gender": "Female",
+                "birthdate": "1990-05-17",
+                "document": "123.456.789-09",
+                "external_id": "6F1C2B7A-UUID-XID"
+            },
+            "tracking": {
+                "fbp": "fb.1.1700000000000.123456",
+                "fbc": "fb.1.1700000000000.IwAR123",
+                "client_ip_address": "177.10.20.30",
+                "client_user_agent": "Mozilla/5.0"
+            },
+            "custom": {
+                "value": 197,
+                "currency": "BRL",
+                "products": [
+                    {
+                        "id": "P1",
+                        "name": "Curso",
+                        "quantity": 1,
+                        "price": 197
+                    }
+                ],
+                "order_id": "tx-1",
+                "utm_source": "fb",
+                "utm_campaign": "camp|123"
+            }
+        },
+        "output": {
+            "event_name": "Purchase",
+            "event_time": 1760000000,
+            "event_id": "tx-1",
+            "action_source": "website",
+            "user_data": {
+                "em": [
+                    "25dd9496706c28b2cb132c9101c2a73768634a9d8a870ffd6e666157be937d85"
+                ],
+                "ph": [
+                    "b8e374ecc3a7a117a4df68efc21b0157f7c2ea542f7edaf29b33dc8818cf695e"
+                ],
+                "fn": [
+                    "94aec9fbed989ece189a7e172c9cf41669050495152bc4c1dbf2a38d7fd85627"
+                ],
+                "ln": [
+                    "17daee46b007c2186642c2e388b45be32bd08c971da493713c1d07d5adb55f66"
+                ],
+                "ct": [
+                    "8f7f2f7ccd3f2898cf4850905346e8fb333d00aac1c974f8f37326e068cf7b1e"
+                ],
+                "st": [
+                    "be18b85f77fc024db379acf19e8a1ce62307ab7bb1bca395389ecfc2dafaf741"
+                ],
+                "zp": [
+                    "9a4a139dfbfcd2fc89a3cb4302dad65a35abd8d29a56c09a962b69c5cf3bca40"
+                ],
+                "country": [
+                    "885036a0da3dff3c3e05bc79bf49382b12bc5098514ed57ce0875aba1aa2c40d"
+                ],
+                "ge": [
+                    "252f10c83610ebca1a059c0bae8255eba2f95be4d1d7bcfa89d7248a82d9f111"
+                ],
+                "db": [
+                    "7eaa6e2f3dca12acc11ad21625299f660e38a7510de1e12cf2013dd5274d2926"
+                ],
+                "external_id": [
+                    "7ec94663084bd506d4f0c3e21042df233681fd7426e93f397c921b1d3e397bba",
+                    "e873e7d08169b0faa5f7011e75680149b08c5b5edcb2efb35b95af0a893743f4"
+                ],
+                "fbp": "fb.1.1700000000000.123456",
+                "fbc": "fb.1.1700000000000.IwAR123",
+                "client_ip_address": "177.10.20.30",
+                "client_user_agent": "Mozilla/5.0"
+            },
+            "custom_data": {
+                "value": 197,
+                "currency": "BRL",
+                "content_ids": [
+                    "P1"
+                ],
+                "contents": [
+                    {
+                        "id": "P1",
+                        "quantity": 1,
+                        "item_price": 197
+                    }
+                ],
+                "content_type": "product",
+                "num_items": 1,
+                "content_name": "Curso",
+                "order_id": "tx-1",
+                "utm_source": "fb",
+                "utm_campaign": "camp|123"
+            },
+            "event_source_url": "https://loja.com/p"
+        }
+    },
+    {
+        "input": {
+            "event_name": "PageView",
+            "event_id": "pv-1",
+            "event_time": 1760000000,
+            "action_source": "website",
+            "user": {
+                "country": "PT",
+                "external_id": "abc"
+            },
+            "tracking": {
+                "fbp": "invalid",
+                "client_ip_address": "192.168.0.1",
+                "client_user_agent": "Hotmart-Hooks/1.0"
+            },
+            "custom": {
+                "value": 10,
+                "currency": "EUR"
+            }
+        },
+        "output": {
+            "event_name": "PageView",
+            "event_time": 1760000000,
+            "event_id": "pv-1",
+            "action_source": "website",
+            "user_data": {
+                "country": [
+                    "e75b11da693d7bb5273985dcf9f02729455da7e7c80e54a0615e00ec2ae76d8e"
+                ],
+                "external_id": [
+                    "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+                ]
+            },
+            "custom_data": []
+        }
+    }
+]
