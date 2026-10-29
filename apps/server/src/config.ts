@@ -6,7 +6,8 @@ const bool = z.enum(['true', 'false', '1', '0']).transform((v) => v === 'true' |
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  PORT: z.coerce.number().int().default(8080),
+  /** Porta TCP, ou caminho de socket quando a hospedagem (LiteSpeed/Passenger) passa um. */
+  PORT: z.string().trim().default('8080'),
   DATABASE_URL: z.string().min(1),
   /** Conexão direta (sem pooler), usada nas migrações. O `neon env pull` preenche. */
   DATABASE_URL_UNPOOLED: z.string().optional(),
@@ -59,6 +60,8 @@ const schema = z.object({
    * para a Meta (o sistema antigo continua enviando). Ver docs/PLANO-MIGRACAO.md.
    */
   CAPI_DISPATCH: opt(z.enum(['enabled', 'paused']).default('enabled')),
+  /** Fila vazia: o worker dorme até o próximo reenvio, no máximo isto (evento novo acorda na hora). */
+  CAPI_IDLE_POLL_SECONDS: z.coerce.number().int().min(1).max(3600).default(600),
   CAPI_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(30).default(10),
   /** Diretório do build do painel para servir junto da API (deploy em um container). */
   WEB_DIST_DIR: z.string().default(''),

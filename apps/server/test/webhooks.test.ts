@@ -282,3 +282,32 @@ describe('modo sombra da migração (CAPI_DISPATCH=paused)', () => {
     }
   });
 });
+
+describe('worker ocioso (fila vazia) — Neon pode suspender', () => {
+  it('dorme sem consultar a fila, mas acorda na hora quando chega uma venda', async () => {
+    const e = await setup();
+    // ocioso por até 10 min: sem o sinal de evento novo, nada sairia neste teste
+    const w = startWorker(e.ctx, { intervalMs: 10, idleMaxMs: 600_000 });
+    try {
+      metaOk(e.fake);
+      e.fake.on(/frankfurter|er-api/, () => json(503, {}));
+      const acc = await newAccount(e);
+      await newPixel(acc.client);
+      const ck = await newIntegration(acc.client, 'checkout');
+      await new Promise((res) => setTimeout(res, 300)); // worker já dormindo
+      const r = await e.app.inject({
+        method: 'POST', url: '/v1/webhooks/checkout', headers: { 'content-type': 'application/json', authorization: `Bearer ${ck.token}` },
+        payload: JSON.stringify({ event: 'paid', transaction_id: 'ACORDA-1', value: '97,00' }),
+      });
+      expect(r.json()).toMatchObject({ status: 'approved', queued: true });
+      const t0 = Date.now();
+      while (!e.fake.calls.some((c) => c.url.includes('/events')) && Date.now() - t0 < 3000) await new Promise((res) => setTimeout(res, 50));
+      expect(e.fake.calls.some((c) => c.url.includes('/events'))).toBe(true);
+      const o = await e.db.query(`SELECT status FROM capi_outbox WHERE event_name = 'Purchase'`);
+      expect(o.rows[0].status).toBe('sent');
+    } finally {
+      await w.stop();
+      await e.close();
+    }
+  });
+});

@@ -166,18 +166,25 @@ backup**, então prefira corrigir para frente. Webhooks recebidos ficam em `webh
 
 ## Alternativa: hospedagem Node.js por painel (sem Docker)
 
-Para plataformas que pedem “comando de construção / arquivo de entrada” (ex.: hPanel):
+Para plataformas que pedem “framework / comando de construção / arquivo de entrada” (ex.: hPanel):
 
 | Campo | Valor |
 |---|---|
+| Framework / tipo | Fastify (ou Express / Other) |
 | Comando de construção | `pnpm run build` |
-| Gerenciador de pacotes | `pnpm` |
-| Diretório de saída | `apps/server/dist` |
-| Arquivo de entrada | `apps/server/dist/server.js` |
+| Gerenciador de pacotes | `pnpm` (o projeto fixa 11.24.0) |
+| Diretório de saída | em branco |
+| Arquivo de entrada | `server.js` (o da raiz) |
 
-O servidor encontra o painel, o `pixel.js` e as migrações sozinho (caminhos relativos ao build);
-`WEB_DIST_DIR`, `PIXEL_DIST_DIR` e `MIGRATIONS_DIR` só precisam ser definidos se você mover as pastas.
-Variáveis deixadas em branco valem como “não definidas” (usam o padrão). É preciso um
-**PostgreSQL 16+** externo; MySQL não serve. Use `MIGRATE_ON_START=true` (não há job de migração)
-e `EMBEDDED_WORKER=true`. Se a plataforma suspende o app sem tráfego, os eventos ficam na fila
-até o próximo acesso.
+Como funciona:
+- `server.js` na raiz é CommonJS e carrega `apps/server/dist/server.js` com `import()`: funciona com
+  `node server.js` e com hospedagens que carregam a entrada via `require()` (LiteSpeed/Passenger).
+- `apps/server/dist` é **autossuficiente** (dependências, painel em `dist/web`, pixel em `dist/pixel`,
+  migrações) e fica versionado: o workflow `build-dist.yml` o regenera a cada push. Se o painel
+  exigir diretório de saída, use `apps/server/dist` com entrada `server.js`.
+- `PORT` pode ser número ou caminho de socket (a hospedagem decide); deixe em branco no painel.
+- Se a inicialização falhar (variável faltando, banco inacessível), o processo **não cai**: responde
+  `503` com `{"ok":false,"motivo":"..."}` (sem valores secretos) e tenta de novo a cada 30 s.
+- Banco: PostgreSQL 16+ (ex.: Neon, URL com `-pooler`). Use `MIGRATE_ON_START=true` e `EMBEDDED_WORKER=true`.
+- Com a fila vazia o worker dorme até 10 min (`CAPI_IDLE_POLL_SECONDS`), e evento novo o acorda na
+  hora: o Neon consegue suspender a compute ociosa.

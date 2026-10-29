@@ -2,6 +2,7 @@ import type { Ctx } from './context.js';
 import { dispatchBatch } from './capi/dispatcher.js';
 import { refreshRates } from './fx/service.js';
 import { raiseAlert } from './capi/outbox.js';
+import { onWake } from './capi/wake.js';
 
 /**
  * Worker: entrega da CAPI (loop curto), câmbio (a cada 6h), retenção e manutenção (a cada hora).
@@ -34,11 +35,37 @@ export async function maintenance(ctx: Ctx): Promise<Record<string, number>> {
   return out;
 }
 
-export function startWorker(ctx: Ctx, opts: { intervalMs?: number } = {}) {
+/**
+ * Quando a fila está vazia, o worker dorme até o próximo reenvio agendado, limitado a
+ * `idleMaxMs`. Evento novo acorda o worker na hora (onWake). Um worker em processo separado não
+ * recebe esse sinal: use um `idleMaxMs` curto nele (worker-main usa 5 s).
+ */
+export function startWorker(ctx: Ctx, opts: { intervalMs?: number; idleMaxMs?: number } = {}) {
   let stopped = false;
   const interval = opts.intervalMs ?? 1000;
+  const idleMax = opts.idleMaxMs ?? ctx.config.CAPI_IDLE_POLL_SECONDS * 1000;
   let lastFx = 0;
   let lastMaint = 0;
+  let woken = false;
+  let wakeUp: (() => void) | null = null;
+  const sleep = (ms: number) => new Promise<void>((resolve) => {
+    if (woken || stopped) { woken = false; return resolve(); }
+    const t = setTimeout(() => { wakeUp = null; resolve(); }, ms);
+    wakeUp = () => { clearTimeout(t); wakeUp = null; resolve(); };
+  });
+  const offWake = onWake(() => {
+    // pequeno atraso: o sinal sai ao fim da requisição, logo após o COMMIT
+    setTimeout(() => { if (wakeUp) wakeUp(); else woken = true; }, 50);
+  });
+  /** Milissegundos até o próximo item vencer na fila (null = fila vazia). */
+  const nextDueMs = async (): Promise<number | null> => {
+    const r = await ctx.db.query(
+      `SELECT GREATEST(0, EXTRACT(EPOCH FROM (min(CASE WHEN status = 'pending' THEN next_attempt_at ELSE locked_until END) - now())) * 1000)::bigint AS ms
+         FROM capi_outbox WHERE status = 'pending' OR (status = 'sending' AND locked_until IS NOT NULL)`,
+    );
+    const v = r.rows[0]?.ms;
+    return v === null || v === undefined ? null : Number(v);
+  };
 
   const loop = async () => {
     while (!stopped) {
@@ -54,14 +81,18 @@ export function startWorker(ctx: Ctx, opts: { intervalMs?: number } = {}) {
           lastMaint = now;
           maintenance(ctx).then((r) => ctx.log.info(r, 'manutenção')).catch((e) => ctx.log.warn({ err: String(e) }, 'manutenção falhou'));
         }
-        if (s.claimed < 50) await new Promise((r) => setTimeout(r, interval));
+        if (s.claimed >= 50) continue; // ainda há fila cheia: segue direto
+        if (s.claimed > 0) { await sleep(interval); continue; }
+        // ociosa: dorme até o próximo reenvio agendado (ou idleMax); evento novo acorda antes
+        const due = ctx.config.CAPI_DISPATCH === 'paused' ? null : await nextDueMs();
+        await sleep(Math.min(idleMax, Math.max(interval, due ?? idleMax)));
       } catch (e) {
         // banco indisponível: espera e tenta de novo, sem derrubar o processo (cenário 19)
         ctx.log.error({ err: String(e) }, 'worker: erro no ciclo');
-        await new Promise((r) => setTimeout(r, 5000));
+        await sleep(5000);
       }
     }
   };
   const done = loop();
-  return { stop: async () => { stopped = true; await done; } };
+  return { stop: async () => { stopped = true; offWake(); wakeUp?.(); await done; } };
 }

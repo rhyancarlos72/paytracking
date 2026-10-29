@@ -1142,19 +1142,19 @@ var require_utils = __commonJS({
       if (isBCYear) ret += " BC";
       return ret;
     }
-    function normalizeQueryConfig(config3, values, callback) {
-      config3 = typeof config3 === "string" ? { text: config3 } : config3;
+    function normalizeQueryConfig(config2, values, callback) {
+      config2 = typeof config2 === "string" ? { text: config2 } : config2;
       if (values) {
         if (typeof values === "function") {
-          config3.callback = values;
+          config2.callback = values;
         } else {
-          config3.values = values;
+          config2.values = values;
         }
       }
       if (callback) {
-        config3.callback = callback;
+        config2.callback = callback;
       }
-      return config3;
+      return config2;
     }
     var escapeIdentifier = function(str2) {
       return '"' + str2.replace(/"/g, '""') + '"';
@@ -1474,10 +1474,10 @@ var require_pg_connection_string = __commonJS({
     "use strict";
     function parse5(str2, options = {}) {
       if (str2.charAt(0) === "/") {
-        const config4 = str2.split(" ");
-        return { host: config4[0], database: config4[1] };
+        const config3 = str2.split(" ");
+        return { host: config3[0], database: config3[1] };
       }
-      const config3 = /* @__PURE__ */ Object.create(null);
+      const config2 = /* @__PURE__ */ Object.create(null);
       let result;
       let dummyHost = false;
       if (/ |%[^a-f0-9]|%[a-f0-9][^a-f0-9]/i.test(str2)) {
@@ -1495,78 +1495,78 @@ var require_pg_connection_string = __commonJS({
         throw err;
       }
       for (const entry of result.searchParams.entries()) {
-        config3[entry[0]] = entry[1];
+        config2[entry[0]] = entry[1];
       }
-      config3.user = config3.user || decodeURIComponent(result.username);
-      config3.password = config3.password || decodeURIComponent(result.password);
+      config2.user = config2.user || decodeURIComponent(result.username);
+      config2.password = config2.password || decodeURIComponent(result.password);
       if (result.protocol == "socket:") {
-        config3.host = decodeURI(result.pathname);
-        config3.database = result.searchParams.get("db");
-        config3.client_encoding = result.searchParams.get("encoding");
-        return config3;
+        config2.host = decodeURI(result.pathname);
+        config2.database = result.searchParams.get("db");
+        config2.client_encoding = result.searchParams.get("encoding");
+        return config2;
       }
       const hostname3 = (dummyHost ? "" : result.hostname).replace(/^\[(.+)\]$/, "$1");
-      if (!config3.host) {
-        config3.host = decodeURIComponent(hostname3);
+      if (!config2.host) {
+        config2.host = decodeURIComponent(hostname3);
       } else if (hostname3 && /^%2f/i.test(hostname3)) {
         result.pathname = hostname3 + result.pathname;
       }
-      if (!config3.port) {
-        config3.port = result.port;
+      if (!config2.port) {
+        config2.port = result.port;
       }
       const pathname = result.pathname.slice(1) || null;
-      config3.database = pathname ? decodeURI(pathname) : null;
-      if (config3.ssl === "true" || config3.ssl === "1") {
-        config3.ssl = true;
+      config2.database = pathname ? decodeURI(pathname) : null;
+      if (config2.ssl === "true" || config2.ssl === "1") {
+        config2.ssl = true;
       }
-      if (config3.ssl === "0") {
-        config3.ssl = false;
+      if (config2.ssl === "0") {
+        config2.ssl = false;
       }
-      if (config3.sslcert || config3.sslkey || config3.sslrootcert || config3.sslmode) {
-        config3.ssl = {};
+      if (config2.sslcert || config2.sslkey || config2.sslrootcert || config2.sslmode) {
+        config2.ssl = {};
       }
-      if (config3.sslnegotiation === "direct" && config3.ssl === void 0) {
-        config3.ssl = true;
+      if (config2.sslnegotiation === "direct" && config2.ssl === void 0) {
+        config2.ssl = true;
       }
-      const fs = config3.sslcert || config3.sslkey || config3.sslrootcert ? __require("fs") : null;
-      if (config3.sslcert) {
-        config3.ssl.cert = fs.readFileSync(config3.sslcert).toString();
+      const fs = config2.sslcert || config2.sslkey || config2.sslrootcert ? __require("fs") : null;
+      if (config2.sslcert) {
+        config2.ssl.cert = fs.readFileSync(config2.sslcert).toString();
       }
-      if (config3.sslkey) {
-        config3.ssl.key = fs.readFileSync(config3.sslkey).toString();
+      if (config2.sslkey) {
+        config2.ssl.key = fs.readFileSync(config2.sslkey).toString();
       }
-      if (config3.sslrootcert) {
-        config3.ssl.ca = fs.readFileSync(config3.sslrootcert).toString();
+      if (config2.sslrootcert) {
+        config2.ssl.ca = fs.readFileSync(config2.sslrootcert).toString();
       }
-      if (options.useLibpqCompat && config3.uselibpqcompat) {
+      if (options.useLibpqCompat && config2.uselibpqcompat) {
         throw new Error("Both useLibpqCompat and uselibpqcompat are set. Please use only one of them.");
       }
-      if (config3.uselibpqcompat === "true" || options.useLibpqCompat) {
-        switch (config3.sslmode) {
+      if (config2.uselibpqcompat === "true" || options.useLibpqCompat) {
+        switch (config2.sslmode) {
           case "disable": {
-            config3.ssl = false;
+            config2.ssl = false;
             break;
           }
           case "prefer": {
-            config3.ssl.rejectUnauthorized = false;
+            config2.ssl.rejectUnauthorized = false;
             break;
           }
           case "require": {
-            if (config3.sslrootcert) {
-              config3.ssl.checkServerIdentity = function() {
+            if (config2.sslrootcert) {
+              config2.ssl.checkServerIdentity = function() {
               };
             } else {
-              config3.ssl.rejectUnauthorized = false;
+              config2.ssl.rejectUnauthorized = false;
             }
             break;
           }
           case "verify-ca": {
-            if (!config3.ssl.ca) {
+            if (!config2.ssl.ca) {
               throw new Error(
                 "SECURITY WARNING: Using sslmode=verify-ca requires specifying a CA with sslrootcert. If a public CA is used, verify-ca allows connections to a server that somebody else may have registered with the CA, making you vulnerable to Man-in-the-Middle attacks. Either specify a custom CA certificate with sslrootcert parameter or use sslmode=verify-full for proper security."
               );
             }
-            config3.ssl.checkServerIdentity = function() {
+            config2.ssl.checkServerIdentity = function() {
             };
             break;
           }
@@ -1575,27 +1575,27 @@ var require_pg_connection_string = __commonJS({
           }
         }
       } else {
-        switch (config3.sslmode) {
+        switch (config2.sslmode) {
           case "disable": {
-            config3.ssl = false;
+            config2.ssl = false;
             break;
           }
           case "prefer":
           case "require":
           case "verify-ca":
           case "verify-full": {
-            if (config3.sslmode !== "verify-full") {
-              deprecatedSslModeWarning(config3.sslmode);
+            if (config2.sslmode !== "verify-full") {
+              deprecatedSslModeWarning(config2.sslmode);
             }
             break;
           }
           case "no-verify": {
-            config3.ssl.rejectUnauthorized = false;
+            config2.ssl.rejectUnauthorized = false;
             break;
           }
         }
       }
-      return config3;
+      return config2;
     }
     function toConnectionOptions(sslConfig) {
       const connectionOptions = Object.entries(sslConfig).reduce((c, [key, value]) => {
@@ -1606,8 +1606,8 @@ var require_pg_connection_string = __commonJS({
       }, /* @__PURE__ */ Object.create(null));
       return connectionOptions;
     }
-    function toClientConfig(config3) {
-      const poolConfig = Object.entries(config3).reduce((c, [key, value]) => {
+    function toClientConfig(config2) {
+      const poolConfig = Object.entries(config2).reduce((c, [key, value]) => {
         if (key === "ssl") {
           const sslConfig = value;
           if (typeof sslConfig === "boolean") {
@@ -1663,14 +1663,14 @@ var require_connection_parameters = __commonJS({
     var dns = __require("dns");
     var defaults = require_defaults();
     var parse5 = require_pg_connection_string().parse;
-    var val = function(key, config3, envVar) {
+    var val = function(key, config2, envVar) {
       if (envVar === void 0) {
         envVar = process.env["PG" + key.toUpperCase()];
       } else if (envVar === false) {
       } else {
         envVar = process.env[envVar];
       }
-      return config3[key] || envVar || defaults[key];
+      return config2[key] || envVar || defaults[key];
     };
     var readSSLConfigFromEnvironment = function() {
       switch (process.env.PGSSLMODE) {
@@ -1689,34 +1689,34 @@ var require_connection_parameters = __commonJS({
     var quoteParamValue = function(value) {
       return "'" + ("" + value).replace(/\\/g, "\\\\").replace(/'/g, "\\'") + "'";
     };
-    var add2 = function(params, config3, paramName) {
-      var value = config3[paramName];
+    var add2 = function(params, config2, paramName) {
+      var value = config2[paramName];
       if (value !== void 0 && value !== null) {
         params.push(paramName + "=" + quoteParamValue(value));
       }
     };
     var ConnectionParameters = class {
-      constructor(config3) {
-        config3 = typeof config3 === "string" ? parse5(config3) : config3 || {};
-        if (config3.connectionString) {
-          config3 = Object.assign({}, config3, parse5(config3.connectionString));
+      constructor(config2) {
+        config2 = typeof config2 === "string" ? parse5(config2) : config2 || {};
+        if (config2.connectionString) {
+          config2 = Object.assign({}, config2, parse5(config2.connectionString));
         }
-        this.user = val("user", config3);
-        this.database = val("database", config3);
+        this.user = val("user", config2);
+        this.database = val("database", config2);
         if (this.database === void 0) {
           this.database = this.user;
         }
-        this.port = parseInt(val("port", config3), 10);
-        this.host = val("host", config3);
+        this.port = parseInt(val("port", config2), 10);
+        this.host = val("host", config2);
         Object.defineProperty(this, "password", {
           configurable: true,
           enumerable: false,
           writable: true,
-          value: val("password", config3)
+          value: val("password", config2)
         });
-        this.binary = val("binary", config3);
-        this.options = val("options", config3);
-        this.ssl = typeof config3.ssl === "undefined" ? readSSLConfigFromEnvironment() : config3.ssl;
+        this.binary = val("binary", config2);
+        this.options = val("options", config2);
+        this.ssl = typeof config2.ssl === "undefined" ? readSSLConfigFromEnvironment() : config2.ssl;
         if (typeof this.ssl === "string") {
           if (this.ssl === "true") {
             this.ssl = true;
@@ -1730,27 +1730,27 @@ var require_connection_parameters = __commonJS({
             enumerable: false
           });
         }
-        this.client_encoding = val("client_encoding", config3);
-        this.replication = val("replication", config3);
+        this.client_encoding = val("client_encoding", config2);
+        this.replication = val("replication", config2);
         this.isDomainSocket = !(this.host || "").indexOf("/");
-        this.application_name = val("application_name", config3, "PGAPPNAME");
-        this.fallback_application_name = val("fallback_application_name", config3, false);
-        this.statement_timeout = val("statement_timeout", config3, false);
-        this.lock_timeout = val("lock_timeout", config3, false);
-        this.idle_in_transaction_session_timeout = val("idle_in_transaction_session_timeout", config3, false);
-        this.query_timeout = val("query_timeout", config3, false);
-        if (config3.connectionTimeoutMillis === void 0) {
+        this.application_name = val("application_name", config2, "PGAPPNAME");
+        this.fallback_application_name = val("fallback_application_name", config2, false);
+        this.statement_timeout = val("statement_timeout", config2, false);
+        this.lock_timeout = val("lock_timeout", config2, false);
+        this.idle_in_transaction_session_timeout = val("idle_in_transaction_session_timeout", config2, false);
+        this.query_timeout = val("query_timeout", config2, false);
+        if (config2.connectionTimeoutMillis === void 0) {
           this.connect_timeout = process.env.PGCONNECT_TIMEOUT || 0;
         } else {
-          this.connect_timeout = Math.floor(config3.connectionTimeoutMillis / 1e3);
+          this.connect_timeout = Math.floor(config2.connectionTimeoutMillis / 1e3);
         }
-        if (config3.keepAlive === false) {
+        if (config2.keepAlive === false) {
           this.keepalives = 0;
-        } else if (config3.keepAlive === true) {
+        } else if (config2.keepAlive === true) {
           this.keepalives = 1;
         }
-        if (typeof config3.keepAliveInitialDelayMillis === "number") {
-          this.keepalives_idle = Math.floor(config3.keepAliveInitialDelayMillis / 1e3);
+        if (typeof config2.keepAliveInitialDelayMillis === "number") {
+          this.keepalives_idle = Math.floor(config2.keepAliveInitialDelayMillis / 1e3);
         }
       }
       getLibpqConnectionString(cb) {
@@ -1892,21 +1892,21 @@ var require_query = __commonJS({
     var Result = require_result();
     var utils = require_utils();
     var Query = class extends EventEmitter {
-      constructor(config3, values, callback) {
+      constructor(config2, values, callback) {
         super();
-        config3 = utils.normalizeQueryConfig(config3, values, callback);
-        this.text = config3.text;
-        this.values = config3.values;
-        this.rows = config3.rows;
-        this.types = config3.types;
-        this.name = config3.name;
-        this.queryMode = config3.queryMode;
-        this.binary = config3.binary;
-        this.portal = config3.portal || "";
-        this.callback = config3.callback;
-        this._rowMode = config3.rowMode;
-        if (process.domain && config3.callback) {
-          this.callback = process.domain.bind(config3.callback);
+        config2 = utils.normalizeQueryConfig(config2, values, callback);
+        this.text = config2.text;
+        this.values = config2.values;
+        this.rows = config2.rows;
+        this.types = config2.types;
+        this.name = config2.name;
+        this.queryMode = config2.queryMode;
+        this.binary = config2.binary;
+        this.portal = config2.portal || "";
+        this.callback = config2.callback;
+        this._rowMode = config2.rowMode;
+        if (process.domain && config2.callback) {
+          this.callback = process.domain.bind(config2.callback);
         }
         this._result = new Result(this._rowMode, this.types);
         this._results = this._result;
@@ -2442,18 +2442,18 @@ var require_serializer = __commonJS({
         buf[formatsOffset++] = formatByte;
       }
     };
-    var bind = (config3 = {}) => {
-      const portal = config3.portal || "";
-      const statement = config3.statement || "";
-      const binary = config3.binary || false;
-      const values = config3.values || emptyArray;
+    var bind = (config2 = {}) => {
+      const portal = config2.portal || "";
+      const statement = config2.statement || "";
+      const binary = config2.binary || false;
+      const values = config2.values || emptyArray;
       const len = values.length;
       writer.addCString(portal).addCString(statement);
       writer.addInt16(len);
       const formatsOffset = writer.reserveUnsafe(len * 2);
       writer.addInt16(len);
       try {
-        writeValues(values, config3.valueMapper, formatsOffset);
+        writeValues(values, config2.valueMapper, formatsOffset);
       } catch (err) {
         writer.clear();
         throw err;
@@ -2469,12 +2469,12 @@ var require_serializer = __commonJS({
       );
     };
     var emptyExecute = Buffer.from([69, 0, 0, 0, 9, 0, 0, 0, 0, 0]);
-    var execute = (config3) => {
-      if (!config3 || !config3.portal && !config3.rows) {
+    var execute = (config2) => {
+      if (!config2 || !config2.portal && !config2.rows) {
         return emptyExecute;
       }
-      const portal = config3.portal || "";
-      const rows = config3.rows || 0;
+      const portal = config2.portal || "";
+      const rows = config2.rows || 0;
       const portalLength = Buffer.byteLength(portal);
       const len = 4 + portalLength + 1 + 4;
       const buff = Buffer.allocUnsafe(1 + len);
@@ -3045,18 +3045,18 @@ var require_connection = __commonJS({
     var syncBuffer = serialize.sync();
     var endBuffer = serialize.end();
     var Connection = class extends EventEmitter {
-      constructor(config3) {
+      constructor(config2) {
         super();
-        config3 = config3 || {};
-        this.stream = config3.stream || getStream(config3.ssl);
+        config2 = config2 || {};
+        this.stream = config2.stream || getStream(config2.ssl);
         if (typeof this.stream === "function") {
-          this.stream = this.stream(config3);
+          this.stream = this.stream(config2);
         }
-        this._keepAlive = config3.keepAlive;
-        this._keepAliveInitialDelayMillis = config3.keepAliveInitialDelayMillis;
+        this._keepAlive = config2.keepAlive;
+        this._keepAliveInitialDelayMillis = config2.keepAliveInitialDelayMillis;
         this.lastBuffer = false;
         this.parsedStatements = {};
-        this.ssl = config3.ssl || false;
+        this.ssl = config2.ssl || false;
         this._ending = false;
         this._emitMessage = false;
         var self2 = this;
@@ -3137,8 +3137,8 @@ var require_connection = __commonJS({
       requestSsl() {
         this.stream.write(serialize.requestSsl());
       }
-      startup(config3) {
-        this.stream.write(serialize.startup(config3));
+      startup(config2) {
+        this.stream.write(serialize.startup(config2));
       }
       cancel(processID, secretKey) {
         this._send(serialize.cancel(processID, secretKey));
@@ -3166,12 +3166,12 @@ var require_connection = __commonJS({
         this._send(serialize.parse(query));
       }
       // send bind message
-      bind(config3) {
-        this._send(serialize.bind(config3));
+      bind(config2) {
+        this._send(serialize.bind(config2));
       }
       // send execute message
-      execute(config3) {
-        this._send(serialize.execute(config3));
+      execute(config2) {
+        this._send(serialize.execute(config2));
       }
       flush() {
         if (this.stream.writable) {
@@ -3436,9 +3436,9 @@ var require_client = __commonJS({
     var Connection = require_connection();
     var crypto = require_utils2();
     var Client = class extends EventEmitter {
-      constructor(config3) {
+      constructor(config2) {
         super();
-        this.connectionParameters = new ConnectionParameters(config3);
+        this.connectionParameters = new ConnectionParameters(config2);
         this.user = this.connectionParameters.user;
         this.database = this.connectionParameters.database;
         this.port = this.connectionParameters.port;
@@ -3450,7 +3450,7 @@ var require_client = __commonJS({
           value: this.connectionParameters.password
         });
         this.replication = this.connectionParameters.replication;
-        var c = config3 || {};
+        var c = config2 || {};
         this._Promise = c.Promise || global.Promise;
         this._types = new TypeOverrides(c.types);
         this._ending = false;
@@ -3837,23 +3837,23 @@ var require_client = __commonJS({
           }
         }
       }
-      query(config3, values, callback) {
+      query(config2, values, callback) {
         var query;
         var result;
         var readTimeout;
         var readTimeoutTimer;
         var queryCallback;
-        if (config3 === null || config3 === void 0) {
+        if (config2 === null || config2 === void 0) {
           throw new TypeError("Client was passed a null or undefined query");
-        } else if (typeof config3.submit === "function") {
-          readTimeout = config3.query_timeout || this.connectionParameters.query_timeout;
-          result = query = config3;
+        } else if (typeof config2.submit === "function") {
+          readTimeout = config2.query_timeout || this.connectionParameters.query_timeout;
+          result = query = config2;
           if (typeof values === "function") {
             query.callback = query.callback || values;
           }
         } else {
-          readTimeout = config3.query_timeout || this.connectionParameters.query_timeout;
-          query = new Query(config3, values, callback);
+          readTimeout = config2.query_timeout || this.connectionParameters.query_timeout;
+          query = new Query(config2, values, callback);
           if (!query.callback) {
             result = new this._Promise((resolve, reject) => {
               query.callback = (err, res) => err ? reject(err) : resolve(res);
@@ -3984,15 +3984,15 @@ var require_pg_pool = __commonJS({
       });
       return { callback: cb, result };
     }
-    function makeIdleListener(pool2, client) {
+    function makeIdleListener(pool, client) {
       return function idleListener(err) {
         err.client = client;
         client.removeListener("error", idleListener);
         client.on("error", () => {
-          pool2.log("additional client error after disconnection due to error", err);
+          pool.log("additional client error after disconnection due to error", err);
         });
-        pool2._remove(client);
-        pool2.emit("error", err, client);
+        pool._remove(client);
+        pool.emit("error", err, client);
       };
     }
     var Pool = class extends EventEmitter {
@@ -4373,16 +4373,16 @@ var require_query2 = __commonJS({
     var EventEmitter = __require("events").EventEmitter;
     var util = __require("util");
     var utils = require_utils();
-    var NativeQuery = module.exports = function(config3, values, callback) {
+    var NativeQuery = module.exports = function(config2, values, callback) {
       EventEmitter.call(this);
-      config3 = utils.normalizeQueryConfig(config3, values, callback);
-      this.text = config3.text;
-      this.values = config3.values;
-      this.name = config3.name;
-      this.queryMode = config3.queryMode;
-      this.callback = config3.callback;
+      config2 = utils.normalizeQueryConfig(config2, values, callback);
+      this.text = config2.text;
+      this.values = config2.values;
+      this.name = config2.name;
+      this.queryMode = config2.queryMode;
+      this.callback = config2.callback;
       this.state = "new";
-      this._arrayMode = config3.rowMode === "array";
+      this._arrayMode = config2.rowMode === "array";
       this._emitRowEvents = false;
       this.on(
         "newListener",
@@ -4523,11 +4523,11 @@ var require_client2 = __commonJS({
     var util = __require("util");
     var ConnectionParameters = require_connection_parameters();
     var NativeQuery = require_query2();
-    var Client = module.exports = function(config3) {
+    var Client = module.exports = function(config2) {
       EventEmitter.call(this);
-      config3 = config3 || {};
-      this._Promise = config3.Promise || global.Promise;
-      this._types = new TypeOverrides(config3.types);
+      config2 = config2 || {};
+      this._Promise = config2.Promise || global.Promise;
+      this._types = new TypeOverrides(config2.types);
       this.native = new Native({
         types: this._types
       });
@@ -4536,8 +4536,8 @@ var require_client2 = __commonJS({
       this._connecting = false;
       this._connected = false;
       this._queryable = true;
-      var cp = this.connectionParameters = new ConnectionParameters(config3);
-      if (config3.nativeConnectionString) cp.nativeConnectionString = config3.nativeConnectionString;
+      var cp = this.connectionParameters = new ConnectionParameters(config2);
+      if (config2.nativeConnectionString) cp.nativeConnectionString = config2.nativeConnectionString;
       this.user = cp.user;
       Object.defineProperty(this, "password", {
         configurable: true,
@@ -4614,23 +4614,23 @@ var require_client2 = __commonJS({
         });
       });
     };
-    Client.prototype.query = function(config3, values, callback) {
+    Client.prototype.query = function(config2, values, callback) {
       var query;
       var result;
       var readTimeout;
       var readTimeoutTimer;
       var queryCallback;
-      if (config3 === null || config3 === void 0) {
+      if (config2 === null || config2 === void 0) {
         throw new TypeError("Client was passed a null or undefined query");
-      } else if (typeof config3.submit === "function") {
-        readTimeout = config3.query_timeout || this.connectionParameters.query_timeout;
-        result = query = config3;
+      } else if (typeof config2.submit === "function") {
+        readTimeout = config2.query_timeout || this.connectionParameters.query_timeout;
+        result = query = config2;
         if (typeof values === "function") {
-          config3.callback = values;
+          config2.callback = values;
         }
       } else {
-        readTimeout = config3.query_timeout || this.connectionParameters.query_timeout;
-        query = new NativeQuery(config3, values, callback);
+        readTimeout = config2.query_timeout || this.connectionParameters.query_timeout;
+        query = new NativeQuery(config2, values, callback);
         if (!query.callback) {
           let resolveOut, rejectOut;
           result = new this._Promise((resolve, reject) => {
@@ -4847,10 +4847,10 @@ var require_queue = __commonJS({
   "../../node_modules/.pnpm/fastq@1.20.3/node_modules/fastq/queue.js"(exports, module) {
     "use strict";
     var reusify = require_reusify();
-    function fastqueue(context, worker2, _concurrency) {
+    function fastqueue(context, worker, _concurrency) {
       if (typeof context === "function") {
-        _concurrency = worker2;
-        worker2 = context;
+        _concurrency = worker;
+        worker = context;
         context = null;
       }
       if (!(_concurrency >= 1)) {
@@ -4952,7 +4952,7 @@ var require_queue = __commonJS({
           }
         } else {
           _running++;
-          worker2.call(context, current.value, current.worked);
+          worker.call(context, current.value, current.worked);
         }
       }
       function unshift(value, done) {
@@ -4973,7 +4973,7 @@ var require_queue = __commonJS({
           }
         } else {
           _running++;
-          worker2.call(context, current.value, current.worked);
+          worker.call(context, current.value, current.worked);
         }
       }
       function release(holder) {
@@ -4988,7 +4988,7 @@ var require_queue = __commonJS({
             }
             queueHead = next.next;
             next.next = null;
-            worker2.call(context, next.value, next.worked);
+            worker.call(context, next.value, next.worked);
             if (queueTail === null) {
               self2.empty();
             }
@@ -5060,14 +5060,14 @@ var require_queue = __commonJS({
         self2.release(self2);
       };
     }
-    function queueAsPromised(context, worker2, _concurrency) {
+    function queueAsPromised(context, worker, _concurrency) {
       if (typeof context === "function") {
-        _concurrency = worker2;
-        worker2 = context;
+        _concurrency = worker;
+        worker = context;
         context = null;
       }
       function asyncWrapper(arg, cb) {
-        worker2.call(this, arg).then(function(res) {
+        worker.call(this, arg).then(function(res) {
           cb(null, res);
         }, cb);
       }
@@ -7147,7 +7147,7 @@ var require_hooks = __commonJS({
       hooks.preClose = [];
       return hooks;
     }
-    function hookRunnerApplication(hookName, boot, server, cb) {
+    function hookRunnerApplication(hookName, boot2, server, cb) {
       const hooks = server[kHooks][hookName];
       let i = 0;
       let c = 0;
@@ -7175,7 +7175,7 @@ var require_hooks = __commonJS({
           if (i === 0 && c === 0) {
             exit();
           } else {
-            boot(function manageTimeout(err2, done) {
+            boot2(function manageTimeout(err2, done) {
               exit(err2);
               done(err2);
             });
@@ -7184,10 +7184,10 @@ var require_hooks = __commonJS({
         }
         if (i === hooks.length && c < server[kChildren].length) {
           const child = server[kChildren][c++];
-          hookRunnerApplication(hookName, boot, child, next);
+          hookRunnerApplication(hookName, boot2, child, next);
           return;
         }
-        boot(wrap(hooks[i++], server));
+        boot2(wrap(hooks[i++], server));
         next();
       }
       function wrap(fn, server2) {
@@ -7489,11 +7489,11 @@ var require_server = __commonJS({
     } = require_errors2();
     var noopSet = require_noop_set();
     var PonyPromise = require_promise();
-    module.exports.createServer = createServer;
+    module.exports.createServer = createServer2;
     function defaultResolveServerListeningText(address) {
       return `Server listening at ${address}`;
     }
-    function createServer(options, httpHandler) {
+    function createServer2(options, httpHandler) {
       const server = getServerInstance(options, httpHandler);
       function listen(listenOptions = { port: 0, host: "localhost" }, cb = void 0) {
         if (typeof cb === "function") {
@@ -12863,17 +12863,17 @@ var require_thread_stream = __commonJS({
     };
     var FinalizationRegistry2 = process.env.NODE_V8_COVERAGE ? FakeFinalizationRegistry : global.FinalizationRegistry || FakeFinalizationRegistry;
     var WeakRef2 = process.env.NODE_V8_COVERAGE ? FakeWeakRef : global.WeakRef || FakeWeakRef;
-    var registry2 = new FinalizationRegistry2((worker2) => {
-      if (worker2.exited) {
+    var registry2 = new FinalizationRegistry2((worker) => {
+      if (worker.exited) {
         return;
       }
-      worker2.terminate();
+      worker.terminate();
     });
     function createWorker(stream, opts) {
       const { filename, workerData } = opts;
       const bundlerOverrides = "__bundlerPathsOverrides" in globalThis ? globalThis.__bundlerPathsOverrides : {};
       const toExecute = bundlerOverrides["thread-stream-worker"] || join(__dirname, "lib", "worker.js");
-      const worker2 = new Worker(toExecute, {
+      const worker = new Worker(toExecute, {
         ...opts.workerOpts,
         name: opts.workerOpts?.name || "thread-stream",
         trackUnmanagedFds: false,
@@ -12889,11 +12889,11 @@ var require_thread_stream = __commonJS({
           }
         }
       });
-      worker2.stream = new FakeWeakRef(stream);
-      worker2.on("message", onWorkerMessage);
-      worker2.on("exit", onWorkerExit);
-      registry2.register(stream, worker2);
-      return worker2;
+      worker.stream = new FakeWeakRef(stream);
+      worker.on("message", onWorkerMessage);
+      worker.on("exit", onWorkerExit);
+      registry2.register(stream, worker);
+      return worker;
     }
     function drain(stream) {
       assert2(!stream[kImpl].sync);
@@ -13483,7 +13483,7 @@ var require_transport = __commonJS({
       stream.flushSync();
     }
     function transport(fullOptions) {
-      const { pipeline, targets, levels, dedupe, worker: worker2 = {}, caller = getCallers(), sync = false } = fullOptions;
+      const { pipeline, targets, levels, dedupe, worker = {}, caller = getCallers(), sync = false } = fullOptions;
       const options = {
         ...fullOptions.options
       };
@@ -13532,7 +13532,7 @@ var require_transport = __commonJS({
       }
       options.pinoWillSendConfig = true;
       const name = targets || pipeline ? "pino.transport" : target;
-      const stream = buildStream(fixTarget(target), options, worker2, sync, name);
+      const stream = buildStream(fixTarget(target), options, worker, sync, name);
       if (usesMultistream) {
         stream[transportUsesMultistreamSym] = true;
       }
@@ -13863,11 +13863,11 @@ var require_tools = __commonJS({
         }
       }
     }
-    function buildFormatters(level, bindings, log) {
+    function buildFormatters(level, bindings, log2) {
       return {
         level,
         bindings,
-        log
+        log: log2
       };
     }
     function normalizeDestFileDescriptor(destination) {
@@ -14248,11 +14248,11 @@ var require_proto = __commonJS({
         }
       } else instance[serializersSym] = serializers;
       if (options.hasOwnProperty("formatters")) {
-        const { level, bindings: chindings, log } = options.formatters;
+        const { level, bindings: chindings, log: log2 } = options.formatters;
         instance[formattersSym] = buildFormatters(
           level || formatters.level,
           chindings || resetChildingsFormatter,
-          log || formatters.log
+          log2 || formatters.log
         );
       } else {
         instance[formattersSym] = buildFormatters(
@@ -15927,8 +15927,8 @@ var require_error_serializer = __commonJS({
         json2 += JSON_STR_END_OBJECT;
         return json2;
       }
-      const main = anonymous0;
-      return main;
+      const main2 = anonymous0;
+      return main2;
     }(validator, serializer);
   }
 });
@@ -16270,7 +16270,7 @@ var require_reply = __commonJS({
     var ContentType = require_content_type();
     var toString = Object.prototype.toString;
     var HTTP2_WRITE_CHUNK_SIZE = 64 * 1024;
-    function Reply(res, request, log) {
+    function Reply(res, request, log2) {
       this.raw = res;
       this[kReplySerializer] = null;
       this[kReplyErrorHandlerCalled] = false;
@@ -16281,7 +16281,7 @@ var require_reply = __commonJS({
       this[kReplyTrailers] = null;
       this[kReplyHasStatusCode] = false;
       this[kReplyStartTime] = void 0;
-      this.log = log;
+      this.log = log2;
     }
     Reply.props = [];
     Reply.instanceProperties = /* @__PURE__ */ new Set(["raw", "request", "log"]);
@@ -16975,7 +16975,7 @@ var require_reply = __commonJS({
         reply[kReplyEndTime] = now();
         reply.raw.removeListener("finish", onResFinished);
         reply.raw.removeListener("error", onResFinished);
-        const ctx2 = reply[kRouteContext];
+        const ctx = reply[kRouteContext];
         if (reply.request[kRequestSignal]) {
           clearTimeout(reply.request[kTimeoutTimer]);
           reply.request[kTimeoutTimer] = null;
@@ -16989,9 +16989,9 @@ var require_reply = __commonJS({
           socket.removeListener("timeout", socket._meta.onTimeout);
           socket._meta = null;
         }
-        if (ctx2 && ctx2.onResponse !== null) {
+        if (ctx && ctx.onResponse !== null) {
           onResponseHookRunner(
-            ctx2.onResponse,
+            ctx.onResponse,
             reply.request,
             reply,
             onResponseCallback
@@ -17008,7 +17008,7 @@ var require_reply = __commonJS({
     }
     function buildReply(R) {
       const props = R.props.slice();
-      function _Reply(res, request, log) {
+      function _Reply(res, request, log2) {
         this.raw = res;
         this[kReplyIsError] = false;
         this[kReplyErrorHandlerCalled] = false;
@@ -17019,7 +17019,7 @@ var require_reply = __commonJS({
         this[kReplyTrailers] = null;
         this[kReplyStartTime] = void 0;
         this[kReplyEndTime] = void 0;
-        this.log = log;
+        this.log = log2;
         let prop;
         for (let i = 0; i < props.length; i++) {
           prop = props[i];
@@ -18128,13 +18128,13 @@ var require_request = __commonJS({
       querystring: kSchemaQuerystring,
       query: kSchemaQuerystring
     };
-    function Request(id, params, req, query, log, context) {
+    function Request(id, params, req, query, log2, context) {
       this.id = id;
       this[kRouteContext] = context;
       this.params = params;
       this.raw = req;
       this.query = query;
-      this.log = log;
+      this.log = log2;
       this.body = void 0;
     }
     Request.props = [];
@@ -18167,13 +18167,13 @@ var require_request = __commonJS({
     }
     function buildRegularRequest(R) {
       const props = R.props.slice();
-      function _Request(id, params, req, query, log, context) {
+      function _Request(id, params, req, query, log2, context) {
         this.id = id;
         this[kRouteContext] = context;
         this.params = params;
         this.raw = req;
         this.query = query;
-        this.log = log;
+        this.log = log2;
         this.body = void 0;
         let prop;
         for (let i = 0; i < props.length; i++) {
@@ -18460,7 +18460,7 @@ var require_context = __commonJS({
     function Context({
       schema: schema2,
       handler,
-      config: config3,
+      config: config2,
       childLoggerFactory,
       errorHandler,
       bodyLimit,
@@ -18490,7 +18490,7 @@ var require_context = __commonJS({
       this.onResponse = null;
       this.preSerialization = null;
       this.onRequestAbort = null;
-      this.config = config3;
+      this.config = config2;
       this.errorHandler = errorHandler || server[kErrorHandler];
       this.childLoggerFactory = childLoggerFactory || server[kChildLoggerFactory];
       this._middie = null;
@@ -23720,11 +23720,11 @@ var require_core = __commonJS({
     Ajv.ValidationError = validation_error_1.default;
     Ajv.MissingRefError = ref_error_1.default;
     exports.default = Ajv;
-    function checkOptions(checkOpts, options, msg, log = "error") {
+    function checkOptions(checkOpts, options, msg, log2 = "error") {
       for (const key in checkOpts) {
         const opt2 = key;
         if (opt2 in options)
-          this.logger[log](`${msg}: option ${key}. ${checkOpts[opt2]}`);
+          this.logger[log2](`${msg}: option ${key}. ${checkOpts[opt2]}`);
       }
     }
     function getSchEnv(keyRef) {
@@ -38326,8 +38326,8 @@ var require_compiler = __commonJS({
       if (!supportsRawMatching(router, root)) {
         return {
           find: slow,
-          lookup: function lookupSanitized(path3, derivedConstraints, req, res, ctx2) {
-            return router.callHandler(slow(path3, derivedConstraints), req, res, ctx2);
+          lookup: function lookupSanitized(path3, derivedConstraints, req, res, ctx) {
+            return router.callHandler(slow(path3, derivedConstraints), req, res, ctx);
           }
         };
       }
@@ -38505,14 +38505,14 @@ var require_constrainer = __commonJS({
           this.noteUsage({ [strategy.name]: strategy });
         }
       }
-      deriveConstraints(req, ctx2, done) {
-        const constraints = this.deriveSyncConstraints(req, ctx2);
+      deriveConstraints(req, ctx, done) {
+        const constraints = this.deriveSyncConstraints(req, ctx);
         if (done === void 0) {
           return constraints;
         }
-        this.deriveAsyncConstraints(constraints, req, ctx2, done);
+        this.deriveAsyncConstraints(constraints, req, ctx, done);
       }
-      deriveSyncConstraints(req, ctx2) {
+      deriveSyncConstraints(req, ctx) {
         return void 0;
       }
       // When new constraints start getting used, we need to rebuild the deriver to derive them. Do so if we see novel constraints used.
@@ -38555,7 +38555,7 @@ var require_constrainer = __commonJS({
           }
         }
       }
-      deriveAsyncConstraints(constraints, req, ctx2, done) {
+      deriveAsyncConstraints(constraints, req, ctx, done) {
         let asyncConstraintsCount = this.asyncStrategiesInUse.size;
         if (asyncConstraintsCount === 0) {
           done(null, constraints);
@@ -38565,7 +38565,7 @@ var require_constrainer = __commonJS({
         constraints = constraints || {};
         for (const key of this.asyncStrategiesInUse) {
           const strategy = this.strategies[key];
-          strategy.deriveConstraint(req, ctx2, (err, constraintValue) => {
+          strategy.deriveConstraint(req, ctx, (err, constraintValue) => {
             if (errored) return;
             if (err !== null) {
               errored = true;
@@ -39079,33 +39079,33 @@ var require_find_my_way = __commonJS({
       const newRoutes = this.routes.filter(predicate);
       this._rebuild(newRoutes);
     };
-    Router.prototype.lookup = function lookup(req, res, ctx2, done) {
-      if (typeof ctx2 === "function") {
-        done = ctx2;
-        ctx2 = void 0;
+    Router.prototype.lookup = function lookup(req, res, ctx, done) {
+      if (typeof ctx === "function") {
+        done = ctx;
+        ctx = void 0;
       }
       if (done === void 0) {
-        const constraints = this.constrainer.deriveConstraints(req, ctx2);
+        const constraints = this.constrainer.deriveConstraints(req, ctx);
         const handle = this.find(req.method, req.url, constraints);
-        return this.callHandler(handle, req, res, ctx2);
+        return this.callHandler(handle, req, res, ctx);
       }
-      this.constrainer.deriveConstraints(req, ctx2, (err, constraints) => {
+      this.constrainer.deriveConstraints(req, ctx, (err, constraints) => {
         if (err !== null) {
           done(err);
           return;
         }
         try {
           const handle = this.find(req.method, req.url, constraints);
-          const result = this.callHandler(handle, req, res, ctx2);
+          const result = this.callHandler(handle, req, res, ctx);
           done(null, result);
         } catch (err2) {
           done(err2);
         }
       });
     };
-    Router.prototype.callHandler = function callHandler(handle, req, res, ctx2) {
-      if (handle === null) return this._defaultRoute(req, res, ctx2);
-      return ctx2 === void 0 ? handle.handler(req, res, handle.params, handle.store, handle.searchParams) : handle.handler.call(ctx2, req, res, handle.params, handle.store, handle.searchParams);
+    Router.prototype.callHandler = function callHandler(handle, req, res, ctx) {
+      if (handle === null) return this._defaultRoute(req, res, ctx);
+      return ctx === void 0 ? handle.handler(req, res, handle.params, handle.store, handle.searchParams) : handle.handler.call(ctx, req, res, handle.params, handle.store, handle.searchParams);
     };
     Router.prototype.find = function find(method, path3, derivedConstraints) {
       let currentNode = method === "GET" ? this._treeGET : this.trees[method];
@@ -39278,18 +39278,18 @@ var require_find_my_way = __commonJS({
       }
       return compiled.find(path3, derivedConstraints);
     };
-    Router.prototype._lookupCompiled = function _lookupCompiled(req, res, ctx2, done) {
-      if (typeof ctx2 === "function" || done !== void 0) {
-        return Router.prototype.lookup.call(this, req, res, ctx2, done);
+    Router.prototype._lookupCompiled = function _lookupCompiled(req, res, ctx, done) {
+      if (typeof ctx === "function" || done !== void 0) {
+        return Router.prototype.lookup.call(this, req, res, ctx, done);
       }
-      const derivedConstraints = this.constrainer.deriveConstraints(req, ctx2);
+      const derivedConstraints = this.constrainer.deriveConstraints(req, ctx);
       const method = req.method;
       let compiled = method === "GET" ? this._compiledGET : this._compiledTrees[method];
       if (compiled == null) {
         compiled = this._compileTree(method);
-        if (compiled === null) return this._defaultRoute(req, res, ctx2);
+        if (compiled === null) return this._defaultRoute(req, res, ctx);
       }
-      return compiled.lookup(req.url, derivedConstraints, req, res, ctx2);
+      return compiled.lookup(req.url, derivedConstraints, req, res, ctx);
     };
     Router.prototype._findSanitized = function _findSanitized(matcher, path3, derivedConstraints) {
       if (path3.charCodeAt(0) !== 47) {
@@ -39329,9 +39329,9 @@ var require_find_my_way = __commonJS({
         this._on(method, path3, opts, handler, store);
       }
     };
-    Router.prototype._defaultRoute = function(req, res, ctx2) {
+    Router.prototype._defaultRoute = function(req, res, ctx) {
       if (this.defaultRoute !== null) {
-        return ctx2 === void 0 ? this.defaultRoute(req, res) : this.defaultRoute.call(ctx2, req, res);
+        return ctx === void 0 ? this.defaultRoute(req, res) : this.defaultRoute.call(ctx, req, res);
       } else {
         res.statusCode = 404;
         res.end();
@@ -39343,7 +39343,7 @@ var require_find_my_way = __commonJS({
       }
       const onBadUrl = this.onBadUrl;
       return {
-        handler: (req, res, ctx2) => onBadUrl(path3, req, res),
+        handler: (req, res, ctx) => onBadUrl(path3, req, res),
         params: {},
         store: null
       };
@@ -39354,7 +39354,7 @@ var require_find_my_way = __commonJS({
       }
       const onMaxParamLength = this.onMaxParamLength;
       return {
-        handler: (req, res, ctx2) => onMaxParamLength(path3, req, res),
+        handler: (req, res, ctx) => onMaxParamLength(path3, req, res),
         params: {},
         store: null
       };
@@ -39801,7 +39801,7 @@ var require_route = __commonJS({
             }
           }
           const constraints = opts.constraints || {};
-          const config3 = {
+          const config2 = {
             ...opts.config,
             url: routeConfigUrl,
             method: opts.method
@@ -39809,7 +39809,7 @@ var require_route = __commonJS({
           const context = new Context({
             schema: opts.schema,
             handler: opts.handler.bind(this),
-            config: config3,
+            config: config2,
             errorHandler: opts.errorHandler,
             childLoggerFactory: opts.childLoggerFactory,
             bodyLimit: opts.bodyLimit,
@@ -42664,7 +42664,7 @@ var require_fastify = __commonJS({
       kHandlerTimeout,
       kLogController
     } = require_symbols2();
-    var { createServer } = require_server();
+    var { createServer: createServer2 } = require_server();
     var Reply = require_reply();
     var Request = require_request();
     var Context = require_context();
@@ -42724,7 +42724,7 @@ var require_fastify = __commonJS({
         serverHasCloseAllConnections,
         serverHasCloseHttp2Sessions,
         keepAliveConnections
-      } = createServer(options, httpHandler);
+      } = createServer2(options, httpHandler);
       const setupResponseListeners = Reply.setupResponseListeners;
       const schemaController = SchemaController.buildSchemaController(null, options.schemaController);
       const fastify2 = {
@@ -47280,7 +47280,7 @@ var require_depd = __commonJS({
       var site = callSiteLocation(stack[1]);
       var file2 = site[0];
       function deprecate(message) {
-        log.call(deprecate, message);
+        log2.call(deprecate, message);
       }
       deprecate._file = file2;
       deprecate._ignored = isignored(namespace);
@@ -47309,7 +47309,7 @@ var require_depd = __commonJS({
       var str2 = process.env.TRACE_DEPRECATION || "";
       return containsNamespace(str2, namespace);
     }
-    function log(message, site) {
+    function log2(message, site) {
       var haslisteners = eehaslisteners(process, "deprecation");
       if (!haslisteners && this._ignored) {
         return;
@@ -47449,7 +47449,7 @@ var require_depd = __commonJS({
         "message",
         "site",
         '"use strict"\nreturn function (' + args + ") {log.call(deprecate, message, site)\nreturn fn.apply(this, arguments)\n}"
-      )(fn, log, this, message, site);
+      )(fn, log2, this, message, site);
       return deprecatedfn;
     }
     function wrapproperty(obj2, prop, message) {
@@ -47474,13 +47474,13 @@ var require_depd = __commonJS({
       var set2 = descriptor.set;
       if (typeof get === "function") {
         descriptor.get = function getter() {
-          log.call(deprecate, message, site);
+          log2.call(deprecate, message, site);
           return get.apply(this, arguments);
         };
       }
       if (typeof set2 === "function") {
         descriptor.set = function setter() {
-          log.call(deprecate, message, site);
+          log2.call(deprecate, message, site);
           return set2.apply(this, arguments);
         };
       }
@@ -48913,7 +48913,7 @@ var require_dirList = __commonJS({
       _getExtendedInfo: async function(dir, info) {
         const depth = dir.split(path3.sep).length;
         const files = await fs.readdir(dir);
-        const worker2 = async (filename) => {
+        const worker = async (filename) => {
           const filePath = path3.join(dir, filename);
           let stats;
           try {
@@ -48932,7 +48932,7 @@ var require_dirList = __commonJS({
             info.lastModified = Math.max(info.lastModified, stats.mtimeMs);
           }
         };
-        const queue = fastq.promise(worker2, fastqConcurrency);
+        const queue = fastq.promise(worker, fastqConcurrency);
         await Promise.all(files.map((filename) => queue.push(filename)));
       },
       /**
@@ -48968,7 +48968,7 @@ var require_dirList = __commonJS({
         if (files.length < 1) {
           return entries;
         }
-        const worker2 = async (filename) => {
+        const worker = async (filename) => {
           let stats;
           try {
             stats = await fs.stat(path3.join(dir, filename));
@@ -48985,7 +48985,7 @@ var require_dirList = __commonJS({
             entries.files.push(entry);
           }
         };
-        const queue = fastq.promise(worker2, fastqConcurrency);
+        const queue = fastq.promise(worker, fastqConcurrency);
         await Promise.all(files.map((filename) => queue.push(filename)));
         entries.dirs.sort((a, b) => a.name.localeCompare(b.name));
         entries.files.sort((a, b) => a.name.localeCompare(b.name));
@@ -53953,22 +53953,22 @@ var require_bn = __commonJS({
       BN.red = function red(num) {
         return new Red(num);
       };
-      BN.prototype.toRed = function toRed(ctx2) {
+      BN.prototype.toRed = function toRed(ctx) {
         assert2(!this.red, "Already a number in reduction context");
         assert2(this.negative === 0, "red works only with positives");
-        return ctx2.convertTo(this)._forceRed(ctx2);
+        return ctx.convertTo(this)._forceRed(ctx);
       };
       BN.prototype.fromRed = function fromRed() {
         assert2(this.red, "fromRed works only with numbers in reduction context");
         return this.red.convertFrom(this);
       };
-      BN.prototype._forceRed = function _forceRed(ctx2) {
-        this.red = ctx2;
+      BN.prototype._forceRed = function _forceRed(ctx) {
+        this.red = ctx;
         return this;
       };
-      BN.prototype.forceRed = function forceRed(ctx2) {
+      BN.prototype.forceRed = function forceRed(ctx) {
         assert2(!this.red, "Already a number in reduction context");
-        return this._forceRed(ctx2);
+        return this._forceRed(ctx);
       };
       BN.prototype.redAdd = function redAdd(num) {
         assert2(this.red, "redAdd works only with red numbers");
@@ -57975,7 +57975,7 @@ var require_node3 = __commonJS({
     var tty = __require("tty");
     var util = __require("util");
     exports.init = init;
-    exports.log = log;
+    exports.log = log2;
     exports.formatArgs = formatArgs;
     exports.save = save;
     exports.load = load;
@@ -58110,7 +58110,7 @@ var require_node3 = __commonJS({
       }
       return (/* @__PURE__ */ new Date()).toISOString() + " ";
     }
-    function log(...args) {
+    function log2(...args) {
       return process.stderr.write(util.formatWithOptions(exports.inspectOpts, ...args) + "\n");
     }
     function save(namespaces) {
@@ -58937,6 +58937,9 @@ var require_src2 = __commonJS({
   }
 });
 
+// src/server.ts
+import { createServer } from "node:http";
+
 // ../../packages/db/src/index.ts
 var import_pg = __toESM(require_lib2());
 import { existsSync } from "node:fs";
@@ -58959,8 +58962,8 @@ function directDatabaseUrl(pooledUrl, unpooledUrl) {
 }
 var here = path.dirname(fileURLToPath(import.meta.url));
 var MIGRATIONS_DIR = process.env.MIGRATIONS_DIR || [path.join(here, "migrations"), path.resolve(here, "../migrations")].find((d) => existsSync(d)) || path.resolve(here, "../migrations");
-async function migrate(pool2, dir = MIGRATIONS_DIR, log = console.log) {
-  const client = await pool2.connect();
+async function migrate(pool, dir = MIGRATIONS_DIR, log2 = console.log) {
+  const client = await pool.connect();
   const applied = [];
   try {
     await client.query("SELECT pg_advisory_lock(727274)");
@@ -58976,7 +58979,7 @@ async function migrate(pool2, dir = MIGRATIONS_DIR, log = console.log) {
         await client.query("INSERT INTO schema_migrations(name) VALUES ($1)", [f]);
         await client.query("COMMIT");
         applied.push(f);
-        log(`migra\xE7\xE3o aplicada: ${f}`);
+        log2(`migra\xE7\xE3o aplicada: ${f}`);
       } catch (e) {
         await client.query("ROLLBACK");
         throw new Error(`Falha na migra\xE7\xE3o ${f}: ${e.message}`);
@@ -58988,8 +58991,8 @@ async function migrate(pool2, dir = MIGRATIONS_DIR, log = console.log) {
   }
   return applied;
 }
-async function tx(pool2, fn) {
-  const c = await pool2.connect();
+async function tx(pool, fn) {
+  const c = await pool.connect();
   try {
     await c.query("BEGIN");
     const r = await fn(c);
@@ -60192,7 +60195,7 @@ function attachSchema(issues, start, inst) {
     (_a3 = issues[i]).schema ?? (_a3.schema = inst);
   }
 }
-function finalizeIssue(iss, ctx2, config3) {
+function finalizeIssue(iss, ctx, config2) {
   var _a3;
   const traits = iss.inst?._zod?.traits;
   if (traits?.has("$ZodType")) {
@@ -60202,7 +60205,7 @@ function finalizeIssue(iss, ctx2, config3) {
       iss.schema = iss.inst;
   }
   const schemaError = iss.schema !== iss.inst ? iss.schema?._zod.def?.error : void 0;
-  const message = iss.message ? iss.message : unwrapMessage(iss.inst?._zod.def?.error?.(iss)) ?? unwrapMessage(schemaError?.(iss)) ?? unwrapMessage(ctx2?.error?.(iss)) ?? unwrapMessage(config3.customError?.(iss)) ?? unwrapMessage(config3.localeError?.(iss)) ?? "Invalid input";
+  const message = iss.message ? iss.message : unwrapMessage(iss.inst?._zod.def?.error?.(iss)) ?? unwrapMessage(schemaError?.(iss)) ?? unwrapMessage(ctx?.error?.(iss)) ?? unwrapMessage(config2.customError?.(iss)) ?? unwrapMessage(config2.localeError?.(iss)) ?? "Invalid input";
   const full = {};
   for (const k of Object.keys(iss)) {
     if (k === "inst" || k === "schema" || k === "continue" || k === "input" || k === "__proto__")
@@ -60211,7 +60214,7 @@ function finalizeIssue(iss, ctx2, config3) {
   }
   full.path ?? (full.path = []);
   full.message = message;
-  if (ctx2?.reportInput) {
+  if (ctx?.reportInput) {
     full.input = iss.input;
   }
   return full;
@@ -60759,13 +60762,13 @@ function finalizeParams(callee, params) {
 }
 var _parse = (_Err) => {
   const fn = (schema2, value, _ctx, _params) => {
-    const ctx2 = _ctx ? { ..._ctx, async: false } : { async: false };
-    const result = schema2._zod.run({ value, issues: [] }, ctx2);
+    const ctx = _ctx ? { ..._ctx, async: false } : { async: false };
+    const result = schema2._zod.run({ value, issues: [] }, ctx);
     if (result instanceof Promise) {
       throw new $ZodAsyncError();
     }
     if (result.issues.length) {
-      const e = new (_params?.Err ?? _Err)(result.issues.map((iss) => finalizeIssue(iss, ctx2, config())));
+      const e = new (_params?.Err ?? _Err)(result.issues.map((iss) => finalizeIssue(iss, ctx, config())));
       captureStackTrace(e, _params?.callee ?? fn);
       throw e;
     }
@@ -60776,12 +60779,12 @@ var _parse = (_Err) => {
 var parse = /* @__PURE__ */ _parse($ZodRealError);
 var _parseAsync = (_Err) => {
   const fn = async (schema2, value, _ctx, params) => {
-    const ctx2 = _ctx ? { ..._ctx, async: true } : { async: true };
-    let result = schema2._zod.run({ value, issues: [] }, ctx2);
+    const ctx = _ctx ? { ..._ctx, async: true } : { async: true };
+    let result = schema2._zod.run({ value, issues: [] }, ctx);
     if (result instanceof Promise)
       result = await result;
     if (result.issues.length) {
-      const e = new (params?.Err ?? _Err)(result.issues.map((iss) => finalizeIssue(iss, ctx2, config())));
+      const e = new (params?.Err ?? _Err)(result.issues.map((iss) => finalizeIssue(iss, ctx, config())));
       captureStackTrace(e, params?.callee ?? fn);
       throw e;
     }
@@ -60791,39 +60794,39 @@ var _parseAsync = (_Err) => {
 };
 var parseAsync = /* @__PURE__ */ _parseAsync($ZodRealError);
 var _safeParse = (_Err) => (schema2, value, _ctx) => {
-  const ctx2 = _ctx ? { ..._ctx, async: false } : { async: false };
-  const result = schema2._zod.run({ value, issues: [] }, ctx2);
+  const ctx = _ctx ? { ..._ctx, async: false } : { async: false };
+  const result = schema2._zod.run({ value, issues: [] }, ctx);
   if (result instanceof Promise) {
     throw new $ZodAsyncError();
   }
-  return result.issues.length ? failure(_Err, result.issues, ctx2) : { success: true, data: result.value };
+  return result.issues.length ? failure(_Err, result.issues, ctx) : { success: true, data: result.value };
 };
 var safeParse = /* @__PURE__ */ _safeParse($ZodRealError);
-function failure(Err, issues, ctx2) {
+function failure(Err, issues, ctx) {
   let error62;
   return {
     success: false,
     get error() {
       if (!error62) {
-        error62 = new Err(issues.map((iss) => finalizeIssue(iss, ctx2, config())));
+        error62 = new Err(issues.map((iss) => finalizeIssue(iss, ctx, config())));
         issues = void 0;
-        ctx2 = void 0;
+        ctx = void 0;
       }
       return error62;
     },
     set error(e) {
       error62 = e;
       issues = void 0;
-      ctx2 = void 0;
+      ctx = void 0;
     }
   };
 }
 var _safeParseAsync = (_Err) => async (schema2, value, _ctx) => {
-  const ctx2 = _ctx ? { ..._ctx, async: true } : { async: true };
-  let result = schema2._zod.run({ value, issues: [] }, ctx2);
+  const ctx = _ctx ? { ..._ctx, async: true } : { async: true };
+  let result = schema2._zod.run({ value, issues: [] }, ctx);
   if (result instanceof Promise)
     result = await result;
-  return result.issues.length ? failure(_Err, result.issues, ctx2) : { success: true, data: result.value };
+  return result.issues.length ? failure(_Err, result.issues, ctx) : { success: true, data: result.value };
 };
 var safeParseAsync = /* @__PURE__ */ _safeParseAsync($ZodRealError);
 var COMPILE_INVALID = /* @__PURE__ */ Symbol.for("zod.compile.invalid");
@@ -60839,14 +60842,14 @@ var validate = (schema2, value, _ctx) => {
   return validateFallback(schema2, value, _ctx);
 };
 function validateFallback(schema2, value, _ctx) {
-  const ctx2 = _ctx ? { ..._ctx, async: false, abortEarly: true } : { async: false, abortEarly: true };
+  const ctx = _ctx ? { ..._ctx, async: false, abortEarly: true } : { async: false, abortEarly: true };
   const fallbackRun = schema2._zod.bag.fallbackRun;
   let result;
   if (fallbackRun) {
-    ctx2[COMPILE_FALLBACK] = true;
-    result = fallbackRun({ value, issues: [] }, ctx2);
+    ctx[COMPILE_FALLBACK] = true;
+    result = fallbackRun({ value, issues: [] }, ctx);
   } else {
-    result = schema2._zod.run({ value, issues: [] }, ctx2);
+    result = schema2._zod.run({ value, issues: [] }, ctx);
   }
   if (result instanceof Promise) {
     throw new $ZodAsyncError();
@@ -60854,8 +60857,8 @@ function validateFallback(schema2, value, _ctx) {
   return result.issues.length === 0;
 }
 var validateAsync = async (schema2, value, _ctx) => {
-  const ctx2 = _ctx ? { ..._ctx, async: true, abortEarly: true } : { async: true, abortEarly: true };
-  let result = schema2._zod.run({ value, issues: [] }, ctx2);
+  const ctx = _ctx ? { ..._ctx, async: true, abortEarly: true } : { async: true, abortEarly: true };
+  let result = schema2._zod.run({ value, issues: [] }, ctx);
   if (result instanceof Promise)
     result = await result;
   return result.issues.length === 0;
@@ -60863,8 +60866,8 @@ var validateAsync = async (schema2, value, _ctx) => {
 var _encode = (_Err) => {
   const parse5 = _parse(_Err);
   const fn = (schema2, value, _ctx, _params) => {
-    const ctx2 = _ctx ? { ..._ctx, direction: "backward" } : { direction: "backward" };
-    return parse5(schema2, value, ctx2, finalizeParams(fn, _params));
+    const ctx = _ctx ? { ..._ctx, direction: "backward" } : { direction: "backward" };
+    return parse5(schema2, value, ctx, finalizeParams(fn, _params));
   };
   return fn;
 };
@@ -60880,8 +60883,8 @@ var decode = /* @__PURE__ */ _decode($ZodRealError);
 var _encodeAsync = (_Err) => {
   const parseAsync3 = _parseAsync(_Err);
   const fn = async (schema2, value, _ctx, _params) => {
-    const ctx2 = _ctx ? { ..._ctx, direction: "backward" } : { direction: "backward" };
-    return await parseAsync3(schema2, value, ctx2, finalizeParams(fn, _params));
+    const ctx = _ctx ? { ..._ctx, direction: "backward" } : { direction: "backward" };
+    return await parseAsync3(schema2, value, ctx, finalizeParams(fn, _params));
   };
   return fn;
 };
@@ -60895,8 +60898,8 @@ var _decodeAsync = (_Err) => {
 };
 var decodeAsync = /* @__PURE__ */ _decodeAsync($ZodRealError);
 var _safeEncode = (_Err) => (schema2, value, _ctx) => {
-  const ctx2 = _ctx ? { ..._ctx, direction: "backward" } : { direction: "backward" };
-  return _safeParse(_Err)(schema2, value, ctx2);
+  const ctx = _ctx ? { ..._ctx, direction: "backward" } : { direction: "backward" };
+  return _safeParse(_Err)(schema2, value, ctx);
 };
 var safeEncode = /* @__PURE__ */ _safeEncode($ZodRealError);
 var _safeDecode = (_Err) => (schema2, value, _ctx) => {
@@ -60904,8 +60907,8 @@ var _safeDecode = (_Err) => (schema2, value, _ctx) => {
 };
 var safeDecode = /* @__PURE__ */ _safeDecode($ZodRealError);
 var _safeEncodeAsync = (_Err) => async (schema2, value, _ctx) => {
-  const ctx2 = _ctx ? { ..._ctx, direction: "backward" } : { direction: "backward" };
-  return _safeParseAsync(_Err)(schema2, value, ctx2);
+  const ctx = _ctx ? { ..._ctx, direction: "backward" } : { direction: "backward" };
+  return _safeParseAsync(_Err)(schema2, value, ctx);
 };
 var safeEncodeAsync = /* @__PURE__ */ _safeEncodeAsync($ZodRealError);
 var _safeDecodeAsync = (_Err) => async (schema2, value, _ctx) => {
@@ -61629,7 +61632,7 @@ var $ZodType = /* @__PURE__ */ $constructor("$ZodType", (inst, def) => {
       inst._zod.run = inst._zod.parse;
     });
   } else {
-    const runChecks = (payload, checks2, ctx2) => {
+    const runChecks = (payload, checks2, ctx) => {
       if (payload.memo)
         return payload;
       let isAborted = aborted(payload);
@@ -61646,7 +61649,7 @@ var $ZodType = /* @__PURE__ */ $constructor("$ZodType", (inst, def) => {
         }
         const currLen = payload.issues.length;
         const _ = ch._zod.check(payload);
-        if (_ instanceof Promise && ctx2?.async === false) {
+        if (_ instanceof Promise && ctx?.async === false) {
           throw new $ZodAsyncError();
         }
         if (asyncResult || _ instanceof Promise) {
@@ -61675,39 +61678,39 @@ var $ZodType = /* @__PURE__ */ $constructor("$ZodType", (inst, def) => {
       }
       return payload;
     };
-    const handleCanaryResult = (canary, payload, ctx2) => {
+    const handleCanaryResult = (canary, payload, ctx) => {
       if (aborted(canary)) {
         canary.aborted = true;
         return canary;
       }
-      const checkResult = runChecks(payload, checks, ctx2);
+      const checkResult = runChecks(payload, checks, ctx);
       if (checkResult instanceof Promise) {
-        if (ctx2.async === false)
+        if (ctx.async === false)
           throw new $ZodAsyncError();
-        return checkResult.then((checkResult2) => inst._zod.parse(checkResult2, ctx2));
+        return checkResult.then((checkResult2) => inst._zod.parse(checkResult2, ctx));
       }
-      return inst._zod.parse(checkResult, ctx2);
+      return inst._zod.parse(checkResult, ctx);
     };
-    inst._zod.run = (payload, ctx2) => {
-      if (ctx2.skipChecks) {
-        return inst._zod.parse(payload, ctx2);
+    inst._zod.run = (payload, ctx) => {
+      if (ctx.skipChecks) {
+        return inst._zod.parse(payload, ctx);
       }
-      if (ctx2.direction === "backward") {
-        const canary = inst._zod.parse({ value: payload.value, issues: [] }, { ...ctx2, skipChecks: true });
+      if (ctx.direction === "backward") {
+        const canary = inst._zod.parse({ value: payload.value, issues: [] }, { ...ctx, skipChecks: true });
         if (canary instanceof Promise) {
           return canary.then((canary2) => {
-            return handleCanaryResult(canary2, payload, ctx2);
+            return handleCanaryResult(canary2, payload, ctx);
           });
         }
-        return handleCanaryResult(canary, payload, ctx2);
+        return handleCanaryResult(canary, payload, ctx);
       }
-      const result = inst._zod.parse(payload, ctx2);
+      const result = inst._zod.parse(payload, ctx);
       if (result instanceof Promise) {
-        if (ctx2.async === false)
+        if (ctx.async === false)
           throw new $ZodAsyncError();
-        return result.then((result2) => runChecks(result2, checks, ctx2));
+        return result.then((result2) => runChecks(result2, checks, ctx));
       }
-      return runChecks(result, checks, ctx2);
+      return runChecks(result, checks, ctx);
     };
   }
 }, {
@@ -61719,19 +61722,19 @@ var $ZodType = /* @__PURE__ */ $constructor("$ZodType", (inst, def) => {
     own(this, "~standard", value);
   }
 });
-var toStandardResult = (r, ctx2) => r.issues.length ? { issues: r.issues.map((iss) => finalizeIssue(iss, ctx2, config())) } : { value: r.value };
+var toStandardResult = (r, ctx) => r.issues.length ? { issues: r.issues.map((iss) => finalizeIssue(iss, ctx, config())) } : { value: r.value };
 async function validateAsync2(inst, value) {
-  const ctx2 = { async: true };
-  return toStandardResult(await inst._zod.run({ value, issues: [] }, ctx2), ctx2);
+  const ctx = { async: true };
+  return toStandardResult(await inst._zod.run({ value, issues: [] }, ctx), ctx);
 }
 function standardProps(inst) {
   return {
     validate: (value) => {
-      const ctx2 = { async: false };
+      const ctx = { async: false };
       try {
-        const r = inst._zod.run({ value, issues: [] }, ctx2);
+        const r = inst._zod.run({ value, issues: [] }, ctx);
         if (!(r instanceof Promise))
-          return toStandardResult(r, ctx2);
+          return toStandardResult(r, ctx);
       } catch (_) {
       }
       return validateAsync2(inst, value);
@@ -62368,9 +62371,9 @@ function capSize(inst, size) {
     return;
   const cap = Math.min(...caps.map((c) => c[0]));
   const parse5 = inst._zod.parse;
-  inst._zod.parse = (payload, ctx2) => {
+  inst._zod.parse = (payload, ctx) => {
     const n = size(payload.value);
-    if (n > cap && !ctx2?.skipChecks && ctx2?.direction !== "backward") {
+    if (n > cap && !ctx?.skipChecks && ctx?.direction !== "backward") {
       for (const [max, ch] of sizeCaps(inst._zod.def.checks)) {
         if (n > max && ch._zod.def.when(payload)) {
           const start = payload.issues.length;
@@ -62381,7 +62384,7 @@ function capSize(inst, size) {
         }
       }
     }
-    return parse5(payload, ctx2);
+    return parse5(payload, ctx);
   };
 }
 var arraySize = (input2) => Array.isArray(input2) ? input2.length : -1;
@@ -62397,7 +62400,7 @@ var $ZodArray = /* @__PURE__ */ $constructor("$ZodArray", (inst, def) => {
   $ZodType.init(inst, def);
   const memo2 = globalConfig.memoizer;
   memo2?.attach(inst);
-  inst._zod.parse = (payload, ctx2) => {
+  inst._zod.parse = (payload, ctx) => {
     const input2 = payload.value;
     if (!Array.isArray(input2)) {
       payload.issues.push({
@@ -62408,15 +62411,15 @@ var $ZodArray = /* @__PURE__ */ $constructor("$ZodArray", (inst, def) => {
       });
       return payload;
     }
-    payload.value = memo2 ? memo2.alloc(inst, payload, Array(input2.length), ctx2) : Array(input2.length);
+    payload.value = memo2 ? memo2.alloc(inst, payload, Array(input2.length), ctx) : Array(input2.length);
     const proms = [];
-    const abortEarly = ctx2?.abortEarly;
+    const abortEarly = ctx?.abortEarly;
     for (let i = 0; i < input2.length; i++) {
       const item = input2[i];
       const result = def.element._zod.run({
         value: item,
         issues: []
-      }, ctx2);
+      }, ctx);
       if (result instanceof Promise) {
         proms.push(result.then((result2) => handleArrayResult(result2, payload, i)));
       } else {
@@ -62485,7 +62488,7 @@ function normalizeDef(def) {
     optionalKeys: new Set(okeys)
   };
 }
-function handleCatchall(proms, input2, payload, ctx2, def, inst, abortEarly) {
+function handleCatchall(proms, input2, payload, ctx, def, inst, abortEarly) {
   const unrecognized = [];
   const keySet = def.keySet;
   const _catchall = def.catchall._zod;
@@ -62510,7 +62513,7 @@ function handleCatchall(proms, input2, payload, ctx2, def, inst, abortEarly) {
       unrecognized.push(key);
       continue;
     }
-    const r = _catchall.run({ value: input2[key], issues: [] }, ctx2);
+    const r = _catchall.run({ value: input2[key], issues: [] }, ctx);
     if (r instanceof Promise) {
       proms.push(r.then((r2) => handlePropertyResult(r2, payload, key, input2, optin, optout)));
     } else {
@@ -62570,7 +62573,7 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
   let value;
   const memo2 = globalConfig.memoizer;
   memo2?.attach(inst);
-  inst._zod.parse = (payload, ctx2) => {
+  inst._zod.parse = (payload, ctx) => {
     value ?? (value = _normalized.value);
     const input2 = payload.value;
     if (!isObject2(input2)) {
@@ -62582,10 +62585,10 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
       });
       return payload;
     }
-    payload.value = memo2 ? memo2.alloc(inst, payload, {}, ctx2) : {};
+    payload.value = memo2 ? memo2.alloc(inst, payload, {}, ctx) : {};
     const proms = [];
     const shape = value.shape;
-    const abortEarly = ctx2?.abortEarly;
+    const abortEarly = ctx?.abortEarly;
     let seen = payload.issues.length;
     for (const key of value.allKeys) {
       if (abortEarly && payload.issues.length !== seen) {
@@ -62598,7 +62601,7 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
       const el = shape[key];
       const optin = el._zod.optin;
       const optout = el._zod.optout;
-      const r = el._zod.run({ value: input2[key], issues: [] }, ctx2);
+      const r = el._zod.run({ value: input2[key], issues: [] }, ctx);
       if (r instanceof Promise) {
         proms.push(r.then((r2) => handlePropertyResult(r2, payload, key, input2, optin, optout)));
       } else {
@@ -62608,7 +62611,7 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
     if (!catchall) {
       return proms.length ? Promise.all(proms).then(() => payload) : payload;
     }
-    return handleCatchall(proms, input2, payload, ctx2, _normalized.value, inst, abortEarly === true);
+    return handleCatchall(proms, input2, payload, ctx, _normalized.value, inst, abortEarly === true);
   };
 });
 var $ZodObjectJIT = /* @__PURE__ */ $constructor("$ZodObjectJIT", (inst, def) => {
@@ -62715,7 +62718,7 @@ var $ZodObjectJIT = /* @__PURE__ */ $constructor("$ZodObjectJIT", (inst, def) =>
   const fastEnabled = jit && allowsEval2.value;
   const catchall = def.catchall;
   let value;
-  inst._zod.parse = (payload, ctx2) => {
+  inst._zod.parse = (payload, ctx) => {
     value ?? (value = _normalized.value);
     const input2 = payload.value;
     if (!isObject2(input2)) {
@@ -62727,18 +62730,18 @@ var $ZodObjectJIT = /* @__PURE__ */ $constructor("$ZodObjectJIT", (inst, def) =>
       });
       return payload;
     }
-    if (jit && fastEnabled && ctx2?.async === false && ctx2.jitless !== true) {
+    if (jit && fastEnabled && ctx?.async === false && ctx.jitless !== true) {
       if (!fastpass)
         fastpass = generateFastpass(def.shape);
-      payload = fastpass(payload, ctx2);
+      payload = fastpass(payload, ctx);
       if (!catchall)
         return payload;
-      return handleCatchall([], input2, payload, ctx2, value, inst, ctx2?.abortEarly === true);
+      return handleCatchall([], input2, payload, ctx, value, inst, ctx?.abortEarly === true);
     }
-    return superParse(payload, ctx2);
+    return superParse(payload, ctx);
   };
 });
-function handleUnionResults(results, final, inst, ctx2) {
+function handleUnionResults(results, final, inst, ctx) {
   for (const result of results) {
     if (result.issues.length === 0) {
       final.value = result.value;
@@ -62754,7 +62757,7 @@ function handleUnionResults(results, final, inst, ctx2) {
     code: "invalid_union",
     input: final.value,
     inst,
-    errors: results.map((result) => result.issues.map((iss) => finalizeIssue(iss, ctx2, config())))
+    errors: results.map((result) => result.issues.map((iss) => finalizeIssue(iss, ctx, config())))
   });
   return final;
 }
@@ -62776,9 +62779,9 @@ var $ZodUnion = /* @__PURE__ */ $constructor("$ZodUnion", (inst, def) => {
     return void 0;
   });
   const first = def.options.length === 1 ? def.options[0]._zod.run : null;
-  inst._zod.parse = (payload, ctx2) => {
+  inst._zod.parse = (payload, ctx) => {
     if (first) {
-      return first(payload, ctx2);
+      return first(payload, ctx);
     }
     let async = false;
     const results = [];
@@ -62786,7 +62789,7 @@ var $ZodUnion = /* @__PURE__ */ $constructor("$ZodUnion", (inst, def) => {
       const result = option._zod.run({
         value: payload.value,
         issues: []
-      }, ctx2);
+      }, ctx);
       if (result instanceof Promise) {
         results.push(result);
         async = true;
@@ -62797,13 +62800,13 @@ var $ZodUnion = /* @__PURE__ */ $constructor("$ZodUnion", (inst, def) => {
       }
     }
     if (!async)
-      return handleUnionResults(results, payload, inst, ctx2);
+      return handleUnionResults(results, payload, inst, ctx);
     return Promise.all(results).then((results2) => {
-      return handleUnionResults(results2, payload, inst, ctx2);
+      return handleUnionResults(results2, payload, inst, ctx);
     });
   };
 });
-function handleExclusiveUnionResults(results, final, inst, ctx2) {
+function handleExclusiveUnionResults(results, final, inst, ctx) {
   const matches = [];
   for (let i = 0; i < results.length; i++) {
     if (results[i].issues.length === 0)
@@ -62818,7 +62821,7 @@ function handleExclusiveUnionResults(results, final, inst, ctx2) {
       code: "invalid_union",
       input: final.value,
       inst,
-      errors: results.map((result) => result.issues.map((iss) => finalizeIssue(iss, ctx2, config())))
+      errors: results.map((result) => result.issues.map((iss) => finalizeIssue(iss, ctx, config())))
     });
   } else {
     final.issues.push({
@@ -62836,9 +62839,9 @@ var $ZodXor = /* @__PURE__ */ $constructor("$ZodXor", (inst, def) => {
   $ZodUnion.init(inst, def);
   def.inclusive = false;
   const first = def.options.length === 1 ? def.options[0]._zod.run : null;
-  inst._zod.parse = (payload, ctx2) => {
+  inst._zod.parse = (payload, ctx) => {
     if (first) {
-      return first(payload, ctx2);
+      return first(payload, ctx);
     }
     let async = false;
     const results = [];
@@ -62846,7 +62849,7 @@ var $ZodXor = /* @__PURE__ */ $constructor("$ZodXor", (inst, def) => {
       const result = option._zod.run({
         value: payload.value,
         issues: []
-      }, ctx2);
+      }, ctx);
       if (result instanceof Promise) {
         results.push(result);
         async = true;
@@ -62855,9 +62858,9 @@ var $ZodXor = /* @__PURE__ */ $constructor("$ZodXor", (inst, def) => {
       }
     }
     if (!async)
-      return handleExclusiveUnionResults(results, payload, inst, ctx2);
+      return handleExclusiveUnionResults(results, payload, inst, ctx);
     return Promise.all(results).then((results2) => {
-      return handleExclusiveUnionResults(results2, payload, inst, ctx2);
+      return handleExclusiveUnionResults(results2, payload, inst, ctx);
     });
   };
 });
@@ -62924,7 +62927,7 @@ var $ZodDiscriminatedUnion = /* @__PURE__ */ $constructor("$ZodDiscriminatedUnio
     }
   });
   const disc = cached(() => discriminatorMap(def));
-  inst._zod.parse = (payload, ctx2) => {
+  inst._zod.parse = (payload, ctx) => {
     const input2 = payload.value;
     if (!isObject(input2)) {
       payload.issues.push({
@@ -62937,11 +62940,11 @@ var $ZodDiscriminatedUnion = /* @__PURE__ */ $constructor("$ZodDiscriminatedUnio
     }
     const value = input2?.[def.discriminator];
     const opt2 = disc.value.get(value);
-    if (opt2 && (value !== void 0 || ctx2.direction !== "backward")) {
-      return opt2._zod.run(payload, ctx2);
+    if (opt2 && (value !== void 0 || ctx.direction !== "backward")) {
+      return opt2._zod.run(payload, ctx);
     }
-    if (def.unionFallback || ctx2.direction === "backward") {
-      return _super(payload, ctx2);
+    if (def.unionFallback || ctx.direction === "backward") {
+      return _super(payload, ctx);
     }
     payload.issues.push({
       code: "invalid_union",
@@ -62958,10 +62961,10 @@ var $ZodDiscriminatedUnion = /* @__PURE__ */ $constructor("$ZodDiscriminatedUnio
 });
 var $ZodIntersection = /* @__PURE__ */ $constructor("$ZodIntersection", (inst, def) => {
   $ZodType.init(inst, def);
-  inst._zod.parse = (payload, ctx2) => {
+  inst._zod.parse = (payload, ctx) => {
     const input2 = payload.value;
-    const left = def.left._zod.run({ value: input2, issues: [] }, ctx2);
-    const right = def.right._zod.run({ value: input2, issues: [] }, ctx2);
+    const left = def.left._zod.run({ value: input2, issues: [] }, ctx);
+    const right = def.right._zod.run({ value: input2, issues: [] }, ctx);
     const async = left instanceof Promise || right instanceof Promise;
     if (async) {
       return Promise.all([left, right]).then(([left2, right2]) => {
@@ -63075,7 +63078,7 @@ var $ZodTuple = /* @__PURE__ */ $constructor("$ZodTuple", (inst, def) => {
   const items = def.items;
   const memo2 = globalConfig.memoizer;
   memo2?.attach(inst);
-  inst._zod.parse = (payload, ctx2) => {
+  inst._zod.parse = (payload, ctx) => {
     const input2 = payload.value;
     if (!Array.isArray(input2)) {
       payload.issues.push({
@@ -63086,7 +63089,7 @@ var $ZodTuple = /* @__PURE__ */ $constructor("$ZodTuple", (inst, def) => {
       });
       return payload;
     }
-    payload.value = memo2 ? memo2.alloc(inst, payload, [], ctx2) : [];
+    payload.value = memo2 ? memo2.alloc(inst, payload, [], ctx) : [];
     const proms = [];
     const optinStart = getTupleOptStart(items, "optin");
     const optoutStart = getTupleOptStart(items, "optout");
@@ -63114,10 +63117,10 @@ var $ZodTuple = /* @__PURE__ */ $constructor("$ZodTuple", (inst, def) => {
       }
     }
     const itemResults = new Array(items.length);
-    const abortEarly = def.rest ? ctx2?.abortEarly : void 0;
+    const abortEarly = def.rest ? ctx?.abortEarly : void 0;
     let itemAborted = false;
     for (let i = 0; i < items.length; i++) {
-      const r = items[i]._zod.run({ value: input2[i], issues: [] }, ctx2);
+      const r = items[i]._zod.run({ value: input2[i], issues: [] }, ctx);
       if (r instanceof Promise) {
         proms.push(r.then((rr) => {
           itemResults[i] = rr;
@@ -63139,7 +63142,7 @@ var $ZodTuple = /* @__PURE__ */ $constructor("$ZodTuple", (inst, def) => {
           seen = payload.issues.length;
         }
         i++;
-        const result = def.rest._zod.run({ value: el, issues: [] }, ctx2);
+        const result = def.rest._zod.run({ value: el, issues: [] }, ctx);
         if (result instanceof Promise) {
           proms.push(result.then((r) => handleTupleResult(r, payload, i)));
         } else {
@@ -63197,7 +63200,7 @@ var $ZodRecord = /* @__PURE__ */ $constructor("$ZodRecord", (inst, def) => {
   $ZodType.init(inst, def);
   const memo2 = globalConfig.memoizer;
   memo2?.attach(inst);
-  inst._zod.parse = (payload, ctx2) => {
+  inst._zod.parse = (payload, ctx) => {
     const input2 = payload.value;
     if (!isPlainObject(input2)) {
       payload.issues.push({
@@ -63211,14 +63214,14 @@ var $ZodRecord = /* @__PURE__ */ $constructor("$ZodRecord", (inst, def) => {
     const proms = [];
     const values = def.keyType._zod.values;
     if (values && !def.partial) {
-      payload.value = memo2 ? memo2.alloc(inst, payload, {}, ctx2) : {};
+      payload.value = memo2 ? memo2.alloc(inst, payload, {}, ctx) : {};
       const recordKeys = /* @__PURE__ */ new Set();
       for (const key of values) {
         if (typeof key === "string" || typeof key === "number" || typeof key === "symbol") {
           recordKeys.add(typeof key === "number" ? key.toString() : key);
           if (key === "__proto__")
             continue;
-          const keyResult = def.keyType._zod.run({ value: key, issues: [] }, ctx2);
+          const keyResult = def.keyType._zod.run({ value: key, issues: [] }, ctx);
           if (keyResult instanceof Promise) {
             throw new Error("Async schemas not supported in object keys currently");
           }
@@ -63226,7 +63229,7 @@ var $ZodRecord = /* @__PURE__ */ $constructor("$ZodRecord", (inst, def) => {
             payload.issues.push({
               code: "invalid_key",
               origin: "record",
-              issues: keyResult.issues.map((iss) => finalizeIssue(iss, ctx2, config())),
+              issues: keyResult.issues.map((iss) => finalizeIssue(iss, ctx, config())),
               input: key,
               path: [key],
               inst
@@ -63236,7 +63239,7 @@ var $ZodRecord = /* @__PURE__ */ $constructor("$ZodRecord", (inst, def) => {
           const outKey = keyResult.value;
           if (outKey === "__proto__")
             continue;
-          const result = def.valueType._zod.run({ value: input2[key], issues: [] }, ctx2);
+          const result = def.valueType._zod.run({ value: input2[key], issues: [] }, ctx);
           if (result instanceof Promise) {
             proms.push(result.then((result2) => {
               if (result2.issues.length) {
@@ -63275,20 +63278,20 @@ var $ZodRecord = /* @__PURE__ */ $constructor("$ZodRecord", (inst, def) => {
         });
       }
     } else {
-      payload.value = memo2 ? memo2.alloc(inst, payload, {}, ctx2) : {};
+      payload.value = memo2 ? memo2.alloc(inst, payload, {}, ctx) : {};
       let unrecognized;
       for (const key of Reflect.ownKeys(input2)) {
         if (key === "__proto__")
           continue;
         if (!Object.prototype.propertyIsEnumerable.call(input2, key))
           continue;
-        let keyResult = def.keyType._zod.run({ value: key, issues: [] }, ctx2);
+        let keyResult = def.keyType._zod.run({ value: key, issues: [] }, ctx);
         if (keyResult instanceof Promise) {
           throw new Error("Async schemas not supported in object keys currently");
         }
         const checkNumericKey = typeof key === "string" && number.test(key) && keyResult.issues.length;
         if (checkNumericKey) {
-          const retryResult = def.keyType._zod.run({ value: Number(key), issues: [] }, ctx2);
+          const retryResult = def.keyType._zod.run({ value: Number(key), issues: [] }, ctx);
           if (retryResult instanceof Promise) {
             throw new Error("Async schemas not supported in object keys currently");
           }
@@ -63306,7 +63309,7 @@ var $ZodRecord = /* @__PURE__ */ $constructor("$ZodRecord", (inst, def) => {
             payload.issues.push({
               code: "invalid_key",
               origin: "record",
-              issues: keyResult.issues.map((iss) => finalizeIssue(iss, ctx2, config())),
+              issues: keyResult.issues.map((iss) => finalizeIssue(iss, ctx, config())),
               input: key,
               path: [key],
               inst
@@ -63317,7 +63320,7 @@ var $ZodRecord = /* @__PURE__ */ $constructor("$ZodRecord", (inst, def) => {
         const outKey = keyResult.value;
         if (outKey === "__proto__")
           continue;
-        const result = def.valueType._zod.run({ value: input2[key], issues: [] }, ctx2);
+        const result = def.valueType._zod.run({ value: input2[key], issues: [] }, ctx);
         if (result instanceof Promise) {
           proms.push(result.then((result2) => {
             if (result2.issues.length) {
@@ -63352,7 +63355,7 @@ var $ZodMap = /* @__PURE__ */ $constructor("$ZodMap", (inst, def) => {
   $ZodType.init(inst, def);
   const memo2 = globalConfig.memoizer;
   memo2?.attach(inst);
-  inst._zod.parse = (payload, ctx2) => {
+  inst._zod.parse = (payload, ctx) => {
     const input2 = payload.value;
     if (!(input2 instanceof Map)) {
       payload.issues.push({
@@ -63364,8 +63367,8 @@ var $ZodMap = /* @__PURE__ */ $constructor("$ZodMap", (inst, def) => {
       return payload;
     }
     const proms = [];
-    payload.value = memo2 ? memo2.alloc(inst, payload, /* @__PURE__ */ new Map(), ctx2) : /* @__PURE__ */ new Map();
-    const abortEarly = ctx2?.abortEarly;
+    payload.value = memo2 ? memo2.alloc(inst, payload, /* @__PURE__ */ new Map(), ctx) : /* @__PURE__ */ new Map();
+    const abortEarly = ctx?.abortEarly;
     let seen = payload.issues.length;
     for (const [key, value] of input2) {
       if (abortEarly && payload.issues.length !== seen) {
@@ -63373,14 +63376,14 @@ var $ZodMap = /* @__PURE__ */ $constructor("$ZodMap", (inst, def) => {
           break;
         seen = payload.issues.length;
       }
-      const keyResult = def.keyType._zod.run({ value: key, issues: [] }, ctx2);
-      const valueResult = def.valueType._zod.run({ value, issues: [] }, ctx2);
+      const keyResult = def.keyType._zod.run({ value: key, issues: [] }, ctx);
+      const valueResult = def.valueType._zod.run({ value, issues: [] }, ctx);
       if (keyResult instanceof Promise || valueResult instanceof Promise) {
         proms.push(Promise.all([keyResult, valueResult]).then(([keyResult2, valueResult2]) => {
-          handleMapResult(keyResult2, valueResult2, payload, key, input2, inst, ctx2);
+          handleMapResult(keyResult2, valueResult2, payload, key, input2, inst, ctx);
         }));
       } else {
-        handleMapResult(keyResult, valueResult, payload, key, input2, inst, ctx2);
+        handleMapResult(keyResult, valueResult, payload, key, input2, inst, ctx);
       }
     }
     if (proms.length)
@@ -63389,7 +63392,7 @@ var $ZodMap = /* @__PURE__ */ $constructor("$ZodMap", (inst, def) => {
   };
   capSize(inst, mapSize);
 });
-function handleMapResult(keyResult, valueResult, final, key, input2, inst, ctx2) {
+function handleMapResult(keyResult, valueResult, final, key, input2, inst, ctx) {
   if (keyResult.issues.length) {
     if (propertyKeyTypes.has(typeof key)) {
       final.issues.push(...prefixIssues(key, keyResult.issues));
@@ -63399,7 +63402,7 @@ function handleMapResult(keyResult, valueResult, final, key, input2, inst, ctx2)
         origin: "map",
         input: input2,
         inst,
-        issues: keyResult.issues.map((iss) => finalizeIssue(iss, ctx2, config()))
+        issues: keyResult.issues.map((iss) => finalizeIssue(iss, ctx, config()))
       });
     }
   }
@@ -63413,7 +63416,7 @@ function handleMapResult(keyResult, valueResult, final, key, input2, inst, ctx2)
         input: input2,
         inst,
         key,
-        issues: valueResult.issues.map((iss) => finalizeIssue(iss, ctx2, config()))
+        issues: valueResult.issues.map((iss) => finalizeIssue(iss, ctx, config()))
       });
     }
   }
@@ -63423,7 +63426,7 @@ var $ZodSet = /* @__PURE__ */ $constructor("$ZodSet", (inst, def) => {
   $ZodType.init(inst, def);
   const memo2 = globalConfig.memoizer;
   memo2?.attach(inst);
-  inst._zod.parse = (payload, ctx2) => {
+  inst._zod.parse = (payload, ctx) => {
     const input2 = payload.value;
     if (!(input2 instanceof Set)) {
       payload.issues.push({
@@ -63435,8 +63438,8 @@ var $ZodSet = /* @__PURE__ */ $constructor("$ZodSet", (inst, def) => {
       return payload;
     }
     const proms = [];
-    payload.value = memo2 ? memo2.alloc(inst, payload, /* @__PURE__ */ new Set(), ctx2) : /* @__PURE__ */ new Set();
-    const abortEarly = ctx2?.abortEarly;
+    payload.value = memo2 ? memo2.alloc(inst, payload, /* @__PURE__ */ new Set(), ctx) : /* @__PURE__ */ new Set();
+    const abortEarly = ctx?.abortEarly;
     let seen = payload.issues.length;
     for (const item of input2) {
       if (abortEarly && payload.issues.length !== seen) {
@@ -63444,7 +63447,7 @@ var $ZodSet = /* @__PURE__ */ $constructor("$ZodSet", (inst, def) => {
           break;
         seen = payload.issues.length;
       }
-      const result = def.valueType._zod.run({ value: item, issues: [] }, ctx2);
+      const result = def.valueType._zod.run({ value: item, issues: [] }, ctx);
       if (result instanceof Promise) {
         proms.push(result.then((result2) => handleSetResult(result2, payload)));
       } else
@@ -63526,12 +63529,12 @@ var $ZodTransform = /* @__PURE__ */ $constructor("$ZodTransform", (inst, def) =>
   $ZodType.init(inst, def);
   inst._zod.optin = "optional";
   globalConfig.memoizer?.guard(inst);
-  inst._zod.parse = (payload, ctx2) => {
-    if (ctx2.direction === "backward") {
+  inst._zod.parse = (payload, ctx) => {
+    if (ctx.direction === "backward") {
       throw new $ZodEncodeError(inst.constructor.name);
     }
     const _out = def.transform(payload.value, payload);
-    if (ctx2.async) {
+    if (ctx.async) {
       const output2 = _out instanceof Promise ? _out : Promise.resolve(_out);
       return output2.then((output3) => {
         payload.value = output3;
@@ -63561,24 +63564,24 @@ var $ZodOptional = /* @__PURE__ */ $constructor("$ZodOptional", (inst, def) => {
     const pattern = zod.def.innerType._zod.pattern;
     return pattern ? new RegExp(`^(${cleanRegex(pattern.source)})?$`) : void 0;
   });
-  inst._zod.parse = (payload, ctx2) => {
+  inst._zod.parse = (payload, ctx) => {
     if (payload.value === void 0) {
       if (def.innerType._zod.optin !== "defaulted")
         return payload;
-      const result = def.innerType._zod.run({ value: payload.value, issues: [] }, ctx2);
+      const result = def.innerType._zod.run({ value: payload.value, issues: [] }, ctx);
       if (result instanceof Promise)
         return result.then((result2) => handleOptionalResult(payload, result2));
       return handleOptionalResult(payload, result);
     }
-    return def.innerType._zod.run(payload, ctx2);
+    return def.innerType._zod.run(payload, ctx);
   };
 });
 var $ZodExactOptional = /* @__PURE__ */ $constructor("$ZodExactOptional", (inst, def) => {
   $ZodOptional.init(inst, def);
   defineLazyInternal(inst, "values", (zod) => zod.def.innerType._zod.values);
   defineLazyInternal(inst, "pattern", (zod) => zod.def.innerType._zod.pattern);
-  inst._zod.parse = (payload, ctx2) => {
-    return def.innerType._zod.run(payload, ctx2);
+  inst._zod.parse = (payload, ctx) => {
+    return def.innerType._zod.run(payload, ctx);
   };
 });
 var $ZodNullable = /* @__PURE__ */ $constructor("$ZodNullable", (inst, def) => {
@@ -63592,25 +63595,25 @@ var $ZodNullable = /* @__PURE__ */ $constructor("$ZodNullable", (inst, def) => {
   defineLazyInternal(inst, "values", (zod) => {
     return zod.def.innerType._zod.values ? /* @__PURE__ */ new Set([...zod.def.innerType._zod.values, null]) : void 0;
   });
-  inst._zod.parse = (payload, ctx2) => {
+  inst._zod.parse = (payload, ctx) => {
     if (payload.value === null)
       return payload;
-    return def.innerType._zod.run(payload, ctx2);
+    return def.innerType._zod.run(payload, ctx);
   };
 });
 var $ZodDefault = /* @__PURE__ */ $constructor("$ZodDefault", (inst, def) => {
   $ZodType.init(inst, def);
   inst._zod.optin = "defaulted";
   defineLazyInternal(inst, "values", (zod) => zod.def.innerType._zod.values);
-  inst._zod.parse = (payload, ctx2) => {
-    if (ctx2.direction === "backward") {
-      return def.innerType._zod.run(payload, ctx2);
+  inst._zod.parse = (payload, ctx) => {
+    if (ctx.direction === "backward") {
+      return def.innerType._zod.run(payload, ctx);
     }
     if (payload.value === void 0) {
       payload.value = def.defaultValue;
       return payload;
     }
-    const result = def.innerType._zod.run(payload, ctx2);
+    const result = def.innerType._zod.run(payload, ctx);
     if (result instanceof Promise) {
       return result.then((result2) => handleDefaultResult(result2, def));
     }
@@ -63627,14 +63630,14 @@ var $ZodPrefault = /* @__PURE__ */ $constructor("$ZodPrefault", (inst, def) => {
   $ZodType.init(inst, def);
   inst._zod.optin = "defaulted";
   defineLazyInternal(inst, "values", (zod) => zod.def.innerType._zod.values);
-  inst._zod.parse = (payload, ctx2) => {
-    if (ctx2.direction === "backward") {
-      return def.innerType._zod.run(payload, ctx2);
+  inst._zod.parse = (payload, ctx) => {
+    if (ctx.direction === "backward") {
+      return def.innerType._zod.run(payload, ctx);
     }
     if (payload.value === void 0) {
       payload.value = def.defaultValue;
     }
-    return def.innerType._zod.run(payload, ctx2);
+    return def.innerType._zod.run(payload, ctx);
   };
 });
 var $ZodNonOptional = /* @__PURE__ */ $constructor("$ZodNonOptional", (inst, def) => {
@@ -63643,8 +63646,8 @@ var $ZodNonOptional = /* @__PURE__ */ $constructor("$ZodNonOptional", (inst, def
     const v = zod.def.innerType._zod.values;
     return v ? new Set([...v].filter((x) => x !== void 0)) : void 0;
   });
-  inst._zod.parse = (payload, ctx2) => {
-    const result = def.innerType._zod.run(payload, ctx2);
+  inst._zod.parse = (payload, ctx) => {
+    const result = def.innerType._zod.run(payload, ctx);
     if (result instanceof Promise) {
       return result.then((result2) => handleNonOptionalResult(result2, inst));
     }
@@ -63664,11 +63667,11 @@ function handleNonOptionalResult(payload, inst) {
 }
 var $ZodSuccess = /* @__PURE__ */ $constructor("$ZodSuccess", (inst, def) => {
   $ZodType.init(inst, def);
-  inst._zod.parse = (payload, ctx2) => {
-    if (ctx2.direction === "backward") {
+  inst._zod.parse = (payload, ctx) => {
+    if (ctx.direction === "backward") {
       throw new $ZodEncodeError("ZodSuccess");
     }
-    const result = def.innerType._zod.run(payload, ctx2);
+    const result = def.innerType._zod.run(payload, ctx);
     if (result instanceof Promise) {
       return result.then((result2) => {
         payload.value = result2.issues.length === 0;
@@ -63679,7 +63682,7 @@ var $ZodSuccess = /* @__PURE__ */ $constructor("$ZodSuccess", (inst, def) => {
     return payload;
   };
 });
-function handleCatchResult(payload, result, def, ctx2) {
+function handleCatchResult(payload, result, def, ctx) {
   if (!result.issues.length) {
     payload.value = result.value;
     if (result.memo)
@@ -63690,7 +63693,7 @@ function handleCatchResult(payload, result, def, ctx2) {
     ...result,
     value: payload.value,
     error: {
-      issues: result.issues.map((iss) => finalizeIssue(iss, ctx2, config()))
+      issues: result.issues.map((iss) => finalizeIssue(iss, ctx, config()))
     },
     input: payload.value
   });
@@ -63701,15 +63704,15 @@ var $ZodCatch = /* @__PURE__ */ $constructor("$ZodCatch", (inst, def) => {
   defineLazyInternal(inst, "optin", (zod) => zod.def.innerType._zod.optin === "defaulted" ? "defaulted" : "optional");
   defineLazyInternal(inst, "optout", (zod) => zod.def.innerType._zod.optout);
   defineLazyInternal(inst, "values", (zod) => zod.def.innerType._zod.values);
-  inst._zod.parse = (payload, ctx2) => {
-    if (ctx2.direction === "backward") {
-      return def.innerType._zod.run(payload, ctx2);
+  inst._zod.parse = (payload, ctx) => {
+    if (ctx.direction === "backward") {
+      return def.innerType._zod.run(payload, ctx);
     }
-    const result = def.innerType._zod.run({ value: payload.value, issues: [] }, ctx2);
+    const result = def.innerType._zod.run({ value: payload.value, issues: [] }, ctx);
     if (result instanceof Promise) {
-      return result.then((result2) => handleCatchResult(payload, result2, def, ctx2));
+      return result.then((result2) => handleCatchResult(payload, result2, def, ctx));
     }
-    return handleCatchResult(payload, result, def, ctx2);
+    return handleCatchResult(payload, result, def, ctx);
   };
 });
 var $ZodNaN = /* @__PURE__ */ $constructor("$ZodNaN", (inst, def) => {
@@ -63733,27 +63736,27 @@ var $ZodPipe = /* @__PURE__ */ $constructor("$ZodPipe", (inst, def) => {
   defineLazyInternal(inst, "optin", (zod) => zod.def.in._zod.optin);
   defineLazyInternal(inst, "optout", (zod) => zod.def.out._zod.optout);
   defineLazyInternal(inst, "propValues", (zod) => zod.def.in._zod.propValues);
-  inst._zod.parse = (payload, ctx2) => {
-    if (ctx2.direction === "backward") {
-      const right = def.out._zod.run(payload, ctx2);
+  inst._zod.parse = (payload, ctx) => {
+    if (ctx.direction === "backward") {
+      const right = def.out._zod.run(payload, ctx);
       if (right instanceof Promise) {
-        return right.then((right2) => handlePipeResult(right2, def.in, ctx2));
+        return right.then((right2) => handlePipeResult(right2, def.in, ctx));
       }
-      return handlePipeResult(right, def.in, ctx2);
+      return handlePipeResult(right, def.in, ctx);
     }
-    const left = def.in._zod.run(payload, ctx2);
+    const left = def.in._zod.run(payload, ctx);
     if (left instanceof Promise) {
-      return left.then((left2) => handlePipeResult(left2, def.out, ctx2));
+      return left.then((left2) => handlePipeResult(left2, def.out, ctx));
     }
-    return handlePipeResult(left, def.out, ctx2);
+    return handlePipeResult(left, def.out, ctx);
   };
 });
-function handlePipeResult(left, next, ctx2) {
+function handlePipeResult(left, next, ctx) {
   if (left.issues.some((iss) => iss.code !== "unrecognized_keys")) {
     left.aborted = true;
     return left;
   }
-  return next._zod.run({ value: left.value, issues: left.issues }, ctx2);
+  return next._zod.run({ value: left.value, issues: left.issues }, ctx);
 }
 var $ZodCodec = /* @__PURE__ */ $constructor("$ZodCodec", (inst, def) => {
   $ZodType.init(inst, def);
@@ -63761,49 +63764,49 @@ var $ZodCodec = /* @__PURE__ */ $constructor("$ZodCodec", (inst, def) => {
   defineLazyInternal(inst, "optin", (zod) => zod.def.in._zod.optin);
   defineLazyInternal(inst, "optout", (zod) => zod.def.out._zod.optout);
   defineLazyInternal(inst, "propValues", (zod) => zod.def.in._zod.propValues);
-  inst._zod.parse = (payload, ctx2) => {
-    const direction = ctx2.direction || "forward";
+  inst._zod.parse = (payload, ctx) => {
+    const direction = ctx.direction || "forward";
     if (direction === "forward") {
-      const left = def.in._zod.run(payload, ctx2);
+      const left = def.in._zod.run(payload, ctx);
       if (left instanceof Promise) {
-        return left.then((left2) => handleCodecAResult(left2, def, ctx2));
+        return left.then((left2) => handleCodecAResult(left2, def, ctx));
       }
-      return handleCodecAResult(left, def, ctx2);
+      return handleCodecAResult(left, def, ctx);
     } else {
-      const right = def.out._zod.run(payload, ctx2);
+      const right = def.out._zod.run(payload, ctx);
       if (right instanceof Promise) {
-        return right.then((right2) => handleCodecAResult(right2, def, ctx2));
+        return right.then((right2) => handleCodecAResult(right2, def, ctx));
       }
-      return handleCodecAResult(right, def, ctx2);
+      return handleCodecAResult(right, def, ctx);
     }
   };
 });
-function handleCodecAResult(result, def, ctx2) {
+function handleCodecAResult(result, def, ctx) {
   if (result.issues.length) {
     result.aborted = true;
     return result;
   }
-  const direction = ctx2.direction || "forward";
+  const direction = ctx.direction || "forward";
   if (direction === "forward") {
     const transformed = def.transform(result.value, result);
     if (transformed instanceof Promise) {
-      return transformed.then((value) => handleCodecTxResult(result, value, def.out, ctx2));
+      return transformed.then((value) => handleCodecTxResult(result, value, def.out, ctx));
     }
-    return handleCodecTxResult(result, transformed, def.out, ctx2);
+    return handleCodecTxResult(result, transformed, def.out, ctx);
   } else {
     const transformed = def.reverseTransform(result.value, result);
     if (transformed instanceof Promise) {
-      return transformed.then((value) => handleCodecTxResult(result, value, def.in, ctx2));
+      return transformed.then((value) => handleCodecTxResult(result, value, def.in, ctx));
     }
-    return handleCodecTxResult(result, transformed, def.in, ctx2);
+    return handleCodecTxResult(result, transformed, def.in, ctx);
   }
 }
-function handleCodecTxResult(left, value, nextSchema, ctx2) {
+function handleCodecTxResult(left, value, nextSchema, ctx) {
   if (left.issues.length) {
     left.aborted = true;
     return left;
   }
-  return nextSchema._zod.run({ value, issues: left.issues }, ctx2);
+  return nextSchema._zod.run({ value, issues: left.issues }, ctx);
 }
 var $ZodPreprocess = /* @__PURE__ */ $constructor("$ZodPreprocess", (inst, def) => {
   $ZodPipe.init(inst, def);
@@ -63814,11 +63817,11 @@ var $ZodReadonly = /* @__PURE__ */ $constructor("$ZodReadonly", (inst, def) => {
   defineLazyInternal(inst, "values", (zod) => zod.def.innerType._zod.values);
   defineLazyInternal(inst, "optin", (zod) => zod.def.innerType?._zod?.optin);
   defineLazyInternal(inst, "optout", (zod) => zod.def.innerType?._zod?.optout);
-  inst._zod.parse = (payload, ctx2) => {
-    if (ctx2.direction === "backward") {
-      return def.innerType._zod.run(payload, ctx2);
+  inst._zod.parse = (payload, ctx) => {
+    if (ctx.direction === "backward") {
+      return def.innerType._zod.run(payload, ctx);
     }
-    const result = def.innerType._zod.run(payload, ctx2);
+    const result = def.innerType._zod.run(payload, ctx);
     if (result instanceof Promise) {
       return result.then(handleReadonlyResult);
     }
@@ -63996,8 +63999,8 @@ var $ZodFunction = /* @__PURE__ */ $constructor("$ZodFunction", (inst, def) => {
 });
 var $ZodPromise = /* @__PURE__ */ $constructor("$ZodPromise", (inst, def) => {
   $ZodType.init(inst, def);
-  inst._zod.parse = (payload, ctx2) => {
-    return Promise.resolve(payload.value).then((inner) => def.innerType._zod.run({ value: inner, issues: [] }, ctx2));
+  inst._zod.parse = (payload, ctx) => {
+    return Promise.resolve(payload.value).then((inner) => def.innerType._zod.run({ value: inner, issues: [] }, ctx));
   };
 });
 var $ZodLazy = /* @__PURE__ */ $constructor("$ZodLazy", (inst, def) => {
@@ -64012,9 +64015,9 @@ var $ZodLazy = /* @__PURE__ */ $constructor("$ZodLazy", (inst, def) => {
   defineLazyInternal(inst, "propValues", (zod) => zod.innerType?._zod?.propValues);
   defineLazyInternal(inst, "optin", (zod) => zod.innerType?._zod?.optin ?? void 0);
   defineLazyInternal(inst, "optout", (zod) => zod.innerType?._zod?.optout ?? void 0);
-  inst._zod.parse = (payload, ctx2) => {
+  inst._zod.parse = (payload, ctx) => {
     const inner = inst._zod.innerType;
-    return inner._zod.run(payload, ctx2);
+    return inner._zod.run(payload, ctx);
   };
 });
 var $ZodCustom = /* @__PURE__ */ $constructor("$ZodCustom", (inst, def) => {
@@ -64236,10 +64239,10 @@ var memo = {
     (_a3 = inst._zod).deferred ?? (_a3.deferred = []);
     inst._zod.deferred.push(() => {
       const base = inst._zod.parse;
-      const wrapped = (payload, ctx2) => {
-        if (ctx2.direction !== "backward" && isBackEdge(ctx2, payload.value))
+      const wrapped = (payload, ctx) => {
+        if (ctx.direction !== "backward" && isBackEdge(ctx, payload.value))
           throw new $ZodCyclicError();
-        return base(payload, ctx2);
+        return base(payload, ctx);
       };
       inst._zod.parse = wrapped;
       if (inst._zod.run === base)
@@ -64255,14 +64258,14 @@ var memo = {
     (_a3 = inst._zod).deferred ?? (_a3.deferred = []);
     inst._zod.deferred.push(() => {
       const base = inst._zod.parse;
-      const wrapped = (payload, ctx2) => {
+      const wrapped = (payload, ctx) => {
         if (isRecursiveInst === void 0) {
           const walked = isRecursive(inst, /* @__PURE__ */ new Set(), false);
           if (walked === NONE) {
             inst._zod.parse = base;
             if (inst._zod.run === wrapped)
               inst._zod.run = base;
-            return base(payload, ctx2);
+            return base(payload, ctx);
           }
           if (walked === PROVEN || rechecked)
             isRecursiveInst = true;
@@ -64271,18 +64274,18 @@ var memo = {
         }
         const input2 = payload.value;
         if (!isRef(input2))
-          return base(payload, ctx2);
-        let state = ctx2[STATE];
+          return base(payload, ctx);
+        let state = ctx[STATE];
         if (!state) {
           state = { buckets: /* @__PURE__ */ new WeakMap(), backEdges: void 0 };
-          ctx2[STATE] = state;
+          ctx[STATE] = state;
         }
         let bucket;
-        if (lastCtx === ctx2) {
+        if (lastCtx === ctx) {
           bucket = lastBucket;
         } else {
           bucket = bucketFor(state, inst);
-          lastCtx = ctx2;
+          lastCtx = ctx;
           lastBucket = bucket;
         }
         const hit2 = bucket.get(input2);
@@ -64300,7 +64303,7 @@ var memo = {
         }
         handoff = bucket;
         const depth = open.length;
-        const result = base(payload, ctx2);
+        const result = base(payload, ctx);
         handoff = void 0;
         const entry = open.length > depth ? open.pop() : void 0;
         if (result instanceof Promise) {
@@ -64323,8 +64326,8 @@ var memo = {
 function memoizer() {
   return memo;
 }
-function isBackEdge(ctx2, value) {
-  const backEdges = ctx2[STATE]?.backEdges;
+function isBackEdge(ctx, value) {
+  const backEdges = ctx[STATE]?.backEdges;
   return backEdges !== void 0 && isRef(value) && backEdges.has(value);
 }
 
@@ -71987,21 +71990,21 @@ function withParser(schema2, parser) {
   const clone2 = clone(schema2);
   const liveRun = schema2._zod.run;
   const originalRun = liveRun.__originalRun ?? liveRun;
-  const wrapped = (payload, ctx2) => {
-    if (ctx2?.async || ctx2?.direction === "backward" || ctx2?.skipChecks || ctx2?.[FALLBACK_FLAG]) {
-      return originalRun(payload, ctx2);
+  const wrapped = (payload, ctx) => {
+    if (ctx?.async || ctx?.direction === "backward" || ctx?.skipChecks || ctx?.[FALLBACK_FLAG]) {
+      return originalRun(payload, ctx);
     }
-    if (ctx2 && isBackEdge(ctx2, payload.value)) {
-      return originalRun(payload, ctx2);
+    if (ctx && isBackEdge(ctx, payload.value)) {
+      return originalRun(payload, ctx);
     }
     const out = parser(payload.value);
     if (out !== INVALID) {
       payload.value = out;
       return payload;
     }
-    if (ctx2)
-      ctx2[FALLBACK_FLAG] = true;
-    return originalRun(payload, ctx2);
+    if (ctx)
+      ctx[FALLBACK_FLAG] = true;
+    return originalRun(payload, ctx);
   };
   wrapped.__originalRun = originalRun;
   clone2._zod.bag.fallbackRun = originalRun;
@@ -72044,17 +72047,17 @@ function compileFn(schema2, options) {
   if (recursive2) {
     throw new ZodCompileUnsupportedError("a schema whose subtree contains a reference cycle");
   }
-  const ctx2 = {
+  const ctx = {
     constants: /* @__PURE__ */ new Map(),
     constantCounter: 0,
     varCounter: 0,
     definite: true
   };
   const doc = new Doc(["input"]);
-  const outputAccessor = generateCheck(doc, ctx2, schema2, "input", !options?.assertOnly);
+  const outputAccessor = generateCheck(doc, ctx, schema2, "input", !options?.assertOnly);
   doc.write(outputAccessor === null ? `return true;` : `return ${outputAccessor};`);
-  const constantNames = ["INVALID", ...ctx2.constants.keys()];
-  const constantValues = [INVALID, ...ctx2.constants.values()];
+  const constantNames = ["INVALID", ...ctx.constants.keys()];
+  const constantValues = [INVALID, ...ctx.constants.values()];
   const code = doc.content.join("\n");
   const fullCode = options?.debug ? constantNames.length > 0 ? `// Constants: ${constantNames.join(", ")}
 ${code}` : code : "";
@@ -72072,24 +72075,24 @@ ${code}
   if (options?.debug) {
     fn.code = fullCode;
   }
-  fn.definite = ctx2.definite;
+  fn.definite = ctx.definite;
   return fn;
 }
-function addConstant(ctx2, value) {
-  for (const [name2, v] of ctx2.constants) {
+function addConstant(ctx, value) {
+  for (const [name2, v] of ctx.constants) {
     if (v === value)
       return name2;
   }
-  const name = `c${ctx2.constantCounter++}`;
-  ctx2.constants.set(name, value);
+  const name = `c${ctx.constantCounter++}`;
+  ctx.constants.set(name, value);
   return name;
 }
-function addUserConstant(ctx2, fn) {
-  ctx2.definite = false;
-  return addConstant(ctx2, fn);
+function addUserConstant(ctx, fn) {
+  ctx.definite = false;
+  return addConstant(ctx, fn);
 }
-function newVar(ctx2) {
-  return `v${ctx2.varCounter++}`;
+function newVar(ctx) {
+  return `v${ctx.varCounter++}`;
 }
 function runtimeRun(schema2, value) {
   const result = schema2._zod.run({ value, issues: [] }, {});
@@ -72098,32 +72101,32 @@ function runtimeRun(schema2, value) {
   const r = result;
   return r.issues.length === 0 ? r.value : INVALID;
 }
-function compileChild(doc, ctx2, schema2, accessor, needsValue = true) {
+function compileChild(doc, ctx, schema2, accessor, needsValue = true) {
   const contentLen = doc.content.length;
-  const constantCount = ctx2.constants.size;
-  const constantCounter = ctx2.constantCounter;
-  const varCounter = ctx2.varCounter;
+  const constantCount = ctx.constants.size;
+  const constantCounter = ctx.constantCounter;
+  const varCounter = ctx.varCounter;
   try {
-    return generateCheck(doc, ctx2, schema2, accessor, needsValue);
+    return generateCheck(doc, ctx, schema2, accessor, needsValue);
   } catch (err) {
     if (!(err instanceof ZodCompileUnsupportedError) || !err.islandable)
       throw err;
     doc.content.length = contentLen;
-    if (ctx2.constants.size > constantCount) {
-      const trailing = Array.from(ctx2.constants.keys()).slice(constantCount);
+    if (ctx.constants.size > constantCount) {
+      const trailing = Array.from(ctx.constants.keys()).slice(constantCount);
       for (const k of trailing)
-        ctx2.constants.delete(k);
+        ctx.constants.delete(k);
     }
-    ctx2.constantCounter = constantCounter;
-    ctx2.varCounter = varCounter;
-    return emitRuntimeIsland(doc, ctx2, schema2, accessor);
+    ctx.constantCounter = constantCounter;
+    ctx.varCounter = varCounter;
+    return emitRuntimeIsland(doc, ctx, schema2, accessor);
   }
 }
-function emitRuntimeIsland(doc, ctx2, schema2, accessor) {
-  ctx2.definite = false;
-  const schemaConst = addConstant(ctx2, schema2);
-  const runConst = addConstant(ctx2, runtimeRun);
-  const outVar = newVar(ctx2);
+function emitRuntimeIsland(doc, ctx, schema2, accessor) {
+  ctx.definite = false;
+  const schemaConst = addConstant(ctx, schema2);
+  const runConst = addConstant(ctx, runtimeRun);
+  const outVar = newVar(ctx);
   doc.write(`const ${outVar} = ${runConst}(${schemaConst}, ${accessor});`);
   doc.write(`if (${outVar} === INVALID) return INVALID;`);
   return outVar;
@@ -72136,7 +72139,7 @@ var WHEN_DEFAULTED_CHECKS = /* @__PURE__ */ new Set([
   "min_length",
   "length_equals"
 ]);
-function generateChecks(doc, ctx2, schema2, accessor) {
+function generateChecks(doc, ctx, schema2, accessor) {
   const schemaChecks = schema2._zod.def.checks;
   if (!schemaChecks || schemaChecks.length === 0)
     return accessor;
@@ -72148,32 +72151,32 @@ function generateChecks(doc, ctx2, schema2, accessor) {
     }
     switch (def.check) {
       case "greater_than":
-        generateGreaterThanCheck(doc, ctx2, def, currentAccessor);
+        generateGreaterThanCheck(doc, ctx, def, currentAccessor);
         break;
       case "less_than":
-        generateLessThanCheck(doc, ctx2, def, currentAccessor);
+        generateLessThanCheck(doc, ctx, def, currentAccessor);
         break;
       case "multiple_of":
-        generateMultipleOfCheck(doc, ctx2, def, currentAccessor);
+        generateMultipleOfCheck(doc, ctx, def, currentAccessor);
         break;
       case "number_format":
         generateNumberFormatCheck(doc, def, currentAccessor);
         break;
       case "min_length": {
         const min = numericOperand(def.minimum, "min_length");
-        const len = codePointLengthVar(doc, ctx2, currentAccessor, `${currentAccessor}.length >= ${min} && ${currentAccessor}.length < ${def.minimum * 2}`);
+        const len = codePointLengthVar(doc, ctx, currentAccessor, `${currentAccessor}.length >= ${min} && ${currentAccessor}.length < ${def.minimum * 2}`);
         doc.write(`if (${len} < ${min}) return INVALID;`);
         break;
       }
       case "max_length": {
         const max = numericOperand(def.maximum, "max_length");
-        const len = codePointLengthVar(doc, ctx2, currentAccessor, `${currentAccessor}.length > ${max}`);
+        const len = codePointLengthVar(doc, ctx, currentAccessor, `${currentAccessor}.length > ${max}`);
         doc.write(`if (${len} > ${max}) return INVALID;`);
         break;
       }
       case "length_equals": {
         const exact = numericOperand(def.length, "length_equals");
-        const len = codePointLengthVar(doc, ctx2, currentAccessor, `${currentAccessor}.length >= ${exact} && ${currentAccessor}.length <= ${def.length * 2}`);
+        const len = codePointLengthVar(doc, ctx, currentAccessor, `${currentAccessor}.length >= ${exact} && ${currentAccessor}.length <= ${def.length * 2}`);
         doc.write(`if (${len} !== ${exact}) return INVALID;`);
         break;
       }
@@ -72187,26 +72190,26 @@ function generateChecks(doc, ctx2, schema2, accessor) {
         doc.write(`if (${currentAccessor}.size !== ${numericOperand(def.size, "size_equals")}) return INVALID;`);
         break;
       case "string_format":
-        currentAccessor = generateStringFormatCheck(doc, ctx2, def, currentAccessor);
+        currentAccessor = generateStringFormatCheck(doc, ctx, def, currentAccessor);
         break;
       case "custom":
-        currentAccessor = generateCustomRefineCheck(doc, ctx2, check2, currentAccessor);
+        currentAccessor = generateCustomRefineCheck(doc, ctx, check2, currentAccessor);
         break;
       case "bigint_format":
         generateBigIntFormatCheck(doc, def, currentAccessor);
         break;
       case "mime_type":
-        generateMimeTypeCheck(doc, ctx2, def, currentAccessor);
+        generateMimeTypeCheck(doc, ctx, def, currentAccessor);
         break;
       case "property":
-        generatePropertyCheck(doc, ctx2, def, currentAccessor);
+        generatePropertyCheck(doc, ctx, def, currentAccessor);
         break;
       case "properties":
-        generatePropertiesChecks(doc, ctx2, def, currentAccessor);
+        generatePropertiesChecks(doc, ctx, def, currentAccessor);
         break;
       case "overwrite": {
-        const newAccessor = newVar(ctx2);
-        generateOverwriteCheck(doc, ctx2, check2, currentAccessor, newAccessor);
+        const newAccessor = newVar(ctx);
+        generateOverwriteCheck(doc, ctx, check2, currentAccessor, newAccessor);
         currentAccessor = newAccessor;
         break;
       }
@@ -72217,9 +72220,9 @@ function generateChecks(doc, ctx2, schema2, accessor) {
   }
   return currentAccessor;
 }
-function codePointLengthVar(doc, ctx2, accessor, inDoubt) {
-  const cpLen = addConstant(ctx2, codePointLength);
-  const v = newVar(ctx2);
+function codePointLengthVar(doc, ctx, accessor, inDoubt) {
+  const cpLen = addConstant(ctx, codePointLength);
+  const v = newVar(ctx);
   doc.write(`const ${v} = typeof ${accessor} === "string" && ${inDoubt} ? ${cpLen}(${accessor}) : ${accessor}.length;`);
   return v;
 }
@@ -72229,7 +72232,7 @@ function numericOperand(value, label) {
   }
   return `${value}`;
 }
-function comparisonOperand(ctx2, value) {
+function comparisonOperand(ctx, value) {
   if (typeof value === "bigint")
     return `${value}n`;
   if (typeof value === "number") {
@@ -72241,25 +72244,25 @@ function comparisonOperand(ctx2, value) {
     if (Number.isNaN(value.getTime())) {
       throw new ZodCompileUnsupportedError("comparison check with Invalid Date bound");
     }
-    return addConstant(ctx2, value);
+    return addConstant(ctx, value);
   }
   throw new ZodCompileUnsupportedError(`comparison check bound of type ${typeof value}`);
 }
-function generateGreaterThanCheck(doc, ctx2, def, accessor) {
+function generateGreaterThanCheck(doc, ctx, def, accessor) {
   const op = def.inclusive ? "<" : "<=";
-  doc.write(`if (${accessor} ${op} ${comparisonOperand(ctx2, def.value)}) return INVALID;`);
+  doc.write(`if (${accessor} ${op} ${comparisonOperand(ctx, def.value)}) return INVALID;`);
 }
-function generateLessThanCheck(doc, ctx2, def, accessor) {
+function generateLessThanCheck(doc, ctx, def, accessor) {
   const op = def.inclusive ? ">" : ">=";
-  doc.write(`if (${accessor} ${op} ${comparisonOperand(ctx2, def.value)}) return INVALID;`);
+  doc.write(`if (${accessor} ${op} ${comparisonOperand(ctx, def.value)}) return INVALID;`);
 }
-function generateMultipleOfCheck(doc, ctx2, def, accessor) {
+function generateMultipleOfCheck(doc, ctx, def, accessor) {
   if (typeof def.value === "bigint") {
     if (def.value === BigInt(0))
       throw new ZodCompileUnsupportedError("multiple_of check with a zero divisor");
     doc.write(`if (${accessor} % ${def.value}n !== 0n) return INVALID;`);
   } else {
-    const remainder = addConstant(ctx2, floatSafeRemainder);
+    const remainder = addConstant(ctx, floatSafeRemainder);
     doc.write(`if (${remainder}(${accessor}, ${numericOperand(def.value, "multiple_of")}) !== 0) return INVALID;`);
   }
 }
@@ -72302,31 +72305,31 @@ function generateBigIntFormatCheck(doc, def, accessor) {
     }
   }
 }
-function generateMimeTypeCheck(doc, ctx2, def, accessor) {
+function generateMimeTypeCheck(doc, ctx, def, accessor) {
   const mimeTypes = def.mime;
   if (mimeTypes && mimeTypes.length > 0) {
-    const mimeSet = addConstant(ctx2, new Set(mimeTypes));
+    const mimeSet = addConstant(ctx, new Set(mimeTypes));
     doc.write(`if (!${mimeSet}.has(${accessor}.type)) return INVALID;`);
   }
 }
-function generatePropertiesChecks(doc, ctx2, def, accessor) {
+function generatePropertiesChecks(doc, ctx, def, accessor) {
   if (def.when) {
     throw new ZodCompileUnsupportedError(`check with a custom "when" condition`);
   }
   doc.write(`if (${accessor} == null) return INVALID;`);
   const shape = def.shape;
   for (const key of Reflect.ownKeys(shape)) {
-    const keyExpr = typeof key === "symbol" ? addConstant(ctx2, key) : esc(key);
-    const inputVar = newVar(ctx2);
+    const keyExpr = typeof key === "symbol" ? addConstant(ctx, key) : esc(key);
+    const inputVar = newVar(ctx);
     doc.write(`const ${inputVar} = ${accessor}[${keyExpr}];`);
-    compileChild(doc, ctx2, shape[key], inputVar, false);
+    compileChild(doc, ctx, shape[key], inputVar, false);
   }
 }
-function generatePropertyCheck(doc, ctx2, def, accessor) {
+function generatePropertyCheck(doc, ctx, def, accessor) {
   const propAccessor = `${accessor}[${JSON.stringify(def.property)}]`;
-  generateCheck(doc, ctx2, def.schema, propAccessor);
+  generateCheck(doc, ctx, def.schema, propAccessor);
 }
-function generateOverwriteCheck(doc, ctx2, check2, currentAccessor, newAccessor) {
+function generateOverwriteCheck(doc, ctx, check2, currentAccessor, newAccessor) {
   const tx2 = check2._zod.def.tx;
   if (!tx2) {
     throw new ZodCompileUnsupportedError("overwrite check without a transform function");
@@ -72334,7 +72337,7 @@ function generateOverwriteCheck(doc, ctx2, check2, currentAccessor, newAccessor)
   if (isAsyncFunction(tx2)) {
     throw new ZodCompileAsyncError("z.compile: async overwrite transforms are not supported");
   }
-  const txConst = addConstant(ctx2, tx2);
+  const txConst = addConstant(ctx, tx2);
   doc.write(`const ${newAccessor} = ${txConst}(${currentAccessor});`);
 }
 function throwAsync() {
@@ -72343,15 +72346,15 @@ function throwAsync() {
 function pushIssue(issue2) {
   this.issues.push(issue2);
 }
-function generateCustomRefineCheck(doc, ctx2, check2, accessor) {
+function generateCustomRefineCheck(doc, ctx, check2, accessor) {
   const def = check2._zod.def;
   if (def.fn) {
     if (isAsyncFunction(def.fn)) {
       throw new ZodCompileAsyncError("z.compile: async .refine() predicates are not supported");
     }
-    const fnConst = addUserConstant(ctx2, def.fn);
-    const throwAsyncConst = addConstant(ctx2, throwAsync);
-    const resVar = newVar(ctx2);
+    const fnConst = addUserConstant(ctx, def.fn);
+    const throwAsyncConst = addConstant(ctx, throwAsync);
+    const resVar = newVar(ctx);
     doc.write(`const ${resVar} = ${fnConst}(${accessor});`);
     doc.write(`if (${resVar} instanceof Promise) ${throwAsyncConst}();`);
     doc.write(`if (!${resVar}) return INVALID;`);
@@ -72369,8 +72372,8 @@ function generateCustomRefineCheck(doc, ctx2, check2, accessor) {
         throwAsync();
       return fakePayload.issues.length === 0 ? fakePayload.value : INVALID;
     };
-    const helperConst = addUserConstant(ctx2, helperFn);
-    const outVar = newVar(ctx2);
+    const helperConst = addUserConstant(ctx, helperFn);
+    const outVar = newVar(ctx);
     doc.write(`const ${outVar} = ${helperConst}(${accessor});`);
     doc.write(`if (${outVar} === INVALID) return INVALID;`);
     return outVar;
@@ -72403,65 +72406,65 @@ var PATTERN_IS_COMPLETE = /* @__PURE__ */ new Set([
   "uuid",
   "xid"
 ]);
-function generateStringFormatCheck(doc, ctx2, def, accessor, needsValue = true) {
+function generateStringFormatCheck(doc, ctx, def, accessor, needsValue = true) {
   const fmt = def.format;
   if (fmt === "base64") {
-    const validator = addConstant(ctx2, isValidBase64);
+    const validator = addConstant(ctx, isValidBase64);
     doc.write(`if (!${validator}(${accessor})) return INVALID;`);
     return accessor;
   }
   if (fmt === "base64url") {
-    const validator = addConstant(ctx2, isValidBase64URL);
+    const validator = addConstant(ctx, isValidBase64URL);
     doc.write(`if (!${validator}(${accessor})) return INVALID;`);
     return accessor;
   }
   if (fmt === "jwt") {
-    const validator = addConstant(ctx2, isValidJWT);
-    const alg = addConstant(ctx2, def.alg ?? null);
+    const validator = addConstant(ctx, isValidJWT);
+    const alg = addConstant(ctx, def.alg ?? null);
     doc.write(`if (!${validator}(${accessor}, ${alg})) return INVALID;`);
     return accessor;
   }
   if (fmt === "ipv6") {
-    const validator = addConstant(ctx2, isValidIPv6);
+    const validator = addConstant(ctx, isValidIPv6);
     doc.write(`if (!${validator}(${accessor})) return INVALID;`);
     return accessor;
   }
   if (fmt === "cidrv6") {
-    const validator = addConstant(ctx2, isValidCIDRv6);
+    const validator = addConstant(ctx, isValidCIDRv6);
     doc.write(`if (!${validator}(${accessor})) return INVALID;`);
     return accessor;
   }
   if (fmt === "credit_card") {
-    const validator = addConstant(ctx2, isValidCreditCard);
+    const validator = addConstant(ctx, isValidCreditCard);
     doc.write(`if (!${validator}(${accessor})) return INVALID;`);
     return accessor;
   }
   if (fmt === "iban") {
-    const validator = addConstant(ctx2, isValidIBAN);
+    const validator = addConstant(ctx, isValidIBAN);
     doc.write(`if (!${validator}(${accessor})) return INVALID;`);
     return accessor;
   }
   const formatDef = def;
   if (fmt === "url" || fmt === "httpurl" || formatDef.normalize || formatDef.hostname !== void 0 || formatDef.protocol !== void 0) {
-    const parseConst = addConstant(ctx2, validateURL);
-    const defConst = addConstant(ctx2, def);
-    const trimVar = newVar(ctx2);
-    const urlVar = newVar(ctx2);
+    const parseConst = addConstant(ctx, validateURL);
+    const defConst = addConstant(ctx, def);
+    const trimVar = newVar(ctx);
+    const urlVar = newVar(ctx);
     doc.write(`const ${trimVar} = ${accessor}.trim();`);
     doc.write(`const ${urlVar} = ${parseConst}(${trimVar}, ${defConst});`);
     doc.write(`if (typeof ${urlVar} === "number") return INVALID;`);
     if (formatDef.hostname !== void 0) {
-      const hostnameConst = addConstant(ctx2, urlHostnameOk);
+      const hostnameConst = addConstant(ctx, urlHostnameOk);
       doc.write(`if (!${hostnameConst}(${urlVar}, ${defConst}.hostname)) return INVALID;`);
     }
     if (formatDef.protocol !== void 0) {
-      const protocolConst = addConstant(ctx2, urlProtocolOk);
+      const protocolConst = addConstant(ctx, urlProtocolOk);
       doc.write(`if (!${protocolConst}(${urlVar}, ${defConst}.protocol)) return INVALID;`);
     }
     if (!needsValue)
       return null;
-    const outputVar = newVar(ctx2);
-    const outputExpr = formatDef.normalize ? `${urlVar}.href` : `${addConstant(ctx2, stripTabAndNewline)}(${trimVar})`;
+    const outputVar = newVar(ctx);
+    const outputExpr = formatDef.normalize ? `${urlVar}.href` : `${addConstant(ctx, stripTabAndNewline)}(${trimVar})`;
     doc.write(`const ${outputVar} = ${outputExpr};`);
     return outputVar;
   }
@@ -72469,12 +72472,12 @@ function generateStringFormatCheck(doc, ctx2, def, accessor, needsValue = true) 
   if (customFn) {
     if (isAsyncFunction(customFn))
       throw new ZodCompileUnsupportedError(`async string format ${fmt}`);
-    const fnConst = addConstant(ctx2, customFn);
+    const fnConst = addConstant(ctx, customFn);
     doc.write(`if (!${fnConst}(${accessor})) return INVALID;`);
     return accessor;
   }
   if (PATTERN_IS_COMPLETE.has(fmt) && def.pattern) {
-    const patternConst = addConstant(ctx2, def.pattern);
+    const patternConst = addConstant(ctx, def.pattern);
     doc.write(`${patternConst}.lastIndex = 0;`);
     doc.write(`if (!${patternConst}.test(${accessor})) return INVALID;`);
     return accessor;
@@ -72508,7 +72511,7 @@ function generateStringFormatCheck(doc, ctx2, def, accessor, needsValue = true) 
   }
   return accessor;
 }
-function generateCheck(doc, ctx2, schema2, accessor, needsValue = true) {
+function generateCheck(doc, ctx, schema2, accessor, needsValue = true) {
   const def = schema2._zod.def;
   const type = def.type;
   if (def.coerce) {
@@ -72518,7 +72521,7 @@ function generateCheck(doc, ctx2, schema2, accessor, needsValue = true) {
   let typeAccessor;
   switch (type) {
     case "string":
-      typeAccessor = generateStringCheck(doc, ctx2, schema2, accessor, buildsValue);
+      typeAccessor = generateStringCheck(doc, ctx, schema2, accessor, buildsValue);
       break;
     case "number":
       typeAccessor = generateNumberCheck(doc, schema2, accessor);
@@ -72556,79 +72559,79 @@ function generateCheck(doc, ctx2, schema2, accessor, needsValue = true) {
       typeAccessor = generateDateCheck(doc, accessor);
       break;
     case "object":
-      typeAccessor = generateObjectCheck(doc, ctx2, schema2, accessor, buildsValue);
+      typeAccessor = generateObjectCheck(doc, ctx, schema2, accessor, buildsValue);
       break;
     case "optional":
-      typeAccessor = generateOptionalCheck(doc, ctx2, schema2, accessor, buildsValue);
+      typeAccessor = generateOptionalCheck(doc, ctx, schema2, accessor, buildsValue);
       break;
     case "nullable":
-      typeAccessor = generateNullableCheck(doc, ctx2, schema2, accessor, buildsValue);
+      typeAccessor = generateNullableCheck(doc, ctx, schema2, accessor, buildsValue);
       break;
     case "array":
-      typeAccessor = generateArrayCheck(doc, ctx2, schema2, accessor, buildsValue);
+      typeAccessor = generateArrayCheck(doc, ctx, schema2, accessor, buildsValue);
       break;
     case "literal":
-      typeAccessor = generateLiteralCheck(doc, ctx2, schema2, accessor);
+      typeAccessor = generateLiteralCheck(doc, ctx, schema2, accessor);
       break;
     case "enum":
-      typeAccessor = generateEnumCheck(doc, ctx2, schema2, accessor);
+      typeAccessor = generateEnumCheck(doc, ctx, schema2, accessor);
       break;
     case "readonly": {
-      const innerOut = generateWrapperCheck(doc, ctx2, schema2, accessor);
-      const frozenVar = newVar(ctx2);
+      const innerOut = generateWrapperCheck(doc, ctx, schema2, accessor);
+      const frozenVar = newVar(ctx);
       doc.write(`const ${frozenVar} = Object.freeze(${innerOut});`);
       typeAccessor = frozenVar;
       break;
     }
     case "success":
-      generateWrapperCheck(doc, ctx2, schema2, accessor);
+      generateWrapperCheck(doc, ctx, schema2, accessor);
       typeAccessor = "true";
       break;
     case "default":
     case "prefault":
-      typeAccessor = generateDefaultCheck(doc, ctx2, schema2, accessor);
+      typeAccessor = generateDefaultCheck(doc, ctx, schema2, accessor);
       break;
     case "nonoptional":
-      typeAccessor = generateNonOptionalCheck(doc, ctx2, schema2, accessor);
+      typeAccessor = generateNonOptionalCheck(doc, ctx, schema2, accessor);
       break;
     case "tuple":
-      typeAccessor = generateTupleCheck(doc, ctx2, schema2, accessor);
+      typeAccessor = generateTupleCheck(doc, ctx, schema2, accessor);
       break;
     case "union":
-      typeAccessor = generateUnionCheck(doc, ctx2, schema2, accessor);
+      typeAccessor = generateUnionCheck(doc, ctx, schema2, accessor);
       break;
     case "intersection":
-      typeAccessor = generateIntersectionCheck(doc, ctx2, schema2, accessor);
+      typeAccessor = generateIntersectionCheck(doc, ctx, schema2, accessor);
       break;
     case "record":
-      typeAccessor = generateRecordCheck(doc, ctx2, schema2, accessor);
+      typeAccessor = generateRecordCheck(doc, ctx, schema2, accessor);
       break;
     case "map":
-      typeAccessor = generateMapCheck(doc, ctx2, schema2, accessor);
+      typeAccessor = generateMapCheck(doc, ctx, schema2, accessor);
       break;
     case "set":
-      typeAccessor = generateSetCheck(doc, ctx2, schema2, accessor);
+      typeAccessor = generateSetCheck(doc, ctx, schema2, accessor);
       break;
     case "file":
       typeAccessor = generateFileCheck(doc, accessor);
       break;
     case "template_literal":
-      typeAccessor = generateTemplateLiteralCheck(doc, ctx2, schema2, accessor);
+      typeAccessor = generateTemplateLiteralCheck(doc, ctx, schema2, accessor);
       break;
     case "lazy":
-      typeAccessor = generateLazyCheck(doc, ctx2, schema2, accessor);
+      typeAccessor = generateLazyCheck(doc, ctx, schema2, accessor);
       break;
     case "pipe":
-      typeAccessor = generatePipeCheck(doc, ctx2, schema2, accessor);
+      typeAccessor = generatePipeCheck(doc, ctx, schema2, accessor);
       break;
     case "custom":
-      typeAccessor = generateCustomCheck(doc, ctx2, schema2, accessor);
+      typeAccessor = generateCustomCheck(doc, ctx, schema2, accessor);
       break;
     case "transform":
-      typeAccessor = generateTransformCheck(doc, ctx2, schema2, accessor);
+      typeAccessor = generateTransformCheck(doc, ctx, schema2, accessor);
       break;
     case "catch":
-      typeAccessor = generateCatchCheck(doc, ctx2, schema2, accessor);
+      typeAccessor = generateCatchCheck(doc, ctx, schema2, accessor);
       break;
     default: {
       throw new ZodCompileUnsupportedError(`schema type ${type}`);
@@ -72636,14 +72639,14 @@ function generateCheck(doc, ctx2, schema2, accessor, needsValue = true) {
   }
   if (typeAccessor === null)
     return null;
-  return generateChecks(doc, ctx2, schema2, typeAccessor);
+  return generateChecks(doc, ctx, schema2, typeAccessor);
 }
-function generateStringCheck(doc, ctx2, schema2, accessor, needsValue = true) {
+function generateStringCheck(doc, ctx, schema2, accessor, needsValue = true) {
   doc.write(`if (typeof ${accessor} !== "string") return INVALID;`);
   const def = schema2._zod.def;
   if (def.format === void 0)
     return accessor;
-  return generateStringFormatCheck(doc, ctx2, def, accessor, needsValue);
+  return generateStringFormatCheck(doc, ctx, def, accessor, needsValue);
 }
 function generateNumberCheck(doc, schema2, accessor) {
   doc.write(`if (typeof ${accessor} !== "number" || !Number.isFinite(${accessor})) return INVALID;`);
@@ -72696,14 +72699,14 @@ function generateDateCheck(doc, accessor) {
   doc.write(`if (!(${accessor} instanceof Date) || Number.isNaN(${accessor}.getTime())) return INVALID;`);
   return accessor;
 }
-function generateObjectCheck(doc, ctx2, schema2, accessor, buildsValue = true) {
+function generateObjectCheck(doc, ctx, schema2, accessor, buildsValue = true) {
   const def = schema2._zod.def;
   doc.write(`if (typeof ${accessor} !== "object" || ${accessor} === null || Array.isArray(${accessor})) return INVALID;`);
   const shape = def.shape;
   const keys = Object.keys(shape);
   const symbolKeys = Object.getOwnPropertySymbols(shape);
   const allKeys = symbolKeys.length ? [...keys, ...symbolKeys] : keys;
-  const keyExpr = (k) => typeof k === "symbol" ? addConstant(ctx2, k) : esc(k);
+  const keyExpr = (k) => typeof k === "symbol" ? addConstant(ctx, k) : esc(k);
   const propKey = (k) => typeof k === "symbol" ? `[${keyExpr(k)}]` : esc(k);
   const propShape = shape;
   if (keys.includes("__proto__")) {
@@ -72713,13 +72716,13 @@ function generateObjectCheck(doc, ctx2, schema2, accessor, buildsValue = true) {
   for (const key of allKeys) {
     const propSchema = propShape[key];
     const kx = keyExpr(key);
-    const inputVar = newVar(ctx2);
+    const inputVar = newVar(ctx);
     doc.write(`const ${inputVar} = ${accessor}[${kx}];`);
     if (propSchema._zod.optin !== void 0) {
-      const outputVar2 = newVar(ctx2);
+      const outputVar2 = newVar(ctx);
       doc.write(`let ${outputVar2} = (() => {`);
       doc.indented((d) => {
-        const outputAccessor = compileChild(d, ctx2, propSchema, inputVar);
+        const outputAccessor = compileChild(d, ctx, propSchema, inputVar);
         d.write(`return ${outputAccessor};`);
       });
       doc.write(`})();`);
@@ -72738,7 +72741,7 @@ function generateObjectCheck(doc, ctx2, schema2, accessor, buildsValue = true) {
       if (requiresPresenceCheck(propSchema)) {
         doc.write(`if (!(${kx} in ${accessor})) return INVALID;`);
       }
-      const outputAccessor = compileChild(doc, ctx2, propSchema, inputVar, buildsValue);
+      const outputAccessor = compileChild(doc, ctx, propSchema, inputVar, buildsValue);
       if (outputAccessor !== null)
         propOutputs.set(key, outputAccessor);
     }
@@ -72760,19 +72763,19 @@ function generateObjectCheck(doc, ctx2, schema2, accessor, buildsValue = true) {
       unknownKeysMode = "schema";
     }
   }
-  const outputVar = newVar(ctx2);
+  const outputVar = newVar(ctx);
   const hasConditionalKeys = allKeys.some((k) => mayOmitUndefined(propShape[k]) || dropsWhenAbsent(propShape[k]));
   if (!buildsValue) {
     if (unknownKeysMode === "schema") {
-      const knownSet = keys.length > 0 ? addConstant(ctx2, new Set(keys)) : null;
+      const knownSet = keys.length > 0 ? addConstant(ctx, new Set(keys)) : null;
       doc.write(`for (const k in ${accessor}) {`);
       doc.indented((d) => {
         d.write(`if (k === "__proto__") continue;`);
         if (knownSet)
           d.write(`if (${knownSet}.has(k)) continue;`);
-        const valVar = newVar(ctx2);
+        const valVar = newVar(ctx);
         d.write(`const ${valVar} = ${accessor}[k];`);
-        compileChild(d, ctx2, catchall, valVar, false);
+        compileChild(d, ctx, catchall, valVar, false);
       });
       doc.write(`}`);
     }
@@ -72796,7 +72799,7 @@ function generateObjectCheck(doc, ctx2, schema2, accessor, buildsValue = true) {
     }
   }
   if (unknownKeysMode !== "none") {
-    const knownSet = keys.length > 0 ? addConstant(ctx2, new Set(keys)) : null;
+    const knownSet = keys.length > 0 ? addConstant(ctx, new Set(keys)) : null;
     doc.write(`for (const k in ${accessor}) {`);
     doc.indented((d) => {
       d.write(`if (k === "__proto__") continue;`);
@@ -72805,9 +72808,9 @@ function generateObjectCheck(doc, ctx2, schema2, accessor, buildsValue = true) {
       if (unknownKeysMode === "passthrough") {
         d.write(`${outputVar}[k] = ${accessor}[k];`);
       } else {
-        const valVar = newVar(ctx2);
+        const valVar = newVar(ctx);
         d.write(`const ${valVar} = ${accessor}[k];`);
-        const catchallOut = compileChild(d, ctx2, catchall, valVar);
+        const catchallOut = compileChild(d, ctx, catchall, valVar);
         d.write(`${outputVar}[k] = ${catchallOut};`);
       }
     });
@@ -72815,20 +72818,20 @@ function generateObjectCheck(doc, ctx2, schema2, accessor, buildsValue = true) {
   }
   return outputVar;
 }
-function generateOptionalCheck(doc, ctx2, schema2, accessor, buildsValue = true) {
+function generateOptionalCheck(doc, ctx, schema2, accessor, buildsValue = true) {
   const def = schema2._zod.def;
   if (isExactOptional(schema2)) {
-    return generateCheck(doc, ctx2, def.innerType, accessor, buildsValue);
+    return generateCheck(doc, ctx, def.innerType, accessor, buildsValue);
   }
   if (def.innerType._zod.optin === "defaulted") {
-    const outputVar2 = newVar(ctx2);
-    const branchVar = newVar(ctx2);
+    const outputVar2 = newVar(ctx);
+    const branchVar = newVar(ctx);
     doc.write(`let ${outputVar2};`);
     doc.write(`if (${accessor} === undefined) {`);
     doc.indented((d) => {
       d.write(`const ${branchVar} = (() => {`);
       d.indented((d2) => {
-        const innerOutput = generateCheck(d2, ctx2, def.innerType, accessor);
+        const innerOutput = generateCheck(d2, ctx, def.innerType, accessor);
         d2.write(`return ${innerOutput};`);
       });
       d.write(`})();`);
@@ -72836,18 +72839,18 @@ function generateOptionalCheck(doc, ctx2, schema2, accessor, buildsValue = true)
     });
     doc.write(`} else {`);
     doc.indented((d) => {
-      const innerOutput = generateCheck(d, ctx2, def.innerType, accessor);
+      const innerOutput = generateCheck(d, ctx, def.innerType, accessor);
       d.write(`${outputVar2} = ${innerOutput};`);
     });
     doc.write(`}`);
     return outputVar2;
   }
-  const outputVar = buildsValue ? newVar(ctx2) : null;
+  const outputVar = buildsValue ? newVar(ctx) : null;
   if (outputVar)
     doc.write(`let ${outputVar};`);
   doc.write(`if (${accessor} !== undefined) {`);
   doc.indented((d) => {
-    const innerOutput = generateCheck(d, ctx2, def.innerType, accessor, buildsValue);
+    const innerOutput = generateCheck(d, ctx, def.innerType, accessor, buildsValue);
     if (outputVar && innerOutput !== null)
       d.write(`${outputVar} = ${innerOutput};`);
   });
@@ -72966,14 +72969,14 @@ function mayOutputUndefined(schema2) {
       return true;
   }
 }
-function generateNullableCheck(doc, ctx2, schema2, accessor, buildsValue = true) {
+function generateNullableCheck(doc, ctx, schema2, accessor, buildsValue = true) {
   const def = schema2._zod.def;
-  const outputVar = buildsValue ? newVar(ctx2) : null;
+  const outputVar = buildsValue ? newVar(ctx) : null;
   if (outputVar)
     doc.write(`let ${outputVar} = null;`);
   doc.write(`if (${accessor} !== null) {`);
   doc.indented((d) => {
-    const innerOutput = generateCheck(d, ctx2, def.innerType, accessor, buildsValue);
+    const innerOutput = generateCheck(d, ctx, def.innerType, accessor, buildsValue);
     if (outputVar && innerOutput !== null)
       d.write(`${outputVar} = ${innerOutput};`);
   });
@@ -72985,36 +72988,36 @@ function generateSizeGate(doc, schema2, size) {
     doc.write(`if (${size} > ${numericOperand(max, check2._zod.def.check)}) return INVALID;`);
   }
 }
-function generateArrayCheck(doc, ctx2, schema2, accessor, buildsValue = true) {
+function generateArrayCheck(doc, ctx, schema2, accessor, buildsValue = true) {
   const def = schema2._zod.def;
   doc.write(`if (!Array.isArray(${accessor})) return INVALID;`);
   generateSizeGate(doc, schema2, `${accessor}.length`);
-  const outputVar = buildsValue ? newVar(ctx2) : null;
-  const iVar = newVar(ctx2);
-  const elemVar = newVar(ctx2);
+  const outputVar = buildsValue ? newVar(ctx) : null;
+  const iVar = newVar(ctx);
+  const elemVar = newVar(ctx);
   if (outputVar)
     doc.write(`const ${outputVar} = new Array(${accessor}.length);`);
   doc.write(`for (let ${iVar} = 0; ${iVar} < ${accessor}.length; ${iVar}++) {`);
   doc.indented((d) => {
     d.write(`const ${elemVar} = ${accessor}[${iVar}];`);
-    const elemOutput = compileChild(d, ctx2, def.element, elemVar, buildsValue);
+    const elemOutput = compileChild(d, ctx, def.element, elemVar, buildsValue);
     if (outputVar && elemOutput !== null)
       d.write(`${outputVar}[${iVar}] = ${elemOutput};`);
   });
   doc.write(`}`);
   return outputVar;
 }
-function generateLiteralCheck(doc, ctx2, schema2, accessor) {
+function generateLiteralCheck(doc, ctx, schema2, accessor) {
   const def = schema2._zod.def;
   const values = def.values;
   if (values.length !== 1) {
-    const literalSet = addConstant(ctx2, new Set(values));
+    const literalSet = addConstant(ctx, new Set(values));
     doc.write(`if (!${literalSet}.has(${accessor})) return INVALID;`);
     return accessor;
   }
   const value = values[0];
   if (typeof value === "number" && Number.isNaN(value)) {
-    const literalSet = addConstant(ctx2, new Set(values));
+    const literalSet = addConstant(ctx, new Set(values));
     doc.write(`if (!${literalSet}.has(${accessor})) return INVALID;`);
     return accessor;
   }
@@ -73033,37 +73036,37 @@ function generateLiteralCheck(doc, ctx2, schema2, accessor) {
   }
   return accessor;
 }
-function generateEnumCheck(doc, ctx2, schema2, accessor) {
+function generateEnumCheck(doc, ctx, schema2, accessor) {
   const values = schema2._zod.values;
   if (!values) {
     throw new ZodCompileUnsupportedError("enum schema without enumerated values");
   }
-  const enumSet = addConstant(ctx2, values);
+  const enumSet = addConstant(ctx, values);
   doc.write(`if (!${enumSet}.has(${accessor})) return INVALID;`);
   return accessor;
 }
-function generateWrapperCheck(doc, ctx2, schema2, accessor) {
+function generateWrapperCheck(doc, ctx, schema2, accessor) {
   const def = schema2._zod.def;
-  return generateCheck(doc, ctx2, def.innerType, accessor);
+  return generateCheck(doc, ctx, def.innerType, accessor);
 }
-function generateDefaultCheck(doc, ctx2, schema2, accessor) {
+function generateDefaultCheck(doc, ctx, schema2, accessor) {
   const def = schema2._zod.def;
   const descriptor = Object.getOwnPropertyDescriptor(schema2._zod.def, "defaultValue");
   const defaultGetter = descriptor ? () => schema2._zod.def.defaultValue : void 0;
   if (schema2._zod.def.type === "prefault") {
     if (!defaultGetter) {
-      return generateCheck(doc, ctx2, def.innerType, accessor);
+      return generateCheck(doc, ctx, def.innerType, accessor);
     }
-    const defaultFn = addConstant(ctx2, defaultGetter);
-    const inputVar = newVar(ctx2);
+    const defaultFn = addConstant(ctx, defaultGetter);
+    const inputVar = newVar(ctx);
     doc.write(`let ${inputVar} = ${accessor};`);
     doc.write(`if (${accessor} === undefined) ${inputVar} = ${defaultFn}();`);
-    return generateCheck(doc, ctx2, def.innerType, inputVar);
+    return generateCheck(doc, ctx, def.innerType, inputVar);
   }
-  const outputVar = newVar(ctx2);
+  const outputVar = newVar(ctx);
   if (defaultGetter) {
-    const defaultFn = addConstant(ctx2, defaultGetter);
-    const cloneFn = addConstant(ctx2, shallowClone);
+    const defaultFn = addConstant(ctx, defaultGetter);
+    const cloneFn = addConstant(ctx, shallowClone);
     doc.write(`let ${outputVar};`);
     doc.write(`if (${accessor} === undefined) {`);
     doc.indented((d) => {
@@ -73071,7 +73074,7 @@ function generateDefaultCheck(doc, ctx2, schema2, accessor) {
     });
     doc.write(`} else {`);
     doc.indented((d) => {
-      const innerOutput = generateCheck(d, ctx2, def.innerType, accessor);
+      const innerOutput = generateCheck(d, ctx, def.innerType, accessor);
       d.write(`${outputVar} = ${innerOutput} === undefined ? ${cloneFn}(${defaultFn}()) : ${innerOutput};`);
     });
     doc.write(`}`);
@@ -73079,22 +73082,22 @@ function generateDefaultCheck(doc, ctx2, schema2, accessor) {
     doc.write(`let ${outputVar};`);
     doc.write(`if (${accessor} !== undefined) {`);
     doc.indented((d) => {
-      const innerOutput = generateCheck(d, ctx2, def.innerType, accessor);
+      const innerOutput = generateCheck(d, ctx, def.innerType, accessor);
       d.write(`${outputVar} = ${innerOutput};`);
     });
     doc.write(`}`);
   }
   return outputVar;
 }
-function generateNonOptionalCheck(doc, ctx2, schema2, accessor) {
+function generateNonOptionalCheck(doc, ctx, schema2, accessor) {
   const def = schema2._zod.def;
-  const innerOutput = generateCheck(doc, ctx2, def.innerType, accessor);
-  const outputVar = newVar(ctx2);
+  const innerOutput = generateCheck(doc, ctx, def.innerType, accessor);
+  const outputVar = newVar(ctx);
   doc.write(`const ${outputVar} = ${innerOutput};`);
   doc.write(`if (${outputVar} === undefined) return INVALID;`);
   return outputVar;
 }
-function generateTupleCheck(doc, ctx2, schema2, accessor) {
+function generateTupleCheck(doc, ctx, schema2, accessor) {
   const def = schema2._zod.def;
   const items = def.items;
   const rest = def.rest;
@@ -73106,7 +73109,7 @@ function generateTupleCheck(doc, ctx2, schema2, accessor) {
   } else {
     doc.write(`if (${accessor}.length < ${optinStart} || ${accessor}.length > ${items.length}) return INVALID;`);
   }
-  const outputVar = newVar(ctx2);
+  const outputVar = newVar(ctx);
   doc.write(`const ${outputVar} = [];`);
   for (let i = 0; i < items.length; i++) {
     const itemSchema = items[i];
@@ -73115,9 +73118,9 @@ function generateTupleCheck(doc, ctx2, schema2, accessor) {
       doc.indented((d) => {
         d.write(`if (${i} < ${accessor}.length) {`);
         d.indented((d2) => {
-          const elemVar = newVar(ctx2);
+          const elemVar = newVar(ctx);
           d2.write(`const ${elemVar} = ${accessor}[${i}];`);
-          const elemOutput = compileChild(d2, ctx2, itemSchema, elemVar);
+          const elemOutput = compileChild(d2, ctx, itemSchema, elemVar);
           d2.write(`${outputVar}[${i}] = ${elemOutput};`);
         });
         d.write(`} else {`);
@@ -73126,12 +73129,12 @@ function generateTupleCheck(doc, ctx2, schema2, accessor) {
             d2.write(`${outputVar}.length = ${i};`);
             return;
           }
-          const elemVar = newVar(ctx2);
-          const branchVar = newVar(ctx2);
+          const elemVar = newVar(ctx);
+          const branchVar = newVar(ctx);
           d2.write(`const ${elemVar} = undefined;`);
           d2.write(`const ${branchVar} = (() => {`);
           d2.indented((d3) => {
-            const elemOutput = compileChild(d3, ctx2, itemSchema, elemVar);
+            const elemOutput = compileChild(d3, ctx, itemSchema, elemVar);
             d3.write(`return ${elemOutput};`);
           });
           d2.write(`})();`);
@@ -73142,19 +73145,19 @@ function generateTupleCheck(doc, ctx2, schema2, accessor) {
       });
       doc.write(`}`);
     } else {
-      const elemVar = newVar(ctx2);
+      const elemVar = newVar(ctx);
       doc.write(`const ${elemVar} = ${accessor}[${i}];`);
-      const elemOutput = compileChild(doc, ctx2, itemSchema, elemVar);
+      const elemOutput = compileChild(doc, ctx, itemSchema, elemVar);
       doc.write(`${outputVar}[${i}] = ${elemOutput};`);
     }
   }
   if (rest) {
-    const iVar = newVar(ctx2);
-    const elemVar = newVar(ctx2);
+    const iVar = newVar(ctx);
+    const elemVar = newVar(ctx);
     doc.write(`for (let ${iVar} = ${items.length}; ${iVar} < ${accessor}.length; ${iVar}++) {`);
     doc.indented((d) => {
       d.write(`const ${elemVar} = ${accessor}[${iVar}];`);
-      const elemOutput = compileChild(d, ctx2, rest, elemVar);
+      const elemOutput = compileChild(d, ctx, rest, elemVar);
       d.write(`${outputVar}[${iVar}] = ${elemOutput};`);
     });
     doc.write(`}`);
@@ -73169,11 +73172,11 @@ function getTupleOptStart2(items, key) {
   }
   return 0;
 }
-function generateUnionCheck(doc, ctx2, schema2, accessor) {
+function generateUnionCheck(doc, ctx, schema2, accessor) {
   const def = schema2._zod.def;
   const options = def.options;
   if (def.discriminator) {
-    return generateDiscriminatedUnionCheck(doc, ctx2, def, accessor);
+    return generateDiscriminatedUnionCheck(doc, ctx, def, accessor);
   }
   if (def.inclusive === false) {
     throw new ZodCompileUnsupportedError("exclusive unions (z.xor)");
@@ -73183,16 +73186,16 @@ function generateUnionCheck(doc, ctx2, schema2, accessor) {
     return accessor;
   }
   if (options.length === 1) {
-    return generateCheck(doc, ctx2, options[0], accessor);
+    return generateCheck(doc, ctx, options[0], accessor);
   }
   const allLiterals = options.every((opt2) => opt2._zod.def.type === "literal" && !opt2._zod.def.checks?.length);
   if (allLiterals) {
     const values = new Set(options.flatMap((opt2) => opt2._zod.def.values));
-    const valuesConst = addConstant(ctx2, values);
+    const valuesConst = addConstant(ctx, values);
     doc.write(`if (!${valuesConst}.has(${accessor})) return INVALID;`);
     return accessor;
   }
-  const outputVar = newVar(ctx2);
+  const outputVar = newVar(ctx);
   doc.write(`let ${outputVar};`);
   for (let i = 0; i < options.length; i++) {
     const opt2 = options[i];
@@ -73202,7 +73205,7 @@ function generateUnionCheck(doc, ctx2, schema2, accessor) {
       doc.write(`if (${outputVar} === INVALID) ${outputVar} = (() => {`);
     }
     doc.indented((d) => {
-      const branchOutput = generateCheck(d, ctx2, opt2, accessor);
+      const branchOutput = generateCheck(d, ctx, opt2, accessor);
       d.write(`return ${branchOutput};`);
     });
     doc.write(`})();`);
@@ -73210,7 +73213,7 @@ function generateUnionCheck(doc, ctx2, schema2, accessor) {
   doc.write(`if (${outputVar} === INVALID) return INVALID;`);
   return outputVar;
 }
-function generateDiscriminatedUnionCheck(doc, ctx2, def, accessor) {
+function generateDiscriminatedUnionCheck(doc, ctx, def, accessor) {
   if (def.unionFallback) {
     throw new ZodCompileUnsupportedError("discriminated union with unionFallback");
   }
@@ -73218,8 +73221,8 @@ function generateDiscriminatedUnionCheck(doc, ctx2, def, accessor) {
     doc.write("return INVALID;");
     return accessor;
   }
-  const discVar = newVar(ctx2);
-  const outputVar = newVar(ctx2);
+  const discVar = newVar(ctx);
+  const outputVar = newVar(ctx);
   doc.write(`const ${discVar} = ${accessor}?.[${esc(def.discriminator)}];`);
   doc.write(`let ${outputVar};`);
   let firstBranch = true;
@@ -73235,11 +73238,11 @@ function generateDiscriminatedUnionCheck(doc, ctx2, def, accessor) {
       }
       claimed.add(value);
     }
-    const conditions = Array.from(values, (value) => literalEquality(ctx2, discVar, value));
+    const conditions = Array.from(values, (value) => literalEquality(ctx, discVar, value));
     const prefix = firstBranch ? "if" : "else if";
     doc.write(`${prefix} (${conditions.join(" || ")}) {`);
     doc.indented((d) => {
-      const branchOutput = generateCheck(d, ctx2, option, accessor);
+      const branchOutput = generateCheck(d, ctx, option, accessor);
       d.write(`${outputVar} = ${branchOutput};`);
     });
     doc.write(`}`);
@@ -73248,7 +73251,7 @@ function generateDiscriminatedUnionCheck(doc, ctx2, def, accessor) {
   doc.write(`else { return INVALID; }`);
   return outputVar;
 }
-function literalEquality(ctx2, accessor, value) {
+function literalEquality(ctx, accessor, value) {
   if (typeof value === "string")
     return `${accessor} === ${esc(value)}`;
   if (typeof value === "number") {
@@ -73265,29 +73268,29 @@ function literalEquality(ctx2, accessor, value) {
   if (typeof value === "bigint")
     return `${accessor} === ${value}n`;
   if (typeof value === "symbol") {
-    const symbolConst = addConstant(ctx2, value);
+    const symbolConst = addConstant(ctx, value);
     return `${accessor} === ${symbolConst}`;
   }
   throw new ZodCompileUnsupportedError(`literal discriminator value ${String(value)}`);
 }
-function generateIntersectionCheck(doc, ctx2, schema2, accessor) {
+function generateIntersectionCheck(doc, ctx, schema2, accessor) {
   const def = schema2._zod.def;
-  ctx2.definite = false;
-  const leftOutput = compileChild(doc, ctx2, def.left, accessor);
-  const rightOutput = compileChild(doc, ctx2, def.right, accessor);
-  const mergeConst = addConstant(ctx2, mergeValues);
-  const mergedVar = newVar(ctx2);
+  ctx.definite = false;
+  const leftOutput = compileChild(doc, ctx, def.left, accessor);
+  const rightOutput = compileChild(doc, ctx, def.right, accessor);
+  const mergeConst = addConstant(ctx, mergeValues);
+  const mergedVar = newVar(ctx);
   doc.write(`const ${mergedVar} = ${mergeConst}(${leftOutput}, ${rightOutput});`);
   doc.write(`if (!${mergedVar}.valid) return INVALID;`);
   return `${mergedVar}.data`;
 }
-function generateRecordCheck(doc, ctx2, schema2, accessor) {
+function generateRecordCheck(doc, ctx, schema2, accessor) {
   const def = schema2._zod.def;
-  const isPlainObjectConst = addConstant(ctx2, isPlainObject);
+  const isPlainObjectConst = addConstant(ctx, isPlainObject);
   doc.write(`if (!${isPlainObjectConst}(${accessor})) return INVALID;`);
-  const outputVar = newVar(ctx2);
-  const kVar = newVar(ctx2);
-  const valVar = newVar(ctx2);
+  const outputVar = newVar(ctx);
+  const kVar = newVar(ctx);
+  const valVar = newVar(ctx);
   doc.write(`const ${outputVar} = {};`);
   const recordDef = def;
   const keyValues = recordDef.partial ? void 0 : def.keyType._zod.values;
@@ -73302,14 +73305,14 @@ function generateRecordCheck(doc, ctx2, schema2, accessor) {
         throw new ZodCompileUnsupportedError('record key "__proto__"');
       }
       inputKeys.push(inputKey);
-      const keyConst = addConstant(ctx2, key);
-      const outKey = generateCheck(doc, ctx2, def.keyType, keyConst);
-      const valueVar = newVar(ctx2);
-      doc.write(`const ${valueVar} = ${accessor}[${literalPropertyKey(ctx2, inputKey)}];`);
-      const valOutput = compileChild(doc, ctx2, def.valueType, valueVar);
+      const keyConst = addConstant(ctx, key);
+      const outKey = generateCheck(doc, ctx, def.keyType, keyConst);
+      const valueVar = newVar(ctx);
+      doc.write(`const ${valueVar} = ${accessor}[${literalPropertyKey(ctx, inputKey)}];`);
+      const valOutput = compileChild(doc, ctx, def.valueType, valueVar);
       doc.write(`${outputVar}[${outKey}] = ${valOutput};`);
     }
-    const knownKeysConst = addConstant(ctx2, new Set(inputKeys));
+    const knownKeysConst = addConstant(ctx, new Set(inputKeys));
     doc.write(`for (const ${kVar} in ${accessor}) {`);
     doc.indented((d) => {
       d.write(`if (${knownKeysConst}.has(${kVar})) continue;`);
@@ -73328,11 +73331,11 @@ function generateRecordCheck(doc, ctx2, schema2, accessor) {
     const isLoose = def.mode === "loose";
     const keyFn = compileFn(def.keyType);
     if (keyFn.definite === false)
-      ctx2.definite = false;
-    const keyFast = addConstant(ctx2, keyFn);
-    const numericConst = addConstant(ctx2, number);
-    const outKeyVar = newVar(ctx2);
-    emitOwnKeys(doc, ctx2, accessor, kVar, (d) => {
+      ctx.definite = false;
+    const keyFast = addConstant(ctx, keyFn);
+    const numericConst = addConstant(ctx, number);
+    const outKeyVar = newVar(ctx);
+    emitOwnKeys(doc, ctx, accessor, kVar, (d) => {
       d.write(`let ${outKeyVar} = ${keyFast}(${kVar});`);
       d.write(`if (${outKeyVar} === INVALID && typeof ${kVar} === "string" && ${numericConst}.test(${kVar})) ${outKeyVar} = ${keyFast}(Number(${kVar}));`);
       if (isLoose) {
@@ -73341,25 +73344,25 @@ function generateRecordCheck(doc, ctx2, schema2, accessor) {
         d.write(`if (${outKeyVar} === INVALID) return INVALID;`);
       }
       d.write(`if (${outKeyVar} === "__proto__") continue;`);
-      const valueVar = newVar(ctx2);
+      const valueVar = newVar(ctx);
       d.write(`const ${valueVar} = ${accessor}[${kVar}];`);
-      const valOutput = compileChild(d, ctx2, def.valueType, valueVar);
+      const valOutput = compileChild(d, ctx, def.valueType, valueVar);
       d.write(`${outputVar}[${outKeyVar}] = ${valOutput};`);
     });
     return outputVar;
   }
-  emitOwnKeys(doc, ctx2, accessor, kVar, (d) => {
+  emitOwnKeys(doc, ctx, accessor, kVar, (d) => {
     d.write(`const ${valVar} = ${accessor}[${kVar}];`);
-    const valOutput = compileChild(d, ctx2, def.valueType, valVar);
+    const valOutput = compileChild(d, ctx, def.valueType, valVar);
     d.write(`${outputVar}[${kVar}] = ${valOutput};`);
   }, `return INVALID;`);
   return outputVar;
 }
-function emitOwnKeys(doc, ctx2, accessor, kVar, body, onSymbol) {
-  const propIsEnumerableConst = addConstant(ctx2, Object.prototype.propertyIsEnumerable);
-  const symsVar = newVar(ctx2);
-  const keysVar = newVar(ctx2);
-  const iVar = newVar(ctx2);
+function emitOwnKeys(doc, ctx, accessor, kVar, body, onSymbol) {
+  const propIsEnumerableConst = addConstant(ctx, Object.prototype.propertyIsEnumerable);
+  const symsVar = newVar(ctx);
+  const keysVar = newVar(ctx);
+  const iVar = newVar(ctx);
   doc.write(`const ${symsVar} = Object.getOwnPropertySymbols(${accessor});`);
   doc.write(`const ${keysVar} = Object.getOwnPropertyNames(${accessor});`);
   doc.write(`for (let ${iVar} = 0; ${iVar} < ${keysVar}.length; ${iVar}++) {`);
@@ -73380,38 +73383,38 @@ function emitOwnKeys(doc, ctx2, accessor, kVar, body, onSymbol) {
   });
   doc.write(`}`);
 }
-function literalPropertyKey(ctx2, key) {
+function literalPropertyKey(ctx, key) {
   if (typeof key === "string")
     return esc(key);
-  return addConstant(ctx2, key);
+  return addConstant(ctx, key);
 }
-function generateMapCheck(doc, ctx2, schema2, accessor) {
+function generateMapCheck(doc, ctx, schema2, accessor) {
   const def = schema2._zod.def;
   doc.write(`if (!(${accessor} instanceof Map)) return INVALID;`);
   generateSizeGate(doc, schema2, `${accessor}.size`);
-  const outputVar = newVar(ctx2);
-  const kVar = newVar(ctx2);
-  const valVar = newVar(ctx2);
+  const outputVar = newVar(ctx);
+  const kVar = newVar(ctx);
+  const valVar = newVar(ctx);
   doc.write(`const ${outputVar} = new Map();`);
   doc.write(`for (const [${kVar}, ${valVar}] of ${accessor}) {`);
   doc.indented((d) => {
-    const keyOutput = generateCheck(d, ctx2, def.keyType, kVar);
-    const valOutput = generateCheck(d, ctx2, def.valueType, valVar);
+    const keyOutput = generateCheck(d, ctx, def.keyType, kVar);
+    const valOutput = generateCheck(d, ctx, def.valueType, valVar);
     d.write(`${outputVar}.set(${keyOutput}, ${valOutput});`);
   });
   doc.write(`}`);
   return outputVar;
 }
-function generateSetCheck(doc, ctx2, schema2, accessor) {
+function generateSetCheck(doc, ctx, schema2, accessor) {
   const def = schema2._zod.def;
   doc.write(`if (!(${accessor} instanceof Set)) return INVALID;`);
   generateSizeGate(doc, schema2, `${accessor}.size`);
-  const outputVar = newVar(ctx2);
-  const valVar = newVar(ctx2);
+  const outputVar = newVar(ctx);
+  const valVar = newVar(ctx);
   doc.write(`const ${outputVar} = new Set();`);
   doc.write(`for (const ${valVar} of ${accessor}) {`);
   doc.indented((d) => {
-    const valOutput = generateCheck(d, ctx2, def.valueType, valVar);
+    const valOutput = generateCheck(d, ctx, def.valueType, valVar);
     d.write(`${outputVar}.add(${valOutput});`);
   });
   doc.write(`}`);
@@ -73421,20 +73424,20 @@ function generateFileCheck(doc, accessor) {
   doc.write(`if (!(${accessor} instanceof File)) return INVALID;`);
   return accessor;
 }
-function generateTemplateLiteralCheck(doc, ctx2, schema2, accessor) {
+function generateTemplateLiteralCheck(doc, ctx, schema2, accessor) {
   doc.write(`if (typeof ${accessor} !== "string") return INVALID;`);
   const pattern = schema2._zod.pattern;
   if (pattern) {
-    const patternConst = addConstant(ctx2, pattern);
+    const patternConst = addConstant(ctx, pattern);
     doc.write(`${patternConst}.lastIndex = 0;`);
     doc.write(`if (!${patternConst}.test(${accessor})) return INVALID;`);
   }
   return accessor;
 }
-function generateLazyCheck(doc, ctx2, schema2, accessor) {
+function generateLazyCheck(doc, ctx, schema2, accessor) {
   const def = schema2._zod.def;
-  const getterConst = addUserConstant(ctx2, def.getter);
-  const cacheConst = addConstant(ctx2, { parser: null });
+  const getterConst = addUserConstant(ctx, def.getter);
+  const cacheConst = addConstant(ctx, { parser: null });
   doc.write(`if (!${cacheConst}.parser) {`);
   doc.indented((d) => {
     d.write(`const inner = ${getterConst}();`);
@@ -73446,14 +73449,14 @@ function generateLazyCheck(doc, ctx2, schema2, accessor) {
     d.write(`};`);
   });
   doc.write(`}`);
-  const outputVar = newVar(ctx2);
+  const outputVar = newVar(ctx);
   doc.write(`const ${outputVar} = ${cacheConst}.parser(${accessor});`);
   doc.write(`if (${outputVar} === INVALID) return INVALID;`);
   return outputVar;
 }
-function generatePipeCheck(doc, ctx2, schema2, accessor) {
+function generatePipeCheck(doc, ctx, schema2, accessor) {
   const def = schema2._zod.def;
-  const inputOutput = generateCheck(doc, ctx2, def.in, accessor);
+  const inputOutput = generateCheck(doc, ctx, def.in, accessor);
   if (def.transform) {
     if (isAsyncFunction(def.transform)) {
       throw new ZodCompileAsyncError("z.compile: async transforms in pipes are not supported");
@@ -73466,27 +73469,27 @@ function generatePipeCheck(doc, ctx2, schema2, accessor) {
         return INVALID;
       return fakePayload.issues.length === 0 ? result : INVALID;
     };
-    const helperConst = addUserConstant(ctx2, helperFn);
-    const transformedVar = newVar(ctx2);
+    const helperConst = addUserConstant(ctx, helperFn);
+    const transformedVar = newVar(ctx);
     doc.write(`const ${transformedVar} = ${helperConst}(${inputOutput});`);
     doc.write(`if (${transformedVar} === INVALID) return INVALID;`);
-    return generateCheck(doc, ctx2, def.out, transformedVar);
+    return generateCheck(doc, ctx, def.out, transformedVar);
   } else {
-    return generateCheck(doc, ctx2, def.out, inputOutput);
+    return generateCheck(doc, ctx, def.out, inputOutput);
   }
 }
 function isAsyncFunction(fn) {
   return typeof fn === "function" && (fn.constructor.name === "AsyncFunction" || fn[Symbol.toStringTag] === "AsyncFunction");
 }
-function generateCustomCheck(doc, ctx2, schema2, accessor) {
+function generateCustomCheck(doc, ctx, schema2, accessor) {
   const def = schema2._zod.def;
   if (def.fn) {
     if (isAsyncFunction(def.fn)) {
       throw new ZodCompileAsyncError("z.compile: async custom predicates are not supported");
     }
-    const fnConst = addUserConstant(ctx2, def.fn);
-    const throwAsyncConst = addConstant(ctx2, throwAsync);
-    const resVar = newVar(ctx2);
+    const fnConst = addUserConstant(ctx, def.fn);
+    const throwAsyncConst = addConstant(ctx, throwAsync);
+    const resVar = newVar(ctx);
     doc.write(`const ${resVar} = ${fnConst}(${accessor});`);
     doc.write(`if (${resVar} instanceof Promise) ${throwAsyncConst}();`);
     doc.write(`if (!${resVar}) return INVALID;`);
@@ -73504,21 +73507,21 @@ function runtimeCatch(innerSchema, catchValue, value) {
     return r.value;
   return catchValue();
 }
-function generateCatchCheck(doc, ctx2, schema2, accessor) {
+function generateCatchCheck(doc, ctx, schema2, accessor) {
   const def = schema2._zod.def;
   if (!def.catchValue[CONSTANT_CATCH]) {
     throw new ZodCompileUnsupportedError("catch with a callback (only a constant catch value compiles)", false);
   }
-  const outputVar = newVar(ctx2);
+  const outputVar = newVar(ctx);
   doc.write(`let ${outputVar} = (() => {`);
   doc.indented((d) => {
-    const innerOut = compileChild(d, ctx2, def.innerType, accessor);
+    const innerOut = compileChild(d, ctx, def.innerType, accessor);
     d.write(`return ${innerOut};`);
   });
   doc.write(`})();`);
-  const innerConst = addConstant(ctx2, def.innerType);
-  const catchConst = addUserConstant(ctx2, def.catchValue);
-  const catchHelperConst = addConstant(ctx2, runtimeCatch);
+  const innerConst = addConstant(ctx, def.innerType);
+  const catchConst = addUserConstant(ctx, def.catchValue);
+  const catchHelperConst = addConstant(ctx, runtimeCatch);
   doc.write(`if (${outputVar} === INVALID) {`);
   doc.indented((d) => {
     d.write(`${outputVar} = ${catchHelperConst}(${innerConst}, ${catchConst}, ${accessor});`);
@@ -73527,7 +73530,7 @@ function generateCatchCheck(doc, ctx2, schema2, accessor) {
   doc.write(`}`);
   return outputVar;
 }
-function generateTransformCheck(doc, ctx2, schema2, accessor) {
+function generateTransformCheck(doc, ctx, schema2, accessor) {
   const def = schema2._zod.def;
   if (def.transform) {
     if (isAsyncFunction(def.transform)) {
@@ -73541,8 +73544,8 @@ function generateTransformCheck(doc, ctx2, schema2, accessor) {
         return INVALID;
       return fakePayload.issues.length === 0 ? result : INVALID;
     };
-    const helperConst = addUserConstant(ctx2, helperFn);
-    const outputVar = newVar(ctx2);
+    const helperConst = addUserConstant(ctx, helperFn);
+    const outputVar = newVar(ctx);
     doc.write(`const ${outputVar} = ${helperConst}(${accessor});`);
     doc.write(`if (${outputVar} === INVALID) return INVALID;`);
     return outputVar;
@@ -74645,8 +74648,8 @@ function initializeContext(params) {
     external: params?.external ?? void 0
   };
 }
-function handleUnrepresentable(schema2, ctx2, json2, params, message) {
-  const result = typeof ctx2.unrepresentable === "function" ? ctx2.unrepresentable({ zodSchema: schema2, path: params.path, message }) : ctx2.unrepresentable;
+function handleUnrepresentable(schema2, ctx, json2, params, message) {
+  const result = typeof ctx.unrepresentable === "function" ? ctx.unrepresentable({ zodSchema: schema2, path: params.path, message }) : ctx.unrepresentable;
   if (result === "any")
     return false;
   if (result === void 0 || result === "throw")
@@ -74654,10 +74657,10 @@ function handleUnrepresentable(schema2, ctx2, json2, params, message) {
   Object.assign(json2, result);
   return true;
 }
-function processSchema(schema2, ctx2, _params = { path: [], schemaPath: [] }) {
+function processSchema(schema2, ctx, _params = { path: [], schemaPath: [] }) {
   var _a3;
   const def = schema2._zod.def;
-  const seen = ctx2.seen.get(schema2);
+  const seen = ctx.seen.get(schema2);
   if (seen) {
     seen.count++;
     const isCycle = _params.schemaPath.includes(schema2);
@@ -74667,9 +74670,9 @@ function processSchema(schema2, ctx2, _params = { path: [], schemaPath: [] }) {
     return seen.schema;
   }
   const result = { schema: {}, count: 1, cycle: void 0, path: _params.path };
-  ctx2.seen.set(schema2, result);
-  ctx2.sharedDefsExtractedFor = void 0;
-  ctx2.sharedEmitDoneFor = void 0;
+  ctx.seen.set(schema2, result);
+  ctx.sharedDefsExtractedFor = void 0;
+  ctx.sharedEmitDoneFor = void 0;
   const overrideSchema = schema2._zod.toJSONSchema?.();
   if (overrideSchema) {
     result.schema = overrideSchema;
@@ -74680,48 +74683,48 @@ function processSchema(schema2, ctx2, _params = { path: [], schemaPath: [] }) {
       path: _params.path
     };
     if (schema2._zod.processJSONSchema) {
-      schema2._zod.processJSONSchema(ctx2, result.schema, params);
+      schema2._zod.processJSONSchema(ctx, result.schema, params);
     } else {
       const _json = result.schema;
-      const processor = ctx2.processors[def.type];
+      const processor = ctx.processors[def.type];
       if (!processor) {
         throw new Error(`[toJSONSchema]: Non-representable type encountered: ${def.type}`);
       }
-      processor(schema2, ctx2, _json, params);
+      processor(schema2, ctx, _json, params);
     }
     const parent = schema2._zod.parent;
     if (parent) {
       if (!result.ref)
         result.ref = parent;
-      processSchema(parent, ctx2, params);
-      ctx2.seen.get(parent).isParent = true;
+      processSchema(parent, ctx, params);
+      ctx.seen.get(parent).isParent = true;
     }
   }
-  const meta3 = ctx2.metadataRegistry.get(schema2);
+  const meta3 = ctx.metadataRegistry.get(schema2);
   if (meta3)
     assignProps(result.schema, meta3);
-  if (ctx2.io === "input" && isTransforming(schema2)) {
+  if (ctx.io === "input" && isTransforming(schema2)) {
     delete result.schema.examples;
     delete result.schema.default;
   }
-  if (ctx2.io === "input" && "_prefault" in result.schema)
+  if (ctx.io === "input" && "_prefault" in result.schema)
     (_a3 = result.schema).default ?? (_a3.default = result.schema._prefault);
   delete result.schema._prefault;
-  const _result = ctx2.seen.get(schema2);
+  const _result = ctx.seen.get(schema2);
   return _result.schema;
 }
 function encodeJSONPointerSegment(segment) {
   return segment.replace(/~/g, "~0").replace(/\//g, "~1");
 }
-function extractDefs(ctx2, schema2) {
-  const root = ctx2.seen.get(schema2);
+function extractDefs(ctx, schema2) {
+  const root = ctx.seen.get(schema2);
   if (!root)
     throw new Error("Unprocessed schema. This is a bug in Zod.");
-  if (ctx2.external && ctx2.sharedDefsExtractedFor === ctx2.external)
+  if (ctx.external && ctx.sharedDefsExtractedFor === ctx.external)
     return;
   const idToSchema = /* @__PURE__ */ new Map();
-  for (const entry of ctx2.seen.entries()) {
-    const id = ctx2.metadataRegistry.get(entry[0])?.id;
+  for (const entry of ctx.seen.entries()) {
+    const id = ctx.metadataRegistry.get(entry[0])?.id;
     if (id) {
       const existing = idToSchema.get(id);
       if (existing && existing !== entry[0]) {
@@ -74731,14 +74734,14 @@ function extractDefs(ctx2, schema2) {
     }
   }
   const makeURI = (entry) => {
-    const defsSegment = ctx2.target === "draft-2020-12" ? "$defs" : "definitions";
-    if (ctx2.external) {
-      const externalId = ctx2.external.registry.get(entry[0])?.id;
-      const uriGenerator = ctx2.external.uri ?? ((id2) => id2);
+    const defsSegment = ctx.target === "draft-2020-12" ? "$defs" : "definitions";
+    if (ctx.external) {
+      const externalId = ctx.external.registry.get(entry[0])?.id;
+      const uriGenerator = ctx.external.uri ?? ((id2) => id2);
       if (externalId) {
         return { ref: uriGenerator(externalId) };
       }
-      const id = entry[1].defId ?? entry[1].schema.id ?? `schema${ctx2.counter++}`;
+      const id = entry[1].defId ?? entry[1].schema.id ?? `schema${ctx.counter++}`;
       entry[1].defId = id;
       return { defId: id, ref: `${uriGenerator("__shared")}#/${defsSegment}/${encodeJSONPointerSegment(id)}` };
     }
@@ -74747,7 +74750,7 @@ function extractDefs(ctx2, schema2) {
     if (entry[1] === root && !entry[1].schema.id) {
       return { ref: uriPrefix };
     }
-    const defId = entry[1].schema.id ?? `__schema${ctx2.counter++}`;
+    const defId = entry[1].schema.id ?? `__schema${ctx.counter++}`;
     return { defId, ref: defUriPrefix + encodeJSONPointerSegment(defId) };
   };
   const extractToDef = (entry) => {
@@ -74765,8 +74768,8 @@ function extractDefs(ctx2, schema2) {
     }
     schema3.$ref = ref;
   };
-  if (ctx2.cycles === "throw") {
-    for (const entry of ctx2.seen.entries()) {
+  if (ctx.cycles === "throw") {
+    for (const entry of ctx.seen.entries()) {
       const seen = entry[1];
       if (seen.cycle) {
         throw new Error(`Cycle detected: #/${seen.cycle?.join("/")}/<root>
@@ -74775,20 +74778,20 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
       }
     }
   }
-  for (const entry of ctx2.seen.entries()) {
+  for (const entry of ctx.seen.entries()) {
     const seen = entry[1];
     if (schema2 === entry[0]) {
       extractToDef(entry);
       continue;
     }
-    if (ctx2.external) {
-      const ext = ctx2.external.registry.get(entry[0])?.id;
+    if (ctx.external) {
+      const ext = ctx.external.registry.get(entry[0])?.id;
       if (schema2 !== entry[0] && ext) {
         extractToDef(entry);
         continue;
       }
     }
-    const id = ctx2.metadataRegistry.get(entry[0])?.id;
+    const id = ctx.metadataRegistry.get(entry[0])?.id;
     if (id) {
       extractToDef(entry);
       continue;
@@ -74798,13 +74801,13 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
       continue;
     }
     if (seen.count > 1) {
-      if (ctx2.reused === "ref") {
+      if (ctx.reused === "ref") {
         extractToDef(entry);
       }
     }
   }
-  if (ctx2.external)
-    ctx2.sharedDefsExtractedFor = ctx2.external;
+  if (ctx.external)
+    ctx.sharedDefsExtractedFor = ctx.external;
 }
 function compactTypeUnion(schema2) {
   const options = schema2.anyOf;
@@ -74914,12 +74917,12 @@ function foldIntersection(json2) {
   delete json2.allOf;
   assignProps(json2, folded);
 }
-function finalize(ctx2, schema2) {
-  const root = ctx2.seen.get(schema2);
+function finalize(ctx, schema2) {
+  const root = ctx.seen.get(schema2);
   if (!root)
     throw new Error("Unprocessed schema. This is a bug in Zod.");
   const flattenRef = (zodSchema) => {
-    const seen = ctx2.seen.get(zodSchema);
+    const seen = ctx.seen.get(zodSchema);
     if (seen.ref === null)
       return;
     const schema3 = seen.def ?? seen.schema;
@@ -74928,9 +74931,9 @@ function finalize(ctx2, schema2) {
     seen.ref = null;
     if (ref) {
       flattenRef(ref);
-      const refSeen = ctx2.seen.get(ref);
+      const refSeen = ctx.seen.get(ref);
       const refSchema = refSeen.schema;
-      if (refSchema.$ref && (ctx2.target === "draft-07" || ctx2.target === "draft-04" || ctx2.target === "openapi-3.0")) {
+      if (refSchema.$ref && (ctx.target === "draft-07" || ctx.target === "draft-04" || ctx.target === "openapi-3.0")) {
         schema3.allOf = schema3.allOf ?? [];
         schema3.allOf.push(refSchema);
       } else {
@@ -74960,7 +74963,7 @@ function finalize(ctx2, schema2) {
     const parent = zodSchema._zod.parent;
     if (parent && parent !== ref) {
       flattenRef(parent);
-      const parentSeen = ctx2.seen.get(parent);
+      const parentSeen = ctx.seen.get(parent);
       if (parentSeen?.schema.$ref) {
         schema3.$ref = parentSeen.schema.$ref;
         if (parentSeen.def) {
@@ -74974,26 +74977,26 @@ function finalize(ctx2, schema2) {
         }
       }
     }
-    ctx2.override({
+    ctx.override({
       zodSchema,
       jsonSchema: schema3,
       path: seen.path ?? []
     });
   };
-  if (!ctx2.external || ctx2.sharedEmitDoneFor !== ctx2.external) {
-    for (const entry of [...ctx2.seen.entries()].reverse()) {
+  if (!ctx.external || ctx.sharedEmitDoneFor !== ctx.external) {
+    for (const entry of [...ctx.seen.entries()].reverse()) {
       flattenRef(entry[0]);
     }
-    if (ctx2.target !== "openapi-3.0") {
-      for (const entry of ctx2.seen.entries()) {
+    if (ctx.target !== "openapi-3.0") {
+      for (const entry of ctx.seen.entries()) {
         compactTypeUnion(entry[1].def ?? entry[1].schema);
       }
     }
-    for (const rewrite of ctx2.deferred)
+    for (const rewrite of ctx.deferred)
       rewrite();
-    if (ctx2.intersections.length) {
+    if (ctx.intersections.length) {
       const carriers = /* @__PURE__ */ new Map();
-      for (const seen of ctx2.seen.values()) {
+      for (const seen of ctx.seen.values()) {
         for (const json2 of [seen.schema, seen.def]) {
           const allOf = json2?.allOf;
           if (!Array.isArray(allOf))
@@ -75005,35 +75008,35 @@ function finalize(ctx2, schema2) {
             carriers.set(allOf, [json2]);
         }
       }
-      for (const allOf of ctx2.intersections) {
+      for (const allOf of ctx.intersections) {
         for (const json2 of carriers.get(allOf) ?? [])
           foldIntersection(json2);
       }
     }
   }
   const result = {};
-  if (ctx2.target === "draft-2020-12") {
+  if (ctx.target === "draft-2020-12") {
     result.$schema = "https://json-schema.org/draft/2020-12/schema";
-  } else if (ctx2.target === "draft-07") {
+  } else if (ctx.target === "draft-07") {
     result.$schema = "http://json-schema.org/draft-07/schema#";
-  } else if (ctx2.target === "draft-04") {
+  } else if (ctx.target === "draft-04") {
     result.$schema = "http://json-schema.org/draft-04/schema#";
-  } else if (ctx2.target === "openapi-3.0") {
+  } else if (ctx.target === "openapi-3.0") {
   } else {
   }
-  if (ctx2.external?.uri) {
-    const id = ctx2.external.registry.get(schema2)?.id;
+  if (ctx.external?.uri) {
+    const id = ctx.external.registry.get(schema2)?.id;
     if (!id)
       throw new Error("Schema is missing an `id` property");
-    result.$id = ctx2.external.uri(id);
+    result.$id = ctx.external.uri(id);
   }
   assignProps(result, root.defId ? root.schema : root.def ?? root.schema);
-  const rootMetaId = ctx2.metadataRegistry.get(schema2)?.id;
+  const rootMetaId = ctx.metadataRegistry.get(schema2)?.id;
   if (rootMetaId !== void 0 && result.id === rootMetaId)
     delete result.id;
-  const defs = ctx2.external?.defs ?? {};
-  if (!ctx2.external || ctx2.sharedEmitDoneFor !== ctx2.external) {
-    for (const entry of ctx2.seen.entries()) {
+  const defs = ctx.external?.defs ?? {};
+  if (!ctx.external || ctx.sharedEmitDoneFor !== ctx.external) {
+    for (const entry of ctx.seen.entries()) {
       const seen = entry[1];
       if (seen.def && seen.defId) {
         if (seen.def.id === seen.defId)
@@ -75042,12 +75045,12 @@ function finalize(ctx2, schema2) {
       }
     }
   }
-  if (ctx2.external)
-    ctx2.sharedEmitDoneFor = ctx2.external;
-  if (ctx2.external) {
+  if (ctx.external)
+    ctx.sharedEmitDoneFor = ctx.external;
+  if (ctx.external) {
   } else {
     if (Object.keys(defs).length > 0) {
-      if (ctx2.target === "draft-2020-12") {
+      if (ctx.target === "draft-2020-12") {
         result.$defs = defs;
       } else {
         result.definitions = defs;
@@ -75060,8 +75063,8 @@ function finalize(ctx2, schema2) {
       value: {
         ...schema2["~standard"],
         jsonSchema: {
-          input: createStandardJSONSchemaMethod(schema2, "input", ctx2.processors),
-          output: createStandardJSONSchemaMethod(schema2, "output", ctx2.processors)
+          input: createStandardJSONSchemaMethod(schema2, "input", ctx.processors),
+          output: createStandardJSONSchemaMethod(schema2, "output", ctx.processors)
         }
       },
       enumerable: false,
@@ -75073,70 +75076,70 @@ function finalize(ctx2, schema2) {
   }
 }
 function isTransforming(_schema, _ctx) {
-  const ctx2 = _ctx ?? { seen: /* @__PURE__ */ new Set() };
-  if (ctx2.seen.has(_schema))
+  const ctx = _ctx ?? { seen: /* @__PURE__ */ new Set() };
+  if (ctx.seen.has(_schema))
     return false;
-  ctx2.seen.add(_schema);
+  ctx.seen.add(_schema);
   const def = _schema._zod.def;
   if (def.type === "transform")
     return true;
   if (def.type === "array")
-    return isTransforming(def.element, ctx2);
+    return isTransforming(def.element, ctx);
   if (def.type === "set")
-    return isTransforming(def.valueType, ctx2);
+    return isTransforming(def.valueType, ctx);
   if (def.type === "lazy")
-    return isTransforming(def.getter(), ctx2);
+    return isTransforming(def.getter(), ctx);
   if (def.type === "promise" || def.type === "optional" || def.type === "nonoptional" || def.type === "nullable" || def.type === "readonly" || def.type === "default" || def.type === "prefault" || def.type === "catch") {
-    return isTransforming(def.innerType, ctx2);
+    return isTransforming(def.innerType, ctx);
   }
   if (def.type === "intersection") {
-    return isTransforming(def.left, ctx2) || isTransforming(def.right, ctx2);
+    return isTransforming(def.left, ctx) || isTransforming(def.right, ctx);
   }
   if (def.type === "record" || def.type === "map") {
-    return isTransforming(def.keyType, ctx2) || isTransforming(def.valueType, ctx2);
+    return isTransforming(def.keyType, ctx) || isTransforming(def.valueType, ctx);
   }
   if (def.type === "pipe") {
     if (_schema._zod.traits.has("$ZodCodec"))
       return true;
-    return isTransforming(def.in, ctx2) || isTransforming(def.out, ctx2);
+    return isTransforming(def.in, ctx) || isTransforming(def.out, ctx);
   }
   if (def.type === "object") {
     for (const key in def.shape) {
-      if (isTransforming(def.shape[key], ctx2))
+      if (isTransforming(def.shape[key], ctx))
         return true;
     }
     return false;
   }
   if (def.type === "union") {
     for (const option of def.options) {
-      if (isTransforming(option, ctx2))
+      if (isTransforming(option, ctx))
         return true;
     }
     return false;
   }
   if (def.type === "tuple") {
     for (const item of def.items) {
-      if (isTransforming(item, ctx2))
+      if (isTransforming(item, ctx))
         return true;
     }
-    if (def.rest && isTransforming(def.rest, ctx2))
+    if (def.rest && isTransforming(def.rest, ctx))
       return true;
     return false;
   }
   return false;
 }
 var createToJSONSchemaMethod = (schema2, processors = {}) => (params) => {
-  const ctx2 = initializeContext({ ...params, processors });
-  processSchema(schema2, ctx2);
-  extractDefs(ctx2, schema2);
-  return finalize(ctx2, schema2);
+  const ctx = initializeContext({ ...params, processors });
+  processSchema(schema2, ctx);
+  extractDefs(ctx, schema2);
+  return finalize(ctx, schema2);
 };
 var createStandardJSONSchemaMethod = (schema2, io, processors = {}) => (params) => {
   const { libraryOptions, target } = params ?? {};
-  const ctx2 = initializeContext({ ...libraryOptions ?? {}, target, io, processors });
-  processSchema(schema2, ctx2);
-  extractDefs(ctx2, schema2);
-  return finalize(ctx2, schema2);
+  const ctx = initializeContext({ ...libraryOptions ?? {}, target, io, processors });
+  processSchema(schema2, ctx);
+  extractDefs(ctx, schema2);
+  return finalize(ctx, schema2);
 };
 
 // ../../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/json-schema-processors.js
@@ -75241,7 +75244,7 @@ var exactPatterns = /* @__PURE__ */ new Map([
   [base64urlCharset, base64url]
 ]);
 var exactPattern = (p) => exactPatterns.get(p) ?? p;
-var stringProcessor = (schema2, ctx2, _json, _params) => {
+var stringProcessor = (schema2, ctx, _json, _params) => {
   const json2 = _json;
   json2.type = "string";
   const { minimum, maximum, format: format2, patterns, contentEncoding, laxFormat } = aggregateChecks(schema2);
@@ -75266,20 +75269,20 @@ var stringProcessor = (schema2, ctx2, _json, _params) => {
     else if (patternList.length > 1) {
       json2.allOf = [
         ...patternList.map((regex) => ({
-          ...ctx2.target === "draft-07" || ctx2.target === "draft-04" || ctx2.target === "openapi-3.0" ? { type: "string" } : {},
+          ...ctx.target === "draft-07" || ctx.target === "draft-04" || ctx.target === "openapi-3.0" ? { type: "string" } : {},
           pattern: regex.source
         }))
       ];
     }
   }
 };
-var numberProcessor = (schema2, ctx2, _json, params) => {
+var numberProcessor = (schema2, ctx, _json, params) => {
   const json2 = _json;
   const { minimum, maximum, multipleOf, exclusiveMaximum, exclusiveMinimum, isInt } = aggregateChecks(schema2);
   json2.type = isInt ? "integer" : "number";
   const exMin = typeof exclusiveMinimum === "number" && exclusiveMinimum >= (minimum ?? Number.NEGATIVE_INFINITY);
   const exMax = typeof exclusiveMaximum === "number" && exclusiveMaximum <= (maximum ?? Number.POSITIVE_INFINITY);
-  const legacy = ctx2.target === "draft-04" || ctx2.target === "openapi-3.0";
+  const legacy = ctx.target === "draft-04" || ctx.target === "openapi-3.0";
   if (exMin) {
     if (legacy) {
       json2.minimum = exclusiveMinimum;
@@ -75306,7 +75309,7 @@ var numberProcessor = (schema2, ctx2, _json, params) => {
       if (Number.isFinite(divisor) && divisor !== 0)
         divisors.add(Math.abs(divisor));
       else
-        handleUnrepresentable(schema2, ctx2, json2, params, `A multipleOf divisor of ${divisor} cannot be represented in JSON Schema`);
+        handleUnrepresentable(schema2, ctx, json2, params, `A multipleOf divisor of ${divisor} cannot be represented in JSON Schema`);
     }
     const [first, ...rest] = divisors;
     if (first !== void 0)
@@ -75318,14 +75321,14 @@ var numberProcessor = (schema2, ctx2, _json, params) => {
 var booleanProcessor = (_schema, _ctx, json2, _params) => {
   json2.type = "boolean";
 };
-var bigintProcessor = (schema2, ctx2, json2, params) => {
-  handleUnrepresentable(schema2, ctx2, json2, params, "BigInt cannot be represented in JSON Schema");
+var bigintProcessor = (schema2, ctx, json2, params) => {
+  handleUnrepresentable(schema2, ctx, json2, params, "BigInt cannot be represented in JSON Schema");
 };
-var symbolProcessor = (schema2, ctx2, json2, params) => {
-  handleUnrepresentable(schema2, ctx2, json2, params, "Symbols cannot be represented in JSON Schema");
+var symbolProcessor = (schema2, ctx, json2, params) => {
+  handleUnrepresentable(schema2, ctx, json2, params, "Symbols cannot be represented in JSON Schema");
 };
-var nullProcessor = (_schema, ctx2, json2, _params) => {
-  if (ctx2.target === "openapi-3.0") {
+var nullProcessor = (_schema, ctx, json2, _params) => {
+  if (ctx.target === "openapi-3.0") {
     json2.type = "string";
     json2.nullable = true;
     json2.enum = [null];
@@ -75333,11 +75336,11 @@ var nullProcessor = (_schema, ctx2, json2, _params) => {
     json2.type = "null";
   }
 };
-var undefinedProcessor = (schema2, ctx2, json2, params) => {
-  handleUnrepresentable(schema2, ctx2, json2, params, "Undefined cannot be represented in JSON Schema");
+var undefinedProcessor = (schema2, ctx, json2, params) => {
+  handleUnrepresentable(schema2, ctx, json2, params, "Undefined cannot be represented in JSON Schema");
 };
-var voidProcessor = (schema2, ctx2, json2, params) => {
-  handleUnrepresentable(schema2, ctx2, json2, params, "Void cannot be represented in JSON Schema");
+var voidProcessor = (schema2, ctx, json2, params) => {
+  handleUnrepresentable(schema2, ctx, json2, params, "Void cannot be represented in JSON Schema");
 };
 var neverProcessor = (_schema, _ctx, json2, _params) => {
   json2.not = {};
@@ -75346,8 +75349,8 @@ var anyProcessor = (_schema, _ctx, _json, _params) => {
 };
 var unknownProcessor = (_schema, _ctx, _json, _params) => {
 };
-var dateProcessor = (schema2, ctx2, json2, params) => {
-  handleUnrepresentable(schema2, ctx2, json2, params, "Date cannot be represented in JSON Schema");
+var dateProcessor = (schema2, ctx, json2, params) => {
+  handleUnrepresentable(schema2, ctx, json2, params, "Date cannot be represented in JSON Schema");
 };
 var enumProcessor = (schema2, _ctx, json2, _params) => {
   const def = schema2._zod.def;
@@ -75362,7 +75365,7 @@ var enumProcessor = (schema2, _ctx, json2, _params) => {
     json2.type = "string";
   json2.enum = values;
 };
-var literalProcessor = (schema2, ctx2, json2, params) => {
+var literalProcessor = (schema2, ctx, json2, params) => {
   const def = schema2._zod.def;
   if (def.values.length === 0) {
     json2.not = {};
@@ -75371,10 +75374,10 @@ var literalProcessor = (schema2, ctx2, json2, params) => {
   const vals = [];
   for (const val of def.values) {
     if (val === void 0) {
-      if (handleUnrepresentable(schema2, ctx2, json2, params, "Literal `undefined` cannot be represented in JSON Schema"))
+      if (handleUnrepresentable(schema2, ctx, json2, params, "Literal `undefined` cannot be represented in JSON Schema"))
         return;
     } else if (typeof val === "bigint") {
-      if (handleUnrepresentable(schema2, ctx2, json2, params, "BigInt literals cannot be represented in JSON Schema"))
+      if (handleUnrepresentable(schema2, ctx, json2, params, "BigInt literals cannot be represented in JSON Schema"))
         return;
       vals.push(Number(val));
     } else {
@@ -75385,7 +75388,7 @@ var literalProcessor = (schema2, ctx2, json2, params) => {
   } else if (vals.length === 1) {
     const val = vals[0];
     json2.type = val === null ? "null" : typeof val;
-    if (ctx2.target === "draft-04" || ctx2.target === "openapi-3.0") {
+    if (ctx.target === "draft-04" || ctx.target === "openapi-3.0") {
       json2.enum = [val];
     } else {
       json2.const = val;
@@ -75402,8 +75405,8 @@ var literalProcessor = (schema2, ctx2, json2, params) => {
     json2.enum = vals;
   }
 };
-var nanProcessor = (schema2, ctx2, json2, params) => {
-  handleUnrepresentable(schema2, ctx2, json2, params, "NaN cannot be represented in JSON Schema");
+var nanProcessor = (schema2, ctx, json2, params) => {
+  handleUnrepresentable(schema2, ctx, json2, params, "NaN cannot be represented in JSON Schema");
 };
 var templateLiteralProcessor = (schema2, _ctx, json2, _params) => {
   const _json = json2;
@@ -75435,22 +75438,22 @@ var fileProcessor = (schema2, _ctx, json2, _params) => {
 var successProcessor = (_schema, _ctx, json2, _params) => {
   json2.type = "boolean";
 };
-var customProcessor = (schema2, ctx2, json2, params) => {
-  handleUnrepresentable(schema2, ctx2, json2, params, "Custom types cannot be represented in JSON Schema");
+var customProcessor = (schema2, ctx, json2, params) => {
+  handleUnrepresentable(schema2, ctx, json2, params, "Custom types cannot be represented in JSON Schema");
 };
-var functionProcessor = (schema2, ctx2, json2, params) => {
-  handleUnrepresentable(schema2, ctx2, json2, params, "Function types cannot be represented in JSON Schema");
+var functionProcessor = (schema2, ctx, json2, params) => {
+  handleUnrepresentable(schema2, ctx, json2, params, "Function types cannot be represented in JSON Schema");
 };
-var transformProcessor = (schema2, ctx2, json2, params) => {
-  handleUnrepresentable(schema2, ctx2, json2, params, "Transforms cannot be represented in JSON Schema");
+var transformProcessor = (schema2, ctx, json2, params) => {
+  handleUnrepresentable(schema2, ctx, json2, params, "Transforms cannot be represented in JSON Schema");
 };
-var mapProcessor = (schema2, ctx2, json2, params) => {
-  handleUnrepresentable(schema2, ctx2, json2, params, "Map cannot be represented in JSON Schema");
+var mapProcessor = (schema2, ctx, json2, params) => {
+  handleUnrepresentable(schema2, ctx, json2, params, "Map cannot be represented in JSON Schema");
 };
-var setProcessor = (schema2, ctx2, json2, params) => {
-  handleUnrepresentable(schema2, ctx2, json2, params, "Set cannot be represented in JSON Schema");
+var setProcessor = (schema2, ctx, json2, params) => {
+  handleUnrepresentable(schema2, ctx, json2, params, "Set cannot be represented in JSON Schema");
 };
-var arrayProcessor = (schema2, ctx2, _json, params) => {
+var arrayProcessor = (schema2, ctx, _json, params) => {
   const json2 = _json;
   const def = schema2._zod.def;
   const { minimum, maximum } = aggregateChecks(schema2);
@@ -75459,7 +75462,7 @@ var arrayProcessor = (schema2, ctx2, _json, params) => {
   if (typeof maximum === "number")
     json2.maxItems = maximum;
   json2.type = "array";
-  json2.items = processSchema(def.element, ctx2, {
+  json2.items = processSchema(def.element, ctx, {
     ...params,
     path: [...params.path, "items"]
   });
@@ -75474,18 +75477,18 @@ function inputOptin(schema2) {
   }
   return schema2._zod.optin;
 }
-var objectProcessor = (schema2, ctx2, _json, params) => {
+var objectProcessor = (schema2, ctx, _json, params) => {
   const json2 = _json;
   const def = schema2._zod.def;
   const shape = def.shape;
   const symbolKeys = Object.getOwnPropertySymbols(shape);
-  if (symbolKeys.length && handleUnrepresentable(schema2, ctx2, json2, params, "Symbol keys cannot be represented in JSON Schema")) {
+  if (symbolKeys.length && handleUnrepresentable(schema2, ctx, json2, params, "Symbol keys cannot be represented in JSON Schema")) {
     return;
   }
   json2.type = "object";
   json2.properties = {};
   for (const key in shape) {
-    assignProp(json2.properties, key, processSchema(shape[key], ctx2, {
+    assignProp(json2.properties, key, processSchema(shape[key], ctx, {
       ...params,
       path: [...params.path, "properties", key]
     }));
@@ -75493,7 +75496,7 @@ var objectProcessor = (schema2, ctx2, _json, params) => {
   const requiredKeys = [];
   for (const key of Object.keys(shape)) {
     const field = def.shape[key];
-    if (ctx2.io === "input" ? inputOptin(field) === void 0 : field._zod.optout === void 0) {
+    if (ctx.io === "input" ? inputOptin(field) === void 0 : field._zod.optout === void 0) {
       requiredKeys.push(key);
     }
   }
@@ -75503,19 +75506,19 @@ var objectProcessor = (schema2, ctx2, _json, params) => {
   if (def.catchall?._zod.def.type === "never") {
     json2.additionalProperties = false;
   } else if (!def.catchall) {
-    if (ctx2.io === "output")
+    if (ctx.io === "output")
       json2.additionalProperties = false;
   } else if (def.catchall) {
-    json2.additionalProperties = processSchema(def.catchall, ctx2, {
+    json2.additionalProperties = processSchema(def.catchall, ctx, {
       ...params,
       path: [...params.path, "additionalProperties"]
     });
   }
 };
-var unionProcessor = (schema2, ctx2, json2, params) => {
+var unionProcessor = (schema2, ctx, json2, params) => {
   const def = schema2._zod.def;
   const isExclusive = def.inclusive === false;
-  const options = def.options.map((x, i) => processSchema(x, ctx2, {
+  const options = def.options.map((x, i) => processSchema(x, ctx, {
     ...params,
     path: [...params.path, isExclusive ? "oneOf" : "anyOf", i]
   }));
@@ -75525,13 +75528,13 @@ var unionProcessor = (schema2, ctx2, json2, params) => {
     json2.anyOf = options;
   }
 };
-var intersectionProcessor = (schema2, ctx2, json2, params) => {
+var intersectionProcessor = (schema2, ctx, json2, params) => {
   const def = schema2._zod.def;
-  const a = processSchema(def.left, ctx2, {
+  const a = processSchema(def.left, ctx, {
     ...params,
     path: [...params.path, "allOf", 0]
   });
-  const b = processSchema(def.right, ctx2, {
+  const b = processSchema(def.right, ctx, {
     ...params,
     path: [...params.path, "allOf", 1]
   });
@@ -75541,33 +75544,33 @@ var intersectionProcessor = (schema2, ctx2, json2, params) => {
     ...isSimpleIntersection(b) ? b.allOf : [b]
   ];
   json2.allOf = allOf;
-  ctx2.intersections.push(allOf);
+  ctx.intersections.push(allOf);
 };
-var tupleProcessor = (schema2, ctx2, _json, params) => {
+var tupleProcessor = (schema2, ctx, _json, params) => {
   const json2 = _json;
   const def = schema2._zod.def;
   json2.type = "array";
-  const prefixPath = ctx2.target === "draft-2020-12" ? "prefixItems" : "items";
-  const restPath = ctx2.target === "draft-2020-12" ? "items" : ctx2.target === "openapi-3.0" ? "items" : "additionalItems";
-  const prefixItems = def.items.map((x, i) => processSchema(x, ctx2, {
+  const prefixPath = ctx.target === "draft-2020-12" ? "prefixItems" : "items";
+  const restPath = ctx.target === "draft-2020-12" ? "items" : ctx.target === "openapi-3.0" ? "items" : "additionalItems";
+  const prefixItems = def.items.map((x, i) => processSchema(x, ctx, {
     ...params,
     path: [...params.path, prefixPath, i]
   }));
-  const rest = def.rest ? processSchema(def.rest, ctx2, {
+  const rest = def.rest ? processSchema(def.rest, ctx, {
     ...params,
-    path: [...params.path, restPath, ...ctx2.target === "openapi-3.0" ? [def.items.length] : []]
+    path: [...params.path, restPath, ...ctx.target === "openapi-3.0" ? [def.items.length] : []]
   }) : null;
   let minItems = def.items.length;
   while (minItems > 0) {
     const item = def.items[minItems - 1];
-    const optional2 = ctx2.io === "input" ? inputOptin(item) !== void 0 : item._zod.optout === "optional";
+    const optional2 = ctx.io === "input" ? inputOptin(item) !== void 0 : item._zod.optout === "optional";
     if (!optional2)
       break;
     minItems--;
   }
   const maxItems = def.items.length;
   const isClosed = !def.rest;
-  if (ctx2.target === "draft-2020-12") {
+  if (ctx.target === "draft-2020-12") {
     json2.prefixItems = prefixItems;
     if (isClosed) {
       json2.items = false;
@@ -75578,7 +75581,7 @@ var tupleProcessor = (schema2, ctx2, _json, params) => {
       json2.minItems = minItems;
     if (isClosed)
       json2.maxItems = maxItems;
-  } else if (ctx2.target === "openapi-3.0") {
+  } else if (ctx.target === "openapi-3.0") {
     json2.items = {
       anyOf: prefixItems
     };
@@ -75644,15 +75647,15 @@ function stringifyKeyNames(bySchema, json2, visited) {
   return rest;
 }
 var pendingRecords = /* @__PURE__ */ new WeakMap();
-function rewriteKeyNames(ctx2) {
+function rewriteKeyNames(ctx) {
   const bySchema = /* @__PURE__ */ new Map();
-  for (const entry of ctx2.seen.values()) {
+  for (const entry of ctx.seen.values()) {
     if (entry.def && !bySchema.has(entry.schema))
       bySchema.set(entry.schema, entry);
   }
   const rewrites = /* @__PURE__ */ new Map();
-  for (const record2 of pendingRecords.get(ctx2) ?? []) {
-    const seen = ctx2.seen.get(record2);
+  for (const record2 of pendingRecords.get(ctx) ?? []) {
+    const seen = ctx.seen.get(record2);
     const names = (seen?.def ?? seen?.schema)?.propertyNames;
     if (!names || names === true || rewrites.has(names))
       continue;
@@ -75662,7 +75665,7 @@ function rewriteKeyNames(ctx2) {
   }
   if (!rewrites.size)
     return;
-  for (const entry of ctx2.seen.values()) {
+  for (const entry of ctx.seen.values()) {
     for (const carrier of [entry.schema, entry.def]) {
       const rewritten = carrier && rewrites.get(carrier.propertyNames);
       if (rewritten)
@@ -75670,14 +75673,14 @@ function rewriteKeyNames(ctx2) {
     }
   }
 }
-var recordProcessor = (schema2, ctx2, _json, params) => {
+var recordProcessor = (schema2, ctx, _json, params) => {
   const json2 = _json;
   const def = schema2._zod.def;
   json2.type = "object";
   const keyType = def.keyType;
   const patterns = aggregateChecks(keyType).patterns;
   if (def.mode === "loose" && patterns && patterns.size > 0) {
-    const valueSchema = processSchema(def.valueType, ctx2, {
+    const valueSchema = processSchema(def.valueType, ctx, {
       ...params,
       path: [...params.path, "patternProperties", "*"]
     });
@@ -75686,26 +75689,26 @@ var recordProcessor = (schema2, ctx2, _json, params) => {
       assignProp(json2.patternProperties, exactPattern(pattern).source, valueSchema);
     }
   } else {
-    if (ctx2.target === "draft-07" || ctx2.target === "draft-2020-12") {
-      json2.propertyNames = processSchema(def.keyType, ctx2, {
+    if (ctx.target === "draft-07" || ctx.target === "draft-2020-12") {
+      json2.propertyNames = processSchema(def.keyType, ctx, {
         ...params,
         path: [...params.path, "propertyNames"]
       });
-      let pending = pendingRecords.get(ctx2);
+      let pending = pendingRecords.get(ctx);
       if (!pending) {
         pending = [];
-        pendingRecords.set(ctx2, pending);
-        ctx2.deferred.push(() => rewriteKeyNames(ctx2));
+        pendingRecords.set(ctx, pending);
+        ctx.deferred.push(() => rewriteKeyNames(ctx));
       }
       pending.push(schema2);
     }
-    json2.additionalProperties = processSchema(def.valueType, ctx2, {
+    json2.additionalProperties = processSchema(def.valueType, ctx, {
       ...params,
       path: [...params.path, "additionalProperties"]
     });
   }
   const keyValues = keyType._zod.values;
-  const omittableOnInput = ctx2.io === "input" && inputOptin(def.valueType) !== void 0;
+  const omittableOnInput = ctx.io === "input" && inputOptin(def.valueType) !== void 0;
   if (keyValues && !def.partial && !omittableOnInput) {
     const validKeyValues = [...keyValues].filter((v) => typeof v === "string" || typeof v === "number");
     if (validKeyValues.length > 0) {
@@ -75713,25 +75716,25 @@ var recordProcessor = (schema2, ctx2, _json, params) => {
     }
   }
 };
-var nullableProcessor = (schema2, ctx2, json2, params) => {
+var nullableProcessor = (schema2, ctx, json2, params) => {
   const def = schema2._zod.def;
-  const inner = processSchema(def.innerType, ctx2, params);
-  const seen = ctx2.seen.get(schema2);
-  if (ctx2.target === "openapi-3.0") {
+  const inner = processSchema(def.innerType, ctx, params);
+  const seen = ctx.seen.get(schema2);
+  if (ctx.target === "openapi-3.0") {
     seen.ref = def.innerType;
     json2.nullable = true;
   } else {
     json2.anyOf = [inner, { type: "null" }];
   }
 };
-var nonoptionalProcessor = (schema2, ctx2, _json, params) => {
+var nonoptionalProcessor = (schema2, ctx, _json, params) => {
   const def = schema2._zod.def;
-  processSchema(def.innerType, ctx2, params);
-  const seen = ctx2.seen.get(schema2);
+  processSchema(def.innerType, ctx, params);
+  const seen = ctx.seen.get(schema2);
   seen.ref = def.innerType;
 };
 var UNREPRESENTABLE_DEFAULT = Symbol();
-function serializeDefaultValue(value, schema2, ctx2, json2, params) {
+function serializeDefaultValue(value, schema2, ctx, json2, params) {
   let unrepresentable = false;
   const serialized = JSON.stringify(value, (_, val) => {
     if (typeof val !== "bigint")
@@ -75741,74 +75744,74 @@ function serializeDefaultValue(value, schema2, ctx2, json2, params) {
   });
   if (!unrepresentable)
     return JSON.parse(serialized);
-  handleUnrepresentable(schema2, ctx2, json2, params, "BigInt defaults cannot be represented in JSON Schema");
+  handleUnrepresentable(schema2, ctx, json2, params, "BigInt defaults cannot be represented in JSON Schema");
   return UNREPRESENTABLE_DEFAULT;
 }
-var defaultProcessor = (schema2, ctx2, json2, params) => {
+var defaultProcessor = (schema2, ctx, json2, params) => {
   const def = schema2._zod.def;
-  processSchema(def.innerType, ctx2, params);
-  const seen = ctx2.seen.get(schema2);
+  processSchema(def.innerType, ctx, params);
+  const seen = ctx.seen.get(schema2);
   seen.ref = def.innerType;
-  const value = serializeDefaultValue(def.defaultValue, schema2, ctx2, json2, params);
+  const value = serializeDefaultValue(def.defaultValue, schema2, ctx, json2, params);
   if (value !== UNREPRESENTABLE_DEFAULT)
     json2.default = value;
 };
-var prefaultProcessor = (schema2, ctx2, json2, params) => {
+var prefaultProcessor = (schema2, ctx, json2, params) => {
   const def = schema2._zod.def;
-  processSchema(def.innerType, ctx2, params);
-  const seen = ctx2.seen.get(schema2);
+  processSchema(def.innerType, ctx, params);
+  const seen = ctx.seen.get(schema2);
   seen.ref = def.innerType;
-  if (ctx2.io !== "input")
+  if (ctx.io !== "input")
     return;
-  const value = serializeDefaultValue(def.defaultValue, schema2, ctx2, json2, params);
+  const value = serializeDefaultValue(def.defaultValue, schema2, ctx, json2, params);
   if (value !== UNREPRESENTABLE_DEFAULT)
     json2._prefault = value;
 };
-var catchProcessor = (schema2, ctx2, json2, params) => {
+var catchProcessor = (schema2, ctx, json2, params) => {
   const def = schema2._zod.def;
-  processSchema(def.innerType, ctx2, params);
-  const seen = ctx2.seen.get(schema2);
+  processSchema(def.innerType, ctx, params);
+  const seen = ctx.seen.get(schema2);
   seen.ref = def.innerType;
   let catchValue;
   try {
     catchValue = def.catchValue(void 0);
   } catch {
-    handleUnrepresentable(schema2, ctx2, json2, params, "Dynamic catch values are not supported in JSON Schema");
+    handleUnrepresentable(schema2, ctx, json2, params, "Dynamic catch values are not supported in JSON Schema");
     return;
   }
   json2.default = catchValue;
 };
-var pipeProcessor = (schema2, ctx2, _json, params) => {
+var pipeProcessor = (schema2, ctx, _json, params) => {
   const def = schema2._zod.def;
   const inIsTransform = def.in._zod.traits.has("$ZodTransform");
-  const innerType = ctx2.io === "input" ? inIsTransform ? def.out : def.in : def.out;
-  processSchema(innerType, ctx2, params);
-  const seen = ctx2.seen.get(schema2);
+  const innerType = ctx.io === "input" ? inIsTransform ? def.out : def.in : def.out;
+  processSchema(innerType, ctx, params);
+  const seen = ctx.seen.get(schema2);
   seen.ref = innerType;
 };
-var readonlyProcessor = (schema2, ctx2, json2, params) => {
+var readonlyProcessor = (schema2, ctx, json2, params) => {
   const def = schema2._zod.def;
-  processSchema(def.innerType, ctx2, params);
-  const seen = ctx2.seen.get(schema2);
+  processSchema(def.innerType, ctx, params);
+  const seen = ctx.seen.get(schema2);
   seen.ref = def.innerType;
   json2.readOnly = true;
 };
-var promiseProcessor = (schema2, ctx2, _json, params) => {
+var promiseProcessor = (schema2, ctx, _json, params) => {
   const def = schema2._zod.def;
-  processSchema(def.innerType, ctx2, params);
-  const seen = ctx2.seen.get(schema2);
+  processSchema(def.innerType, ctx, params);
+  const seen = ctx.seen.get(schema2);
   seen.ref = def.innerType;
 };
-var optionalProcessor = (schema2, ctx2, _json, params) => {
+var optionalProcessor = (schema2, ctx, _json, params) => {
   const def = schema2._zod.def;
-  processSchema(def.innerType, ctx2, params);
-  const seen = ctx2.seen.get(schema2);
+  processSchema(def.innerType, ctx, params);
+  const seen = ctx.seen.get(schema2);
   seen.ref = def.innerType;
 };
-var lazyProcessor = (schema2, ctx2, _json, params) => {
+var lazyProcessor = (schema2, ctx, _json, params) => {
   const innerType = schema2._zod.innerType;
-  processSchema(innerType, ctx2, params);
-  const seen = ctx2.seen.get(schema2);
+  processSchema(innerType, ctx, params);
+  const seen = ctx.seen.get(schema2);
   seen.ref = innerType;
 };
 var allProcessors = {
@@ -75855,11 +75858,11 @@ var allProcessors = {
 function toJSONSchema(input2, params) {
   if ("_idmap" in input2) {
     const registry2 = input2;
-    const ctx3 = initializeContext({ ...params, processors: allProcessors });
+    const ctx2 = initializeContext({ ...params, processors: allProcessors });
     const defs = {};
     for (const entry of registry2._idmap.entries()) {
       const [_, schema2] = entry;
-      processSchema(schema2, ctx3);
+      processSchema(schema2, ctx2);
     }
     const schemas = {};
     const external = {
@@ -75867,24 +75870,24 @@ function toJSONSchema(input2, params) {
       uri: params?.uri,
       defs
     };
-    ctx3.external = external;
+    ctx2.external = external;
     for (const entry of registry2._idmap.entries()) {
       const [key, schema2] = entry;
-      extractDefs(ctx3, schema2);
-      assignProp(schemas, key, finalize(ctx3, schema2));
+      extractDefs(ctx2, schema2);
+      assignProp(schemas, key, finalize(ctx2, schema2));
     }
     if (Object.keys(defs).length > 0) {
-      const defsSegment = ctx3.target === "draft-2020-12" ? "$defs" : "definitions";
+      const defsSegment = ctx2.target === "draft-2020-12" ? "$defs" : "definitions";
       schemas.__shared = {
         [defsSegment]: defs
       };
     }
     return { schemas };
   }
-  const ctx2 = initializeContext({ ...params, processors: allProcessors });
-  processSchema(input2, ctx2);
-  extractDefs(ctx2, input2);
-  return finalize(ctx2, input2);
+  const ctx = initializeContext({ ...params, processors: allProcessors });
+  processSchema(input2, ctx);
+  extractDefs(ctx, input2);
+  return finalize(ctx, input2);
 }
 
 // ../../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/json-schema-generator.js
@@ -76433,7 +76436,7 @@ var _ZodString = /* @__PURE__ */ $constructor(
   (inst, def) => {
     $ZodString.init(inst, def);
     ZodType.init(inst, def);
-    inst._zod.processJSONSchema = (ctx2, json2, params) => stringProcessor(inst, ctx2, json2, params);
+    inst._zod.processJSONSchema = (ctx, json2, params) => stringProcessor(inst, ctx, json2, params);
   },
   /* @__PURE__ */ util_exports.derived({
     format: (inst) => aggregateChecks(inst).format ?? null,
@@ -76792,7 +76795,7 @@ var ZodNumber = /* @__PURE__ */ $constructor(
   (inst, def) => {
     $ZodNumber.init(inst, def);
     ZodType.init(inst, def);
-    inst._zod.processJSONSchema = (ctx2, json2, params) => numberProcessor(inst, ctx2, json2, params);
+    inst._zod.processJSONSchema = (ctx, json2, params) => numberProcessor(inst, ctx, json2, params);
     inst.isFinite = true;
   },
   /* @__PURE__ */ util_exports.derived({
@@ -76882,7 +76885,7 @@ function uint32(params) {
 var ZodBoolean = /* @__PURE__ */ $constructor("ZodBoolean", (inst, def) => {
   $ZodBoolean.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => booleanProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => booleanProcessor(inst, ctx, json2, params);
 });
 function boolean2(params) {
   return _boolean(ZodBoolean, params);
@@ -76892,7 +76895,7 @@ var ZodBigInt = /* @__PURE__ */ $constructor(
   (inst, def) => {
     $ZodBigInt.init(inst, def);
     ZodType.init(inst, def);
-    inst._zod.processJSONSchema = (ctx2, json2, params) => bigintProcessor(inst, ctx2, json2, params);
+    inst._zod.processJSONSchema = (ctx, json2, params) => bigintProcessor(inst, ctx, json2, params);
   },
   /* @__PURE__ */ util_exports.derived({
     minValue: (inst) => aggregateChecks(inst).minimum ?? null,
@@ -76950,7 +76953,7 @@ function uint64(params) {
 var ZodSymbol = /* @__PURE__ */ $constructor("ZodSymbol", (inst, def) => {
   $ZodSymbol.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => symbolProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => symbolProcessor(inst, ctx, json2, params);
 });
 function symbol(params) {
   return _symbol(ZodSymbol, params);
@@ -76958,7 +76961,7 @@ function symbol(params) {
 var ZodUndefined = /* @__PURE__ */ $constructor("ZodUndefined", (inst, def) => {
   $ZodUndefined.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => undefinedProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => undefinedProcessor(inst, ctx, json2, params);
 });
 function _undefined3(params) {
   return _undefined2(ZodUndefined, params);
@@ -76966,7 +76969,7 @@ function _undefined3(params) {
 var ZodNull = /* @__PURE__ */ $constructor("ZodNull", (inst, def) => {
   $ZodNull.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => nullProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => nullProcessor(inst, ctx, json2, params);
 });
 function _null3(params) {
   return _null2(ZodNull, params);
@@ -76974,7 +76977,7 @@ function _null3(params) {
 var ZodAny = /* @__PURE__ */ $constructor("ZodAny", (inst, def) => {
   $ZodAny.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => anyProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => anyProcessor(inst, ctx, json2, params);
 });
 function any() {
   return _any(ZodAny);
@@ -76982,7 +76985,7 @@ function any() {
 var ZodUnknown = /* @__PURE__ */ $constructor("ZodUnknown", (inst, def) => {
   $ZodUnknown.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => unknownProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => unknownProcessor(inst, ctx, json2, params);
 });
 function unknown() {
   return _unknown(ZodUnknown);
@@ -76990,7 +76993,7 @@ function unknown() {
 var ZodNever = /* @__PURE__ */ $constructor("ZodNever", (inst, def) => {
   $ZodNever.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => neverProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => neverProcessor(inst, ctx, json2, params);
 });
 function never(params) {
   return _never(ZodNever, params);
@@ -76998,7 +77001,7 @@ function never(params) {
 var ZodVoid = /* @__PURE__ */ $constructor("ZodVoid", (inst, def) => {
   $ZodVoid.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => voidProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => voidProcessor(inst, ctx, json2, params);
 });
 function _void2(params) {
   return _void(ZodVoid, params);
@@ -77008,7 +77011,7 @@ var ZodDate = /* @__PURE__ */ $constructor(
   (inst, def) => {
     $ZodDate.init(inst, def);
     ZodType.init(inst, def);
-    inst._zod.processJSONSchema = (ctx2, json2, params) => dateProcessor(inst, ctx2, json2, params);
+    inst._zod.processJSONSchema = (ctx, json2, params) => dateProcessor(inst, ctx, json2, params);
     inst.min = (value, params) => inst.check(_gte(value, params));
     inst.max = (value, params) => inst.check(_lte(value, params));
   },
@@ -77030,7 +77033,7 @@ var ZodArray = /* @__PURE__ */ $constructor("ZodArray", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodArray.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => arrayProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => arrayProcessor(inst, ctx, json2, params);
   inst.element = def.element;
 }, {
   min(n, params) {
@@ -77060,7 +77063,7 @@ var ZodObject = /* @__PURE__ */ $constructor("ZodObject", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodObjectJIT.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => objectProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => objectProcessor(inst, ctx, json2, params);
   util_exports.installLazyProp(inst, "shape", (self2) => self2._zod.def.shape, false);
 }, {
   keyof() {
@@ -77133,7 +77136,7 @@ function looseObject(shape, params) {
 var ZodUnion = /* @__PURE__ */ $constructor("ZodUnion", (inst, def) => {
   $ZodUnion.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => unionProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => unionProcessor(inst, ctx, json2, params);
   inst.options = def.options;
 });
 function union(options, params) {
@@ -77146,7 +77149,7 @@ function union(options, params) {
 var ZodXor = /* @__PURE__ */ $constructor("ZodXor", (inst, def) => {
   ZodUnion.init(inst, def);
   $ZodXor.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => unionProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => unionProcessor(inst, ctx, json2, params);
   inst.options = def.options;
 });
 function xor(options, params) {
@@ -77172,7 +77175,7 @@ function discriminatedUnion(discriminator, options, params) {
 var ZodIntersection = /* @__PURE__ */ $constructor("ZodIntersection", (inst, def) => {
   $ZodIntersection.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => intersectionProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => intersectionProcessor(inst, ctx, json2, params);
 });
 function intersection(left, right) {
   return new ZodIntersection({
@@ -77185,7 +77188,7 @@ var ZodTuple = /* @__PURE__ */ $constructor("ZodTuple", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodTuple.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => tupleProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => tupleProcessor(inst, ctx, json2, params);
 }, {
   rest(rest) {
     return this.clone({
@@ -77218,7 +77221,7 @@ var ZodRecord = /* @__PURE__ */ $constructor("ZodRecord", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodRecord.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => recordProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => recordProcessor(inst, ctx, json2, params);
   inst.keyType = def.keyType;
   inst.valueType = def.valueType;
 });
@@ -77260,7 +77263,7 @@ var ZodMap = /* @__PURE__ */ $constructor("ZodMap", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodMap.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => mapProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => mapProcessor(inst, ctx, json2, params);
   inst.keyType = def.keyType;
   inst.valueType = def.valueType;
   inst.min = (...args) => inst.check(_minSize(...args));
@@ -77280,7 +77283,7 @@ var ZodSet = /* @__PURE__ */ $constructor("ZodSet", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodSet.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => setProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => setProcessor(inst, ctx, json2, params);
   inst.min = (...args) => inst.check(_minSize(...args));
   inst.nonempty = (params) => inst.check(_minSize(1, params));
   inst.max = (...args) => inst.check(_maxSize(...args));
@@ -77296,7 +77299,7 @@ function set(valueType, params) {
 var ZodEnum = /* @__PURE__ */ $constructor("ZodEnum", (inst, def) => {
   $ZodEnum.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => enumProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => enumProcessor(inst, ctx, json2, params);
   inst.enum = def.entries;
   inst.options = [...inst._zod.values];
   const keys = new Set(Object.keys(def.entries));
@@ -77349,7 +77352,7 @@ function nativeEnum(entries, params) {
 var ZodLiteral = /* @__PURE__ */ $constructor("ZodLiteral", (inst, def) => {
   $ZodLiteral.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => literalProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => literalProcessor(inst, ctx, json2, params);
   inst.values = new Set(def.values);
   Object.defineProperty(inst, "value", {
     get() {
@@ -77370,7 +77373,7 @@ function literal(value, params) {
 var ZodFile = /* @__PURE__ */ $constructor("ZodFile", (inst, def) => {
   $ZodFile.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => fileProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => fileProcessor(inst, ctx, json2, params);
   inst.min = (size, params) => inst.check(_minSize(size, params));
   inst.max = (size, params) => inst.check(_maxSize(size, params));
   inst.mime = (types, params) => inst.check(_mime(Array.isArray(types) ? types : [types], params));
@@ -77382,7 +77385,7 @@ var ZodTransform = /* @__PURE__ */ $constructor("ZodTransform", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodTransform.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => transformProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => transformProcessor(inst, ctx, json2, params);
   inst._zod.parse = (payload, _ctx) => {
     if (_ctx.direction === "backward") {
       throw new $ZodEncodeError(inst.constructor.name);
@@ -77421,7 +77424,7 @@ function transform(fn) {
 var ZodOptional = /* @__PURE__ */ $constructor("ZodOptional", (inst, def) => {
   $ZodOptional.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => optionalProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => optionalProcessor(inst, ctx, json2, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function optional(innerType) {
@@ -77433,7 +77436,7 @@ function optional(innerType) {
 var ZodExactOptional = /* @__PURE__ */ $constructor("ZodExactOptional", (inst, def) => {
   $ZodExactOptional.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => optionalProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => optionalProcessor(inst, ctx, json2, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function exactOptional(innerType) {
@@ -77445,7 +77448,7 @@ function exactOptional(innerType) {
 var ZodNullable = /* @__PURE__ */ $constructor("ZodNullable", (inst, def) => {
   $ZodNullable.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => nullableProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => nullableProcessor(inst, ctx, json2, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function nullable(innerType) {
@@ -77460,7 +77463,7 @@ function nullish2(innerType) {
 var ZodDefault = /* @__PURE__ */ $constructor("ZodDefault", (inst, def) => {
   $ZodDefault.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => defaultProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => defaultProcessor(inst, ctx, json2, params);
   inst.unwrap = () => inst._zod.def.innerType;
   inst.removeDefault = inst.unwrap;
 });
@@ -77476,7 +77479,7 @@ function _default2(innerType, defaultValue) {
 var ZodPrefault = /* @__PURE__ */ $constructor("ZodPrefault", (inst, def) => {
   $ZodPrefault.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => prefaultProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => prefaultProcessor(inst, ctx, json2, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function prefault(innerType, defaultValue) {
@@ -77491,7 +77494,7 @@ function prefault(innerType, defaultValue) {
 var ZodNonOptional = /* @__PURE__ */ $constructor("ZodNonOptional", (inst, def) => {
   $ZodNonOptional.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => nonoptionalProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => nonoptionalProcessor(inst, ctx, json2, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function nonoptional(innerType, params) {
@@ -77504,7 +77507,7 @@ function nonoptional(innerType, params) {
 var ZodSuccess = /* @__PURE__ */ $constructor("ZodSuccess", (inst, def) => {
   $ZodSuccess.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => successProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => successProcessor(inst, ctx, json2, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function success(innerType) {
@@ -77516,7 +77519,7 @@ function success(innerType) {
 var ZodCatch = /* @__PURE__ */ $constructor("ZodCatch", (inst, def) => {
   $ZodCatch.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => catchProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => catchProcessor(inst, ctx, json2, params);
   inst.unwrap = () => inst._zod.def.innerType;
   inst.removeCatch = inst.unwrap;
 });
@@ -77530,7 +77533,7 @@ function _catch2(innerType, catchValue) {
 var ZodNaN = /* @__PURE__ */ $constructor("ZodNaN", (inst, def) => {
   $ZodNaN.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => nanProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => nanProcessor(inst, ctx, json2, params);
 });
 function nan(params) {
   return _nan(ZodNaN, params);
@@ -77538,7 +77541,7 @@ function nan(params) {
 var ZodPipe = /* @__PURE__ */ $constructor("ZodPipe", (inst, def) => {
   $ZodPipe.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => pipeProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => pipeProcessor(inst, ctx, json2, params);
   inst.in = def.in;
   inst.out = def.out;
 });
@@ -77580,7 +77583,7 @@ var ZodPreprocess = /* @__PURE__ */ $constructor("ZodPreprocess", (inst, def) =>
 var ZodReadonly = /* @__PURE__ */ $constructor("ZodReadonly", (inst, def) => {
   $ZodReadonly.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => readonlyProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => readonlyProcessor(inst, ctx, json2, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function readonly(innerType) {
@@ -77592,7 +77595,7 @@ function readonly(innerType) {
 var ZodTemplateLiteral = /* @__PURE__ */ $constructor("ZodTemplateLiteral", (inst, def) => {
   $ZodTemplateLiteral.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => templateLiteralProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => templateLiteralProcessor(inst, ctx, json2, params);
 });
 function templateLiteral(parts, params) {
   return new ZodTemplateLiteral({
@@ -77604,7 +77607,7 @@ function templateLiteral(parts, params) {
 var ZodLazy = /* @__PURE__ */ $constructor("ZodLazy", (inst, def) => {
   $ZodLazy.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => lazyProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => lazyProcessor(inst, ctx, json2, params);
   inst.unwrap = () => inst._zod.def.getter();
 });
 function lazy(getter) {
@@ -77616,7 +77619,7 @@ function lazy(getter) {
 var ZodPromise = /* @__PURE__ */ $constructor("ZodPromise", (inst, def) => {
   $ZodPromise.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => promiseProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => promiseProcessor(inst, ctx, json2, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function promise(innerType) {
@@ -77628,7 +77631,7 @@ function promise(innerType) {
 var ZodFunction = /* @__PURE__ */ $constructor("ZodFunction", (inst, def) => {
   $ZodFunction.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => functionProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => functionProcessor(inst, ctx, json2, params);
 });
 function _function(params) {
   return new ZodFunction({
@@ -77640,7 +77643,7 @@ function _function(params) {
 var ZodCustom = /* @__PURE__ */ $constructor("ZodCustom", (inst, def) => {
   $ZodCustom.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx2, json2, params) => customProcessor(inst, ctx2, json2, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => customProcessor(inst, ctx, json2, params);
 });
 function check(fn) {
   const ch = new $ZodCheck({
@@ -77856,21 +77859,21 @@ function applyMinItems(items, minItems) {
 function decodeJSONPointerSegment(segment) {
   return segment.replace(/~1/g, "/").replace(/~0/g, "~");
 }
-function resolveRef(ref, ctx2) {
+function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
   const path3 = ref.slice(1).split("/").filter(Boolean);
   if (path3.length === 0) {
-    return ctx2.rootSchema;
+    return ctx.rootSchema;
   }
-  const defsKey = ctx2.version === "draft-2020-12" ? "$defs" : "definitions";
+  const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
   if (path3[0] === defsKey) {
     const key = path3[1] === void 0 ? void 0 : decodeJSONPointerSegment(path3[1]);
-    if (!key || !ctx2.defs[key]) {
+    if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
-    return ctx2.defs[key];
+    return ctx.defs[key];
   }
   throw new Error(`Reference not found: ${ref}`);
 }
@@ -78056,17 +78059,17 @@ function checkArrayGuards(arraySchema, guards) {
   });
   return guard.pipe(arraySchema);
 }
-function getTupleRest(restSchema, ctx2) {
+function getTupleRest(restSchema, ctx) {
   if (restSchema === false) {
     return void 0;
   }
   if (restSchema === void 0 || restSchema === true) {
     return z.any();
   }
-  return convertSchema(restSchema, ctx2);
+  return convertSchema(restSchema, ctx);
 }
 var fullTime = /^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/;
-function convertBaseSchema(schema2, ctx2) {
+function convertBaseSchema(schema2, ctx) {
   if (schema2.not !== void 0) {
     if (typeof schema2.not === "object" && Object.keys(schema2.not).length === 0) {
       return z.never();
@@ -78087,27 +78090,27 @@ function convertBaseSchema(schema2, ctx2) {
   }
   if (schema2.$ref) {
     const refPath = schema2.$ref;
-    if (ctx2.refs.has(refPath)) {
-      return ctx2.refs.get(refPath);
+    if (ctx.refs.has(refPath)) {
+      return ctx.refs.get(refPath);
     }
-    if (ctx2.processing.has(refPath)) {
+    if (ctx.processing.has(refPath)) {
       return z.lazy(() => {
-        if (!ctx2.refs.has(refPath)) {
+        if (!ctx.refs.has(refPath)) {
           throw new Error(`Circular reference not resolved: ${refPath}`);
         }
-        return ctx2.refs.get(refPath);
+        return ctx.refs.get(refPath);
       });
     }
-    ctx2.processing.add(refPath);
-    const resolved = resolveRef(refPath, ctx2);
-    const zodSchema2 = convertSchema(resolved, ctx2);
-    ctx2.refs.set(refPath, zodSchema2);
-    ctx2.processing.delete(refPath);
+    ctx.processing.add(refPath);
+    const resolved = resolveRef(refPath, ctx);
+    const zodSchema2 = convertSchema(resolved, ctx);
+    ctx.refs.set(refPath, zodSchema2);
+    ctx.processing.delete(refPath);
     return zodSchema2;
   }
   if (schema2.enum !== void 0) {
     const enumValues = schema2.enum;
-    if (ctx2.version === "openapi-3.0" && schema2.nullable === true && enumValues.length === 1 && enumValues[0] === null) {
+    if (ctx.version === "openapi-3.0" && schema2.nullable === true && enumValues.length === 1 && enumValues[0] === null) {
       return z.null();
     }
     if (enumValues.length === 0) {
@@ -78132,7 +78135,7 @@ function convertBaseSchema(schema2, ctx2) {
   if (Array.isArray(type)) {
     const typeSchemas = type.map((t) => {
       const typeSchema = { ...schema2, type: t };
-      return convertBaseSchema(typeSchema, ctx2);
+      return convertBaseSchema(typeSchema, ctx);
     });
     if (typeSchemas.length === 0) {
       return z.never();
@@ -78254,9 +78257,9 @@ function convertBaseSchema(schema2, ctx2) {
       const shape = {};
       const properties = schema2.properties || {};
       const requiredSet = new Set(schema2.required || []);
-      const additionalSchema = typeof schema2.additionalProperties === "object" ? convertSchema(schema2.additionalProperties, ctx2) : void 0;
+      const additionalSchema = typeof schema2.additionalProperties === "object" ? convertSchema(schema2.additionalProperties, ctx) : void 0;
       for (const [key, propSchema] of Object.entries(properties)) {
-        const propZodSchema = convertSchema(propSchema, ctx2);
+        const propZodSchema = convertSchema(propSchema, ctx);
         assignProp(shape, key, requiredSet.has(key) ? propZodSchema : propZodSchema.optional());
       }
       if (schema2.patternProperties) {
@@ -78264,7 +78267,7 @@ function convertBaseSchema(schema2, ctx2) {
         const patternKeys = Object.keys(patternProps);
         const looseRecords = [];
         for (const pattern of patternKeys) {
-          const patternValue = convertSchema(patternProps[pattern], ctx2);
+          const patternValue = convertSchema(patternProps[pattern], ctx);
           const keySchema = z.string().regex(new RegExp(pattern));
           looseRecords.push(z.looseRecord(keySchema, patternValue));
         }
@@ -78326,7 +78329,7 @@ function convertBaseSchema(schema2, ctx2) {
         let keySchema;
         if (hasKeyGuard) {
           const keyJSONSchema = typeof schema2.propertyNames === "object" && schema2.propertyNames.type === void 0 ? { type: "string", ...schema2.propertyNames } : schema2.propertyNames;
-          keySchema = convertSchema(keyJSONSchema, ctx2);
+          keySchema = convertSchema(keyJSONSchema, ctx);
         }
         zodSchema = checkObjectGuards(zodSchema, { keySchema, minProperties, maxProperties });
       }
@@ -78337,9 +78340,9 @@ function convertBaseSchema(schema2, ctx2) {
       const items = schema2.items;
       if (prefixItems && Array.isArray(prefixItems)) {
         const minItems = typeof schema2.minItems === "number" ? schema2.minItems : 0;
-        const tupleItems = prefixItems.map((item) => convertSchema(item, ctx2));
+        const tupleItems = prefixItems.map((item) => convertSchema(item, ctx));
         const positionalItems = applyMinItems(tupleItems, minItems);
-        const rest = !Array.isArray(items) ? getTupleRest(items, ctx2) : void 0;
+        const rest = !Array.isArray(items) ? getTupleRest(items, ctx) : void 0;
         const tupleSchema = z.tuple(positionalItems);
         zodSchema = rest ? tupleSchema.rest(rest) : tupleSchema;
         if (typeof schema2.minItems === "number") {
@@ -78350,9 +78353,9 @@ function convertBaseSchema(schema2, ctx2) {
         }
       } else if (Array.isArray(items)) {
         const minItems = typeof schema2.minItems === "number" ? schema2.minItems : 0;
-        const tupleItems = items.map((item) => convertSchema(item, ctx2));
+        const tupleItems = items.map((item) => convertSchema(item, ctx));
         const positionalItems = applyMinItems(tupleItems, minItems);
-        const rest = getTupleRest(schema2.additionalItems, ctx2);
+        const rest = getTupleRest(schema2.additionalItems, ctx);
         const tupleSchema = z.tuple(positionalItems);
         zodSchema = rest ? tupleSchema.rest(rest) : tupleSchema;
         if (typeof schema2.minItems === "number") {
@@ -78362,7 +78365,7 @@ function convertBaseSchema(schema2, ctx2) {
           zodSchema = zodSchema.check(z.maxLength(schema2.maxItems));
         }
       } else if (items !== void 0) {
-        const element = convertSchema(items, ctx2);
+        const element = convertSchema(items, ctx);
         let arraySchema = z.array(element);
         if (typeof schema2.minItems === "number") {
           arraySchema = arraySchema.min(schema2.minItems);
@@ -78377,7 +78380,7 @@ function convertBaseSchema(schema2, ctx2) {
       if (schema2.uniqueItems === true || schema2.contains !== void 0) {
         zodSchema = checkArrayGuards(zodSchema, {
           uniqueItems: schema2.uniqueItems === true,
-          containsSchema: schema2.contains !== void 0 ? convertSchema(schema2.contains, ctx2) : void 0,
+          containsSchema: schema2.contains !== void 0 ? convertSchema(schema2.contains, ctx) : void 0,
           minContains: typeof schema2.minContains === "number" ? schema2.minContains : void 0,
           maxContains: typeof schema2.maxContains === "number" ? schema2.maxContains : void 0
         });
@@ -78389,19 +78392,19 @@ function convertBaseSchema(schema2, ctx2) {
   }
   return zodSchema;
 }
-function convertSchema(schema2, ctx2) {
+function convertSchema(schema2, ctx) {
   if (typeof schema2 === "boolean") {
     return schema2 ? z.any() : z.never();
   }
-  let baseSchema = convertBaseSchema(schema2, ctx2);
+  let baseSchema = convertBaseSchema(schema2, ctx);
   const hasExplicitType = schema2.type || schema2.enum !== void 0 || schema2.const !== void 0;
   if (schema2.anyOf && Array.isArray(schema2.anyOf)) {
-    const options = schema2.anyOf.map((s) => convertSchema(s, ctx2));
+    const options = schema2.anyOf.map((s) => convertSchema(s, ctx));
     const anyOfUnion = z.union(options);
     baseSchema = hasExplicitType ? z.intersection(baseSchema, anyOfUnion) : anyOfUnion;
   }
   if (schema2.oneOf && Array.isArray(schema2.oneOf)) {
-    const options = schema2.oneOf.map((s) => convertSchema(s, ctx2));
+    const options = schema2.oneOf.map((s) => convertSchema(s, ctx));
     const oneOfUnion = z.xor(options);
     baseSchema = hasExplicitType ? z.intersection(baseSchema, oneOfUnion) : oneOfUnion;
   }
@@ -78409,15 +78412,15 @@ function convertSchema(schema2, ctx2) {
     if (schema2.allOf.length === 0) {
       baseSchema = hasExplicitType ? baseSchema : z.any();
     } else {
-      let result = hasExplicitType ? baseSchema : convertSchema(schema2.allOf[0], ctx2);
+      let result = hasExplicitType ? baseSchema : convertSchema(schema2.allOf[0], ctx);
       const startIdx = hasExplicitType ? 0 : 1;
       for (let i = startIdx; i < schema2.allOf.length; i++) {
-        result = z.intersection(result, convertSchema(schema2.allOf[i], ctx2));
+        result = z.intersection(result, convertSchema(schema2.allOf[i], ctx));
       }
       baseSchema = result;
     }
   }
-  if (schema2.nullable === true && ctx2.version === "openapi-3.0") {
+  if (schema2.nullable === true && ctx.version === "openapi-3.0") {
     baseSchema = z.nullable(baseSchema);
   }
   if (schema2.readOnly === true) {
@@ -78463,7 +78466,7 @@ function convertSchema(schema2, ctx2) {
     }
   }
   if (Object.keys(extraMeta).length > 0) {
-    ctx2.registry.add(baseSchema, extraMeta);
+    ctx.registry.add(baseSchema, extraMeta);
   }
   if (schema2.description) {
     baseSchema = baseSchema.describe(schema2.description);
@@ -78482,7 +78485,7 @@ function fromJSONSchema(schema2, params) {
   }
   const version2 = detectVersion(normalized, params?.defaultTarget);
   const defs = normalized.$defs || normalized.definitions || {};
-  const ctx2 = {
+  const ctx = {
     version: version2,
     defs,
     refs: /* @__PURE__ */ new Map(),
@@ -78490,7 +78493,7 @@ function fromJSONSchema(schema2, params) {
     rootSchema: normalized,
     registry: params?.registry ?? globalRegistry
   };
-  return convertSchema(normalized, ctx2);
+  return convertSchema(normalized, ctx);
 }
 
 // ../../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/visit.js
@@ -78720,7 +78723,8 @@ var opt = (t) => external_exports.preprocess((v) => v === "" ? void 0 : v, t);
 var bool = external_exports.enum(["true", "false", "1", "0"]).transform((v) => v === "true" || v === "1");
 var schema = external_exports.object({
   NODE_ENV: external_exports.enum(["development", "test", "production"]).default("development"),
-  PORT: external_exports.coerce.number().int().default(8080),
+  /** Porta TCP, ou caminho de socket quando a hospedagem (LiteSpeed/Passenger) passa um. */
+  PORT: external_exports.string().trim().default("8080"),
   DATABASE_URL: external_exports.string().min(1),
   /** Conexão direta (sem pooler), usada nas migrações. O `neon env pull` preenche. */
   DATABASE_URL_UNPOOLED: external_exports.string().optional(),
@@ -78768,6 +78772,8 @@ var schema = external_exports.object({
    * para a Meta (o sistema antigo continua enviando). Ver docs/PLANO-MIGRACAO.md.
    */
   CAPI_DISPATCH: opt(external_exports.enum(["enabled", "paused"]).default("enabled")),
+  /** Fila vazia: o worker dorme até o próximo reenvio, no máximo isto (evento novo acorda na hora). */
+  CAPI_IDLE_POLL_SECONDS: external_exports.coerce.number().int().min(1).max(3600).default(600),
   CAPI_MAX_ATTEMPTS: external_exports.coerce.number().int().min(1).max(30).default(10),
   /** Diretório do build do painel para servir junto da API (deploy em um container). */
   WEB_DIST_DIR: external_exports.string().default(""),
@@ -78832,14 +78838,14 @@ var publicKey = () => "pt_px_" + randomBytes(10).toString("hex");
 var hint = (token) => "\u2026" + token.slice(-4);
 
 // src/lib/mailer.ts
-function createMailer(config3, log) {
-  if (config3.RESEND_API_KEY) {
+function createMailer(config2, log2) {
+  if (config2.RESEND_API_KEY) {
     return {
       async send(mail) {
         const r = await fetch("https://api.resend.com/emails", {
           method: "POST",
-          headers: { Authorization: `Bearer ${config3.RESEND_API_KEY}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ from: config3.MAIL_FROM, to: [mail.to], subject: mail.subject, text: mail.text })
+          headers: { Authorization: `Bearer ${config2.RESEND_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ from: config2.MAIL_FROM, to: [mail.to], subject: mail.subject, text: mail.text })
         });
         if (!r.ok) throw new Error(`Falha ao enviar e-mail (HTTP ${r.status})`);
       }
@@ -78847,31 +78853,31 @@ function createMailer(config3, log) {
   }
   return {
     async send(mail) {
-      if (config3.isProd) {
-        log.error({ to: "[redacted]", subject: mail.subject }, "RESEND_API_KEY ausente: e-mail N\xC3O enviado");
+      if (config2.isProd) {
+        log2.error({ to: "[redacted]", subject: mail.subject }, "RESEND_API_KEY ausente: e-mail N\xC3O enviado");
         return;
       }
-      log.info({ to: mail.to, subject: mail.subject, text: mail.text }, "e-mail (modo desenvolvimento)");
+      log2.info({ to: mail.to, subject: mail.subject, text: mail.text }, "e-mail (modo desenvolvimento)");
     }
   };
 }
 
 // src/context.ts
-function createCtx(config3, db, overrides = {}) {
+function createCtx(config2, db, overrides = {}) {
   const line = (level, severity, o, m) => JSON.stringify({ level, severity, msg: m, ...o });
-  const log = overrides.log ?? {
+  const log2 = overrides.log ?? {
     info: (o, m) => console.log(line("info", "INFO", o, m)),
     warn: (o, m) => console.warn(line("warn", "WARNING", o, m)),
     error: (o, m) => console.error(line("error", "ERROR", o, m))
   };
   return {
-    config: config3,
+    config: config2,
     db,
-    box: new SecretBox(config3.ENCRYPTION_KEY),
+    box: new SecretBox(config2.ENCRYPTION_KEY),
     fetch: globalThis.fetch.bind(globalThis),
-    mailer: createMailer(config3, log),
+    mailer: createMailer(config2, log2),
     now: () => /* @__PURE__ */ new Date(),
-    log,
+    log: log2,
     ...overrides
   };
 }
@@ -78883,6 +78889,18 @@ var import_static = __toESM(require_static(), 1);
 import { existsSync as existsSync2, readFileSync } from "node:fs";
 import path2 from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
+
+// src/capi/wake.ts
+var listeners = /* @__PURE__ */ new Set();
+function onWake(fn) {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
+function wakeDispatcher() {
+  for (const fn of listeners) fn();
+}
+
+// src/app.ts
 import { randomUUID as randomUUID3 } from "node:crypto";
 
 // src/auth/service.ts
@@ -78931,15 +78949,15 @@ function planState(org, now) {
   const daysLeft = exp ? Math.max(0, Math.ceil((exp.getTime() - now.getTime()) / 864e5)) : 0;
   return { status: expired ? "expired" : org.plan_status, daysLeft, blocked: expired };
 }
-async function createUserWithOrg(ctx2, input2) {
+async function createUserWithOrg(ctx, input2) {
   validatePassword(input2.password);
   const email4 = input2.email.trim().toLowerCase();
   const hash2 = await hashPassword(input2.password);
-  const trialEnd = new Date(ctx2.now().getTime() + ctx2.config.PLAN_TRIAL_DAYS * 864e5);
-  return tx(ctx2.db, async (c) => {
+  const trialEnd = new Date(ctx.now().getTime() + ctx.config.PLAN_TRIAL_DAYS * 864e5);
+  return tx(ctx.db, async (c) => {
     const exists = await c.query("SELECT 1 FROM users WHERE email = $1", [email4]);
     if (exists.rowCount) throw conflict("J\xE1 existe uma conta com este e-mail. Fa\xE7a login.");
-    const isAdmin = ctx2.config.platformAdmins.has(email4);
+    const isAdmin = ctx.config.platformAdmins.has(email4);
     const u = await c.query(
       "INSERT INTO users(email, password_hash, name, is_platform_admin) VALUES ($1, $2, $3, $4) RETURNING id",
       [email4, hash2, input2.name?.trim() || null, isAdmin]
@@ -78955,8 +78973,8 @@ async function createUserWithOrg(ctx2, input2) {
     return { userId, orgId };
   });
 }
-async function authenticate(ctx2, email4, password) {
-  const r = await ctx2.db.query(
+async function authenticate(ctx, email4, password) {
+  const r = await ctx.db.query(
     "SELECT id, password_hash FROM users WHERE email = $1",
     [email4.trim().toLowerCase()]
   );
@@ -78964,29 +78982,29 @@ async function authenticate(ctx2, email4, password) {
   const ok = await verifyPassword(password, row?.password_hash ?? await getDummyHash());
   if (!row || !ok) return null;
   if (!row.password_hash.startsWith(`$2a$${BCRYPT_COST}$`) && !row.password_hash.startsWith(`$2b$${BCRYPT_COST}$`)) {
-    await ctx2.db.query("UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2", [await hashPassword(password), row.id]);
+    await ctx.db.query("UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2", [await hashPassword(password), row.id]);
   }
   return { id: row.id };
 }
-async function createSession(ctx2, userId, meta3) {
+async function createSession(ctx, userId, meta3) {
   const token = randomToken(32);
-  const expires = new Date(ctx2.now().getTime() + ctx2.config.SESSION_TTL_DAYS * 864e5);
-  await ctx2.db.query(
+  const expires = new Date(ctx.now().getTime() + ctx.config.SESSION_TTL_DAYS * 864e5);
+  await ctx.db.query(
     "INSERT INTO sessions(id, user_id, active_org_id, ip, user_agent, expires_at) VALUES ($1, $2, $3, $4, $5, $6)",
     [sha256Hex(token), userId, meta3.orgId ?? null, meta3.ip ?? null, meta3.ua?.slice(0, 300) ?? null, expires]
   );
   return { token, expires };
 }
-async function revokeSessions(ctx2, userId, exceptSessionId) {
-  const r = await ctx2.db.query(
+async function revokeSessions(ctx, userId, exceptSessionId) {
+  const r = await ctx.db.query(
     "UPDATE sessions SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL AND ($2::text IS NULL OR id <> $2)",
     [userId, exceptSessionId ?? null]
   );
   return r.rowCount ?? 0;
 }
-async function resolveSession(ctx2, token) {
+async function resolveSession(ctx, token) {
   const id = sha256Hex(token);
-  const r = await ctx2.db.query(
+  const r = await ctx.db.query(
     `SELECT s.id AS session_id, s.active_org_id, s.expires_at, s.last_seen_at,
             u.id AS user_id, u.email, u.name, u.is_platform_admin, u.email_verified_at, u.hide_email
        FROM sessions s JOIN users u ON u.id = s.user_id
@@ -78995,7 +79013,7 @@ async function resolveSession(ctx2, token) {
   );
   const s = r.rows[0];
   if (!s) return null;
-  const m = await ctx2.db.query(
+  const m = await ctx.db.query(
     `SELECT m.role, o.id, o.name, o.reporting_currency, o.timezone, o.plan_status, o.plan_expires_at,
             o.goal_daily_minor, o.goal_monthly_minor
        FROM memberships m JOIN organizations o ON o.id = m.org_id
@@ -79006,9 +79024,9 @@ async function resolveSession(ctx2, token) {
   const org = m.rows[0];
   if (!org) return null;
   if (Date.now() - new Date(s.last_seen_at).getTime() > 5 * 6e4) {
-    await ctx2.db.query(
+    await ctx.db.query(
       "UPDATE sessions SET last_seen_at = now(), expires_at = now() + make_interval(days => $2) WHERE id = $1",
-      [id, ctx2.config.SESSION_TTL_DAYS]
+      [id, ctx.config.SESSION_TTL_DAYS]
     );
   }
   return {
@@ -79034,16 +79052,16 @@ async function resolveSession(ctx2, token) {
     }
   };
 }
-async function issueToken(ctx2, userId, kind, ttlMin) {
+async function issueToken(ctx, userId, kind, ttlMin) {
   const token = randomToken(32);
-  await ctx2.db.query(
+  await ctx.db.query(
     `INSERT INTO auth_tokens(user_id, kind, token_hash, expires_at) VALUES ($1, $2, $3, now() + make_interval(mins => $4))`,
     [userId, kind, sha256Hex(token), ttlMin]
   );
   return token;
 }
-async function consumeToken(ctx2, token, kind) {
-  const r = await ctx2.db.query(
+async function consumeToken(ctx, token, kind) {
+  const r = await ctx.db.query(
     `UPDATE auth_tokens SET used_at = now()
       WHERE token_hash = $1 AND kind = $2 AND used_at IS NULL AND expires_at > now()
       RETURNING user_id`,
@@ -79108,57 +79126,57 @@ function jsonSafe(v) {
 
 // src/auth/routes.ts
 var email3 = external_exports.string().trim().toLowerCase().email("E-mail inv\xE1lido").max(190);
-function authRoutes(app2, ctx2) {
-  const secure = ctx2.config.isProd;
+function authRoutes(app, ctx) {
+  const secure = ctx.config.isProd;
   async function sendVerification(userId, to) {
-    const token = await issueToken(ctx2, userId, "email_verify", 60 * 24 * 3);
-    await ctx2.mailer.send({
+    const token = await issueToken(ctx, userId, "email_verify", 60 * 24 * 3);
+    await ctx.mailer.send({
       to,
       subject: "Confirme seu e-mail \u2014 PayTracking",
-      text: `Confirme seu e-mail acessando: ${ctx2.config.APP_URL}/verificar-email?token=${token}
+      text: `Confirme seu e-mail acessando: ${ctx.config.APP_URL}/verificar-email?token=${token}
 
 O link expira em 3 dias.`
     });
   }
-  app2.post("/v1/auth/signup", async (req, reply) => {
-    await hit(ctx2.db, `signup:ip:${clientIp(req)}`, 10, 3600);
+  app.post("/v1/auth/signup", async (req, reply) => {
+    await hit(ctx.db, `signup:ip:${clientIp(req)}`, 10, 3600);
     const body = parse4(external_exports.object({
       email: email3,
       password: external_exports.string(),
       name: external_exports.string().trim().max(120).optional(),
       orgName: external_exports.string().trim().max(120).optional()
     }), req.body);
-    const { userId, orgId } = await createUserWithOrg(ctx2, body);
-    const s = await createSession(ctx2, userId, { ip: clientIp(req), ua: req.headers["user-agent"], orgId });
+    const { userId, orgId } = await createUserWithOrg(ctx, body);
+    const s = await createSession(ctx, userId, { ip: clientIp(req), ua: req.headers["user-agent"], orgId });
     setSessionCookie(reply, s.token, s.expires, secure);
-    await sendVerification(userId, body.email).catch((e) => ctx2.log.error({ err: String(e) }, "falha ao enviar verifica\xE7\xE3o"));
+    await sendVerification(userId, body.email).catch((e) => ctx.log.error({ err: String(e) }, "falha ao enviar verifica\xE7\xE3o"));
     return reply.code(201).send({ ok: true });
   });
-  app2.post("/v1/auth/login", async (req, reply) => {
+  app.post("/v1/auth/login", async (req, reply) => {
     const body = parse4(external_exports.object({ email: email3, password: external_exports.string().min(1).max(200) }), req.body);
     const ipBucket = `login:ip:${clientIp(req)}`;
     const emailBucket = `login:email:${body.email}`;
-    await hit(ctx2.db, ipBucket, 30, 900);
-    await hit(ctx2.db, emailBucket, 8, 900);
-    const user = await authenticate(ctx2, body.email, body.password);
+    await hit(ctx.db, ipBucket, 30, 900);
+    await hit(ctx.db, emailBucket, 8, 900);
+    const user = await authenticate(ctx, body.email, body.password);
     if (!user) throw unauthorized("E-mail ou senha incorretos.");
-    await clear(ctx2.db, emailBucket);
-    const s = await createSession(ctx2, user.id, { ip: clientIp(req), ua: req.headers["user-agent"] });
+    await clear(ctx.db, emailBucket);
+    const s = await createSession(ctx, user.id, { ip: clientIp(req), ua: req.headers["user-agent"] });
     setSessionCookie(reply, s.token, s.expires, secure);
     return { ok: true };
   });
-  app2.post("/v1/auth/logout", async (req, reply) => {
-    if (req.auth) await ctx2.db.query("UPDATE sessions SET revoked_at = now() WHERE id = $1", [req.auth.sessionId]);
+  app.post("/v1/auth/logout", async (req, reply) => {
+    if (req.auth) await ctx.db.query("UPDATE sessions SET revoked_at = now() WHERE id = $1", [req.auth.sessionId]);
     clearSessionCookie(reply, secure);
     return { ok: true };
   });
-  app2.get("/v1/auth/me", async (req) => {
+  app.get("/v1/auth/me", async (req) => {
     const a = auth(req);
-    const orgs = await ctx2.db.query(
+    const orgs = await ctx.db.query(
       `SELECT o.id, o.name, m.role FROM memberships m JOIN organizations o ON o.id = m.org_id WHERE m.user_id = $1 ORDER BY o.name`,
       [a.user.id]
     );
-    const plan = planState(a.org, ctx2.now());
+    const plan = planState(a.org, ctx.now());
     return {
       user: a.user,
       role: a.role,
@@ -79170,89 +79188,89 @@ O link expira em 3 dias.`
         goalDailyMinor: a.org.goal_daily_minor.toString(),
         goalMonthlyMinor: a.org.goal_monthly_minor.toString()
       },
-      plan: { ...plan, expiresAt: a.org.plan_expires_at, priceMinor: ctx2.config.PLAN_PRICE_MINOR },
+      plan: { ...plan, expiresAt: a.org.plan_expires_at, priceMinor: ctx.config.PLAN_PRICE_MINOR },
       orgs: orgs.rows
     };
   });
-  app2.post("/v1/auth/switch-org", async (req) => {
+  app.post("/v1/auth/switch-org", async (req) => {
     const a = auth(req);
     const { orgId } = parse4(external_exports.object({ orgId: external_exports.string().uuid() }), req.body);
-    const m = await ctx2.db.query("SELECT 1 FROM memberships WHERE org_id = $1 AND user_id = $2", [orgId, a.user.id]);
+    const m = await ctx.db.query("SELECT 1 FROM memberships WHERE org_id = $1 AND user_id = $2", [orgId, a.user.id]);
     if (!m.rowCount) throw badRequest("Organiza\xE7\xE3o n\xE3o encontrada.");
-    await ctx2.db.query("UPDATE sessions SET active_org_id = $1 WHERE id = $2", [orgId, a.sessionId]);
+    await ctx.db.query("UPDATE sessions SET active_org_id = $1 WHERE id = $2", [orgId, a.sessionId]);
     return { ok: true };
   });
-  app2.post("/v1/auth/forgot-password", async (req) => {
-    await hit(ctx2.db, `forgot:ip:${clientIp(req)}`, 10, 3600);
+  app.post("/v1/auth/forgot-password", async (req) => {
+    await hit(ctx.db, `forgot:ip:${clientIp(req)}`, 10, 3600);
     const body = parse4(external_exports.object({ email: email3 }), req.body);
-    const u = await ctx2.db.query("SELECT id FROM users WHERE email = $1", [body.email]);
+    const u = await ctx.db.query("SELECT id FROM users WHERE email = $1", [body.email]);
     const row = u.rows[0];
     if (row) {
-      const token = await issueToken(ctx2, row.id, "password_reset", 60);
-      await ctx2.mailer.send({
+      const token = await issueToken(ctx, row.id, "password_reset", 60);
+      await ctx.mailer.send({
         to: body.email,
         subject: "Redefini\xE7\xE3o de senha \u2014 PayTracking",
-        text: `Para criar uma nova senha acesse: ${ctx2.config.APP_URL}/redefinir-senha?token=${token}
+        text: `Para criar uma nova senha acesse: ${ctx.config.APP_URL}/redefinir-senha?token=${token}
 
 O link expira em 1 hora. Se voc\xEA n\xE3o pediu, ignore este e-mail.`
       });
     }
     return { ok: true };
   });
-  app2.post("/v1/auth/reset-password", async (req) => {
-    await hit(ctx2.db, `reset:ip:${clientIp(req)}`, 20, 3600);
+  app.post("/v1/auth/reset-password", async (req) => {
+    await hit(ctx.db, `reset:ip:${clientIp(req)}`, 20, 3600);
     const body = parse4(external_exports.object({ token: external_exports.string().min(20), password: external_exports.string() }), req.body);
     validatePassword(body.password);
-    const userId = await consumeToken(ctx2, body.token, "password_reset");
+    const userId = await consumeToken(ctx, body.token, "password_reset");
     if (!userId) throw badRequest("Link inv\xE1lido ou expirado. Solicite um novo.");
-    await ctx2.db.query("UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2", [await hashPassword(body.password), userId]);
-    await revokeSessions(ctx2, userId);
-    await ctx2.db.query(`INSERT INTO audit_log(user_id, action) VALUES ($1, 'auth.password_reset')`, [userId]);
+    await ctx.db.query("UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2", [await hashPassword(body.password), userId]);
+    await revokeSessions(ctx, userId);
+    await ctx.db.query(`INSERT INTO audit_log(user_id, action) VALUES ($1, 'auth.password_reset')`, [userId]);
     return { ok: true };
   });
-  app2.post("/v1/auth/verify-email", async (req) => {
+  app.post("/v1/auth/verify-email", async (req) => {
     const body = parse4(external_exports.object({ token: external_exports.string().min(20) }), req.body);
-    const userId = await consumeToken(ctx2, body.token, "email_verify");
+    const userId = await consumeToken(ctx, body.token, "email_verify");
     if (!userId) throw badRequest("Link inv\xE1lido ou expirado.");
-    await ctx2.db.query("UPDATE users SET email_verified_at = now() WHERE id = $1", [userId]);
+    await ctx.db.query("UPDATE users SET email_verified_at = now() WHERE id = $1", [userId]);
     return { ok: true };
   });
-  app2.post("/v1/auth/resend-verification", async (req) => {
+  app.post("/v1/auth/resend-verification", async (req) => {
     const a = auth(req);
-    await hit(ctx2.db, `verify:user:${a.user.id}`, 5, 3600);
+    await hit(ctx.db, `verify:user:${a.user.id}`, 5, 3600);
     if (!a.user.emailVerified) await sendVerification(a.user.id, a.user.email);
     return { ok: true };
   });
-  app2.post("/v1/auth/change-password", async (req) => {
+  app.post("/v1/auth/change-password", async (req) => {
     const a = auth(req);
-    await hit(ctx2.db, `chpw:user:${a.user.id}`, 10, 900);
+    await hit(ctx.db, `chpw:user:${a.user.id}`, 10, 900);
     const body = parse4(external_exports.object({ currentPassword: external_exports.string().min(1), newPassword: external_exports.string() }), req.body);
     validatePassword(body.newPassword);
     if (body.newPassword === body.currentPassword) throw badRequest("A nova senha deve ser diferente da atual.");
-    const r = await ctx2.db.query("SELECT password_hash FROM users WHERE id = $1", [a.user.id]);
+    const r = await ctx.db.query("SELECT password_hash FROM users WHERE id = $1", [a.user.id]);
     if (!await verifyPassword(body.currentPassword, r.rows[0]?.password_hash ?? "")) throw badRequest("Senha atual incorreta.");
-    await ctx2.db.query("UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2", [await hashPassword(body.newPassword), a.user.id]);
-    const revoked = await revokeSessions(ctx2, a.user.id, a.sessionId);
-    await ctx2.db.query(`INSERT INTO audit_log(org_id, user_id, action) VALUES ($1, $2, 'auth.password_changed')`, [a.org.id, a.user.id]);
+    await ctx.db.query("UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2", [await hashPassword(body.newPassword), a.user.id]);
+    const revoked = await revokeSessions(ctx, a.user.id, a.sessionId);
+    await ctx.db.query(`INSERT INTO audit_log(org_id, user_id, action) VALUES ($1, $2, 'auth.password_changed')`, [a.org.id, a.user.id]);
     return { ok: true, revokedSessions: revoked };
   });
-  app2.get("/v1/auth/sessions", async (req) => {
+  app.get("/v1/auth/sessions", async (req) => {
     const a = auth(req);
-    const r = await ctx2.db.query(
+    const r = await ctx.db.query(
       `SELECT left(id, 12) AS id, host(ip) AS ip, user_agent, created_at, last_seen_at, (id = $2) AS current
          FROM sessions WHERE user_id = $1 AND revoked_at IS NULL AND expires_at > now() ORDER BY last_seen_at DESC`,
       [a.user.id, a.sessionId]
     );
     return { sessions: r.rows };
   });
-  app2.post("/v1/auth/sessions/revoke-others", async (req) => {
+  app.post("/v1/auth/sessions/revoke-others", async (req) => {
     const a = auth(req);
-    return { revoked: await revokeSessions(ctx2, a.user.id, a.sessionId) };
+    return { revoked: await revokeSessions(ctx, a.user.id, a.sessionId) };
   });
-  app2.patch("/v1/auth/preferences", async (req) => {
+  app.patch("/v1/auth/preferences", async (req) => {
     const a = auth(req);
     const body = parse4(external_exports.object({ hideEmail: external_exports.boolean().optional(), name: external_exports.string().trim().max(120).optional() }), req.body);
-    await ctx2.db.query(
+    await ctx.db.query(
       "UPDATE users SET hide_email = COALESCE($2, hide_email), name = COALESCE($3, name), updated_at = now() WHERE id = $1",
       [a.user.id, body.hideEmail ?? null, body.name ?? null]
     );
@@ -79981,8 +79999,8 @@ function matchUtmToRow(utmValues, rows) {
 
 // src/orgs/routes.ts
 var TIMEZONES = new Set(Intl.supportedValuesOf("timeZone"));
-async function audit(ctx2, orgId, userId, action, target, metadata = {}) {
-  await ctx2.db.query("INSERT INTO audit_log(org_id, user_id, action, target, metadata) VALUES ($1, $2, $3, $4, $5)", [
+async function audit(ctx, orgId, userId, action, target, metadata = {}) {
+  await ctx.db.query("INSERT INTO audit_log(org_id, user_id, action, target, metadata) VALUES ($1, $2, $3, $4, $5)", [
     orgId,
     userId,
     action,
@@ -79990,8 +80008,8 @@ async function audit(ctx2, orgId, userId, action, target, metadata = {}) {
     JSON.stringify(metadata)
   ]);
 }
-function orgRoutes(app2, ctx2) {
-  app2.patch("/v1/org", async (req) => {
+function orgRoutes(app, ctx) {
+  app.patch("/v1/org", async (req) => {
     const a = requireRole(req, "admin");
     const body = parse4(external_exports.object({
       name: external_exports.string().trim().min(1).max(120).optional(),
@@ -80005,59 +80023,59 @@ function orgRoutes(app2, ctx2) {
     const gd = goal(body.goalDaily);
     const gm = goal(body.goalMonthly);
     if (body.goalDaily !== void 0 && gd === null || body.goalMonthly !== void 0 && gm === null) throw badRequest("Meta inv\xE1lida.");
-    await ctx2.db.query(
+    await ctx.db.query(
       `UPDATE organizations SET name = COALESCE($2, name), reporting_currency = COALESCE($3, reporting_currency),
               timezone = COALESCE($4, timezone), goal_daily_minor = COALESCE($5, goal_daily_minor),
               goal_monthly_minor = COALESCE($6, goal_monthly_minor), updated_at = now() WHERE id = $1`,
       [a.org.id, body.name ?? null, body.reportingCurrency ?? null, body.timezone ?? null, gd, gm]
     );
-    await audit(ctx2, a.org.id, a.user.id, "org.updated", a.org.id, { fields: Object.keys(body) });
+    await audit(ctx, a.org.id, a.user.id, "org.updated", a.org.id, { fields: Object.keys(body) });
     return { ok: true };
   });
-  app2.get("/v1/org/members", async (req) => {
+  app.get("/v1/org/members", async (req) => {
     const a = requireRole(req, "viewer");
-    const members2 = await ctx2.db.query(
+    const members2 = await ctx.db.query(
       `SELECT u.id, u.email, u.name, m.role, m.created_at FROM memberships m JOIN users u ON u.id = m.user_id
         WHERE m.org_id = $1 ORDER BY m.created_at`,
       [a.org.id]
     );
-    const invites = ROLE_OK(a.role) ? await ctx2.db.query(
+    const invites = ROLE_OK(a.role) ? await ctx.db.query(
       `SELECT id, email, role, expires_at, created_at FROM invitations
         WHERE org_id = $1 AND accepted_at IS NULL AND expires_at > now() ORDER BY created_at DESC`,
       [a.org.id]
     ) : { rows: [] };
     return { members: members2.rows, invitations: invites.rows };
   });
-  app2.post("/v1/org/invitations", async (req) => {
+  app.post("/v1/org/invitations", async (req) => {
     const a = requireRole(req, "owner");
-    await hit(ctx2.db, `invite:org:${a.org.id}`, 30, 3600);
+    await hit(ctx.db, `invite:org:${a.org.id}`, 30, 3600);
     const body = parse4(external_exports.object({ email: external_exports.string().trim().toLowerCase().email(), role: external_exports.enum(["admin", "analyst", "viewer"]) }), req.body);
     const token = randomToken(32);
-    await ctx2.db.query(
+    await ctx.db.query(
       `INSERT INTO invitations(org_id, email, role, token_hash, invited_by, expires_at) VALUES ($1, $2, $3, $4, $5, now() + interval '7 days')`,
       [a.org.id, body.email, body.role, sha256Hex(token), a.user.id]
     );
-    await ctx2.mailer.send({
+    await ctx.mailer.send({
       to: body.email,
       subject: `Convite para ${a.org.name} \u2014 PayTracking`,
       text: `Voc\xEA foi convidado(a) para a organiza\xE7\xE3o "${a.org.name}".
-Aceite em: ${ctx2.config.APP_URL}/convite?token=${token}
+Aceite em: ${ctx.config.APP_URL}/convite?token=${token}
 
 O convite expira em 7 dias.`
     });
-    await audit(ctx2, a.org.id, a.user.id, "member.invited", body.email, { role: body.role });
+    await audit(ctx, a.org.id, a.user.id, "member.invited", body.email, { role: body.role });
     return { ok: true };
   });
-  app2.delete("/v1/org/invitations/:id", async (req) => {
+  app.delete("/v1/org/invitations/:id", async (req) => {
     const a = requireRole(req, "owner");
     const { id } = parse4(external_exports.object({ id: external_exports.string().uuid() }), req.params);
-    await ctx2.db.query("DELETE FROM invitations WHERE id = $1 AND org_id = $2", [id, a.org.id]);
+    await ctx.db.query("DELETE FROM invitations WHERE id = $1 AND org_id = $2", [id, a.org.id]);
     return { ok: true };
   });
-  app2.post("/v1/invitations/accept", async (req) => {
+  app.post("/v1/invitations/accept", async (req) => {
     const a = auth(req);
     const { token } = parse4(external_exports.object({ token: external_exports.string().min(20) }), req.body);
-    return tx(ctx2.db, async (c) => {
+    return tx(ctx.db, async (c) => {
       const r = await c.query(
         `SELECT id, org_id, email, role FROM invitations
           WHERE token_hash = $1 AND accepted_at IS NULL AND expires_at > now() FOR UPDATE`,
@@ -80075,30 +80093,30 @@ O convite expira em 7 dias.`
       return { ok: true, orgId: inv.org_id };
     });
   });
-  app2.patch("/v1/org/members/:userId", async (req) => {
+  app.patch("/v1/org/members/:userId", async (req) => {
     const a = requireRole(req, "owner");
     const { userId } = parse4(external_exports.object({ userId: external_exports.string().uuid() }), req.params);
     const { role } = parse4(external_exports.object({ role: external_exports.enum(["owner", "admin", "analyst", "viewer"]) }), req.body);
     if (userId === a.user.id) throw badRequest("Voc\xEA n\xE3o pode alterar o pr\xF3prio papel.");
-    const r = await ctx2.db.query("UPDATE memberships SET role = $3 WHERE org_id = $1 AND user_id = $2", [a.org.id, userId, role]);
+    const r = await ctx.db.query("UPDATE memberships SET role = $3 WHERE org_id = $1 AND user_id = $2", [a.org.id, userId, role]);
     if (!r.rowCount) throw notFound("Membro n\xE3o encontrado.");
-    await audit(ctx2, a.org.id, a.user.id, "member.role_changed", userId, { role });
+    await audit(ctx, a.org.id, a.user.id, "member.role_changed", userId, { role });
     return { ok: true };
   });
-  app2.delete("/v1/org/members/:userId", async (req) => {
+  app.delete("/v1/org/members/:userId", async (req) => {
     const a = requireRole(req, "owner");
     const { userId } = parse4(external_exports.object({ userId: external_exports.string().uuid() }), req.params);
     if (userId === a.user.id) throw badRequest("Voc\xEA n\xE3o pode remover a si mesmo.");
-    const owners = await ctx2.db.query(`SELECT count(*)::int AS n FROM memberships WHERE org_id = $1 AND role = 'owner' AND user_id <> $2`, [a.org.id, userId]);
+    const owners = await ctx.db.query(`SELECT count(*)::int AS n FROM memberships WHERE org_id = $1 AND role = 'owner' AND user_id <> $2`, [a.org.id, userId]);
     if ((owners.rows[0]?.n ?? 0) < 1) throw conflict("A organiza\xE7\xE3o precisa de pelo menos um propriet\xE1rio.");
-    await ctx2.db.query("DELETE FROM memberships WHERE org_id = $1 AND user_id = $2", [a.org.id, userId]);
-    await ctx2.db.query("UPDATE sessions SET active_org_id = NULL WHERE user_id = $1 AND active_org_id = $2", [userId, a.org.id]);
-    await audit(ctx2, a.org.id, a.user.id, "member.removed", userId);
+    await ctx.db.query("DELETE FROM memberships WHERE org_id = $1 AND user_id = $2", [a.org.id, userId]);
+    await ctx.db.query("UPDATE sessions SET active_org_id = NULL WHERE user_id = $1 AND active_org_id = $2", [userId, a.org.id]);
+    await audit(ctx, a.org.id, a.user.id, "member.removed", userId);
     return { ok: true };
   });
-  app2.get("/v1/org/audit", async (req) => {
+  app.get("/v1/org/audit", async (req) => {
     const a = requireRole(req, "admin");
-    const r = await ctx2.db.query(
+    const r = await ctx.db.query(
       `SELECT l.action, l.target, l.metadata, l.created_at, u.email AS user_email
          FROM audit_log l LEFT JOIN users u ON u.id = l.user_id WHERE l.org_id = $1 ORDER BY l.id DESC LIMIT 200`,
       [a.org.id]
@@ -80127,8 +80145,8 @@ function normalizeProductIds(list) {
   for (const raw of list) for (const p of raw.split(/[\s,;]+/)) if (p.trim()) out.add(p.trim());
   return [...out];
 }
-function pixelDto(p, ctx2) {
-  const api = ctx2.config.PUBLIC_API_URL;
+function pixelDto(p, ctx) {
+  const api = ctx.config.PUBLIC_API_URL;
   return {
     id: p.id,
     name: p.name,
@@ -80173,8 +80191,8 @@ function snippets(api, p) {
     globalCheckoutLoader: `<script src=${JSON.stringify(`${api}/checkout-loader.js`)} data-key=${JSON.stringify(p.public_key)} defer></script>`
   };
 }
-async function loadPixel(ctx2, orgId, id) {
-  const r = await ctx2.db.query(
+async function loadPixel(ctx, orgId, id) {
+  const r = await ctx.db.query(
     `SELECT p.*, COALESCE((SELECT array_agg(product_id ORDER BY product_id) FROM pixel_products pp WHERE pp.pixel_id = p.id), '{}') AS product_ids
        FROM pixels p WHERE p.id = $1 AND p.org_id = $2`,
     [id, orgId]
@@ -80202,23 +80220,23 @@ async function setProducts(c, orgId, pixelId, ids) {
     );
   }
 }
-function pixelRoutes(app2, ctx2) {
-  app2.get("/v1/pixels", async (req) => {
+function pixelRoutes(app, ctx) {
+  app.get("/v1/pixels", async (req) => {
     const a = requireRole(req, "viewer");
-    const r = await ctx2.db.query(
+    const r = await ctx.db.query(
       `SELECT p.*, COALESCE((SELECT array_agg(product_id ORDER BY product_id) FROM pixel_products pp WHERE pp.pixel_id = p.id), '{}') AS product_ids
          FROM pixels p WHERE p.org_id = $1 ORDER BY p.created_at DESC`,
       [a.org.id]
     );
-    return { pixels: r.rows.map((p) => pixelDto(p, ctx2)) };
+    return { pixels: r.rows.map((p) => pixelDto(p, ctx)) };
   });
-  app2.post("/v1/pixels", async (req, reply) => {
+  app.post("/v1/pixels", async (req, reply) => {
     const a = requireRole(req, "admin");
     const b = parse4(pixelInput, req.body);
     if (!b.capiToken) throw badRequest("Informe o token de acesso da Conversions API.");
     if (b.icRuleType !== "none" && !b.icRuleValue) throw badRequest("Informe a URL/trecho do checkout para a regra de InitiateCheckout.");
     const ids = normalizeProductIds(b.productIds);
-    const id = await tx(ctx2.db, async (c) => {
+    const id = await tx(ctx.db, async (c) => {
       const r = await c.query(
         `INSERT INTO pixels(org_id, name, meta_pixel_id, capi_token_enc, test_event_code, currency, country, public_key,
                             ic_rule_type, ic_rule_value, send_refund_event, allowed_origins)
@@ -80227,7 +80245,7 @@ function pixelRoutes(app2, ctx2) {
           a.org.id,
           b.name,
           b.metaPixelId,
-          ctx2.box.encrypt(b.capiToken),
+          ctx.box.encrypt(b.capiToken),
           b.testEventCode || null,
           b.currency,
           b.country,
@@ -80242,16 +80260,16 @@ function pixelRoutes(app2, ctx2) {
       await setProducts(c, a.org.id, pid, ids);
       return pid;
     });
-    await audit(ctx2, a.org.id, a.user.id, "pixel.created", id);
-    return reply.code(201).send({ pixel: pixelDto(await loadPixel(ctx2, a.org.id, id), ctx2) });
+    await audit(ctx, a.org.id, a.user.id, "pixel.created", id);
+    return reply.code(201).send({ pixel: pixelDto(await loadPixel(ctx, a.org.id, id), ctx) });
   });
-  app2.put("/v1/pixels/:id", async (req) => {
+  app.put("/v1/pixels/:id", async (req) => {
     const a = requireRole(req, "admin");
     const { id } = parse4(external_exports.object({ id: external_exports.string().uuid() }), req.params);
     const b = parse4(pixelInput, req.body);
-    await loadPixel(ctx2, a.org.id, id);
+    await loadPixel(ctx, a.org.id, id);
     if (b.icRuleType !== "none" && !b.icRuleValue) throw badRequest("Informe a URL/trecho do checkout para a regra de InitiateCheckout.");
-    await tx(ctx2.db, async (c) => {
+    await tx(ctx.db, async (c) => {
       await c.query(
         `UPDATE pixels SET name=$3, meta_pixel_id=$4, capi_token_enc=COALESCE($5, capi_token_enc), test_event_code=$6,
                 currency=$7, country=$8, ic_rule_type=$9, ic_rule_value=$10, send_refund_event=$11, allowed_origins=$12, updated_at=now()
@@ -80261,7 +80279,7 @@ function pixelRoutes(app2, ctx2) {
           a.org.id,
           b.name,
           b.metaPixelId,
-          b.capiToken ? ctx2.box.encrypt(b.capiToken) : null,
+          b.capiToken ? ctx.box.encrypt(b.capiToken) : null,
           b.testEventCode || null,
           b.currency,
           b.country,
@@ -80273,48 +80291,48 @@ function pixelRoutes(app2, ctx2) {
       );
       await setProducts(c, a.org.id, id, normalizeProductIds(b.productIds));
     });
-    await audit(ctx2, a.org.id, a.user.id, "pixel.updated", id, { capiTokenChanged: !!b.capiToken });
-    return { pixel: pixelDto(await loadPixel(ctx2, a.org.id, id), ctx2) };
+    await audit(ctx, a.org.id, a.user.id, "pixel.updated", id, { capiTokenChanged: !!b.capiToken });
+    return { pixel: pixelDto(await loadPixel(ctx, a.org.id, id), ctx) };
   });
-  app2.post("/v1/pixels/:id/toggle", async (req) => {
+  app.post("/v1/pixels/:id/toggle", async (req) => {
     const a = requireRole(req, "admin");
     const { id } = parse4(external_exports.object({ id: external_exports.string().uuid() }), req.params);
-    const r = await ctx2.db.query("UPDATE pixels SET active = NOT active, updated_at = now() WHERE id = $1 AND org_id = $2 RETURNING active", [id, a.org.id]);
+    const r = await ctx.db.query("UPDATE pixels SET active = NOT active, updated_at = now() WHERE id = $1 AND org_id = $2 RETURNING active", [id, a.org.id]);
     if (!r.rowCount) throw notFound("Pixel n\xE3o encontrado.");
-    await audit(ctx2, a.org.id, a.user.id, "pixel.toggled", id, { active: r.rows[0].active });
+    await audit(ctx, a.org.id, a.user.id, "pixel.toggled", id, { active: r.rows[0].active });
     return { active: r.rows[0].active };
   });
-  app2.post("/v1/pixels/bulk-active", async (req) => {
+  app.post("/v1/pixels/bulk-active", async (req) => {
     const a = requireRole(req, "admin");
     const { active } = parse4(external_exports.object({ active: external_exports.boolean() }), req.body);
-    const r = await ctx2.db.query("UPDATE pixels SET active = $2, updated_at = now() WHERE org_id = $1 AND active <> $2", [a.org.id, active]);
-    await audit(ctx2, a.org.id, a.user.id, active ? "pixel.activate_all" : "pixel.deactivate_all");
+    const r = await ctx.db.query("UPDATE pixels SET active = $2, updated_at = now() WHERE org_id = $1 AND active <> $2", [a.org.id, active]);
+    await audit(ctx, a.org.id, a.user.id, active ? "pixel.activate_all" : "pixel.deactivate_all");
     return { changed: r.rowCount };
   });
-  app2.post("/v1/pixels/:id/rotate-key", async (req) => {
+  app.post("/v1/pixels/:id/rotate-key", async (req) => {
     const a = requireRole(req, "admin");
     const { id } = parse4(external_exports.object({ id: external_exports.string().uuid() }), req.params);
-    const r = await ctx2.db.query("UPDATE pixels SET public_key = $3, updated_at = now() WHERE id = $1 AND org_id = $2", [id, a.org.id, publicKey()]);
+    const r = await ctx.db.query("UPDATE pixels SET public_key = $3, updated_at = now() WHERE id = $1 AND org_id = $2", [id, a.org.id, publicKey()]);
     if (!r.rowCount) throw notFound("Pixel n\xE3o encontrado.");
-    await audit(ctx2, a.org.id, a.user.id, "pixel.key_rotated", id);
-    return { pixel: pixelDto(await loadPixel(ctx2, a.org.id, id), ctx2) };
+    await audit(ctx, a.org.id, a.user.id, "pixel.key_rotated", id);
+    return { pixel: pixelDto(await loadPixel(ctx, a.org.id, id), ctx) };
   });
-  app2.delete("/v1/pixels/:id", async (req) => {
+  app.delete("/v1/pixels/:id", async (req) => {
     const a = requireRole(req, "admin");
     const { id } = parse4(external_exports.object({ id: external_exports.string().uuid() }), req.params);
-    const r = await ctx2.db.query("DELETE FROM pixels WHERE id = $1 AND org_id = $2", [id, a.org.id]);
+    const r = await ctx.db.query("DELETE FROM pixels WHERE id = $1 AND org_id = $2", [id, a.org.id]);
     if (!r.rowCount) throw notFound("Pixel n\xE3o encontrado.");
-    await audit(ctx2, a.org.id, a.user.id, "pixel.deleted", id);
+    await audit(ctx, a.org.id, a.user.id, "pixel.deleted", id);
     return { ok: true };
   });
-  app2.post("/v1/pixels/:id/verify", async (req) => {
+  app.post("/v1/pixels/:id/verify", async (req) => {
     const a = requireRole(req, "admin");
     const { id } = parse4(external_exports.object({ id: external_exports.string().uuid() }), req.params);
-    const p = await loadPixel(ctx2, a.org.id, id);
+    const p = await loadPixel(ctx, a.org.id, id);
     if (!p.capi_token_enc) return { ok: false, message: "Token da CAPI n\xE3o configurado." };
-    const url2 = `${ctx2.config.META_GRAPH_BASE_URL}/${ctx2.config.META_GRAPH_VERSION}/${p.meta_pixel_id}?fields=id,name`;
+    const url2 = `${ctx.config.META_GRAPH_BASE_URL}/${ctx.config.META_GRAPH_VERSION}/${p.meta_pixel_id}?fields=id,name`;
     try {
-      const res = await ctx2.fetch(url2, { headers: { Authorization: `Bearer ${ctx2.box.decrypt(p.capi_token_enc)}` }, signal: AbortSignal.timeout(1e4) });
+      const res = await ctx.fetch(url2, { headers: { Authorization: `Bearer ${ctx.box.decrypt(p.capi_token_enc)}` }, signal: AbortSignal.timeout(1e4) });
       const body = await res.json().catch(() => ({}));
       if (res.ok && body.id) return { ok: true, message: `Conectado ao pixel "${body.name ?? body.id}".` };
       return { ok: false, message: body?.error?.message ?? `HTTP ${res.status}` };
@@ -80935,8 +80953,8 @@ function refundEventId(n) {
 }
 
 // src/integrations/routes.ts
-function webhookUrl(ctx2, provider, token) {
-  return `${ctx2.config.PUBLIC_API_URL}/v1/webhooks/${provider}/${token}`;
+function webhookUrl(ctx, provider, token) {
+  return `${ctx.config.PUBLIC_API_URL}/v1/webhooks/${provider}/${token}`;
 }
 function dto(r) {
   const ad = ADAPTERS[r.provider];
@@ -80965,13 +80983,13 @@ var updateSchema = external_exports.object({
   amountUnit: external_exports.enum(["major", "minor"]).optional(),
   active: external_exports.boolean().optional()
 });
-function integrationRoutes(app2, ctx2) {
+function integrationRoutes(app, ctx) {
   async function assertPixel(orgId, pixelId) {
     if (!pixelId) return;
-    const r = await ctx2.db.query("SELECT 1 FROM pixels WHERE id = $1 AND org_id = $2", [pixelId, orgId]);
+    const r = await ctx.db.query("SELECT 1 FROM pixels WHERE id = $1 AND org_id = $2", [pixelId, orgId]);
     if (!r.rowCount) throw badRequest("Pixel padr\xE3o n\xE3o pertence a esta organiza\xE7\xE3o.");
   }
-  app2.get("/v1/integrations/providers", async (req) => {
+  app.get("/v1/integrations/providers", async (req) => {
     requireRole(req, "viewer");
     return {
       providers: PROVIDERS.map((p) => ({
@@ -80983,9 +81001,9 @@ function integrationRoutes(app2, ctx2) {
       }))
     };
   });
-  app2.get("/v1/integrations", async (req) => {
+  app.get("/v1/integrations", async (req) => {
     const a = requireRole(req, "viewer");
-    const r = await ctx2.db.query(
+    const r = await ctx.db.query(
       `SELECT i.*, (SELECT json_build_object(
                 'processed', count(*) FILTER (WHERE outcome = 'processed'),
                 'duplicate', count(*) FILTER (WHERE outcome = 'duplicate'),
@@ -80998,14 +81016,14 @@ function integrationRoutes(app2, ctx2) {
     );
     return { integrations: r.rows.map(dto) };
   });
-  app2.post("/v1/integrations", async (req, reply) => {
+  app.post("/v1/integrations", async (req, reply) => {
     const a = requireRole(req, "admin");
     const b = parse4(updateSchema.extend({ provider: external_exports.enum(PROVIDERS) }), req.body);
     const ad = ADAPTERS[b.provider];
     if (ad.requiresSecret && !b.secret) throw badRequest(`${ad.label} exige o segredo/token do webhook (${ad.authMethod}).`);
     await assertPixel(a.org.id, b.defaultPixelId);
     const token = integrationToken();
-    const r = await ctx2.db.query(
+    const r = await ctx.db.query(
       `INSERT INTO integrations(org_id, provider, name, token_hash, token_hint, secret_enc, default_pixel_id, amount_unit, active)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,COALESCE($9, true)) RETURNING *`,
       [
@@ -81014,24 +81032,24 @@ function integrationRoutes(app2, ctx2) {
         b.name ?? ad.label,
         sha256Hex(token),
         hint(token),
-        ctx2.box.encryptNullable(b.secret),
+        ctx.box.encryptNullable(b.secret),
         b.defaultPixelId ?? null,
         b.amountUnit ?? "major",
         b.active ?? null
       ]
     );
-    await audit(ctx2, a.org.id, a.user.id, "integration.created", r.rows[0].id, { provider: b.provider });
-    return reply.code(201).send({ integration: dto(r.rows[0]), token, webhookUrl: webhookUrl(ctx2, b.provider, token) });
+    await audit(ctx, a.org.id, a.user.id, "integration.created", r.rows[0].id, { provider: b.provider });
+    return reply.code(201).send({ integration: dto(r.rows[0]), token, webhookUrl: webhookUrl(ctx, b.provider, token) });
   });
-  app2.patch("/v1/integrations/:id", async (req) => {
+  app.patch("/v1/integrations/:id", async (req) => {
     const a = requireRole(req, "admin");
     const { id } = parse4(external_exports.object({ id: external_exports.string().uuid() }), req.params);
     const b = parse4(updateSchema, req.body);
     await assertPixel(a.org.id, b.defaultPixelId);
-    const cur = await ctx2.db.query("SELECT provider FROM integrations WHERE id = $1 AND org_id = $2", [id, a.org.id]);
+    const cur = await ctx.db.query("SELECT provider FROM integrations WHERE id = $1 AND org_id = $2", [id, a.org.id]);
     if (!cur.rowCount) throw notFound("Integra\xE7\xE3o n\xE3o encontrada.");
     if (b.secret === null && ADAPTERS[cur.rows[0].provider].requiresSecret) throw badRequest("Este gateway exige segredo.");
-    const r = await ctx2.db.query(
+    const r = await ctx.db.query(
       `UPDATE integrations SET name = COALESCE($3, name),
               secret_enc = CASE WHEN $4::boolean THEN $5 ELSE secret_enc END,
               default_pixel_id = CASE WHEN $6::boolean THEN $7::uuid ELSE default_pixel_id END,
@@ -81042,44 +81060,44 @@ function integrationRoutes(app2, ctx2) {
         a.org.id,
         b.name ?? null,
         b.secret !== void 0,
-        ctx2.box.encryptNullable(b.secret),
+        ctx.box.encryptNullable(b.secret),
         b.defaultPixelId !== void 0,
         b.defaultPixelId ?? null,
         b.amountUnit ?? null,
         b.active ?? null
       ]
     );
-    await audit(ctx2, a.org.id, a.user.id, "integration.updated", id, { secretChanged: b.secret !== void 0 });
+    await audit(ctx, a.org.id, a.user.id, "integration.updated", id, { secretChanged: b.secret !== void 0 });
     return { integration: dto(r.rows[0]) };
   });
-  app2.post("/v1/integrations/:id/rotate-token", async (req) => {
+  app.post("/v1/integrations/:id/rotate-token", async (req) => {
     const a = requireRole(req, "admin");
     const { id } = parse4(external_exports.object({ id: external_exports.string().uuid() }), req.params);
     const token = integrationToken();
-    const r = await ctx2.db.query(
+    const r = await ctx.db.query(
       "UPDATE integrations SET token_hash = $3, token_hint = $4, updated_at = now() WHERE id = $1 AND org_id = $2 RETURNING *",
       [id, a.org.id, sha256Hex(token), hint(token)]
     );
     if (!r.rowCount) throw notFound("Integra\xE7\xE3o n\xE3o encontrada.");
-    await audit(ctx2, a.org.id, a.user.id, "integration.token_rotated", id);
-    return { integration: dto(r.rows[0]), token, webhookUrl: webhookUrl(ctx2, r.rows[0].provider, token) };
+    await audit(ctx, a.org.id, a.user.id, "integration.token_rotated", id);
+    return { integration: dto(r.rows[0]), token, webhookUrl: webhookUrl(ctx, r.rows[0].provider, token) };
   });
-  app2.delete("/v1/integrations/:id", async (req) => {
+  app.delete("/v1/integrations/:id", async (req) => {
     const a = requireRole(req, "admin");
     const { id } = parse4(external_exports.object({ id: external_exports.string().uuid() }), req.params);
-    const r = await ctx2.db.query("DELETE FROM integrations WHERE id = $1 AND org_id = $2", [id, a.org.id]);
+    const r = await ctx.db.query("DELETE FROM integrations WHERE id = $1 AND org_id = $2", [id, a.org.id]);
     if (!r.rowCount) throw notFound("Integra\xE7\xE3o n\xE3o encontrada.");
-    await audit(ctx2, a.org.id, a.user.id, "integration.deleted", id);
+    await audit(ctx, a.org.id, a.user.id, "integration.deleted", id);
     return { ok: true };
   });
-  app2.get("/v1/webhook-receipts", async (req) => {
+  app.get("/v1/webhook-receipts", async (req) => {
     const a = requireRole(req, "viewer");
     const q = parse4(external_exports.object({
       integrationId: external_exports.string().uuid().optional(),
       outcome: external_exports.enum(["processed", "duplicate", "ignored", "rejected", "failed"]).optional(),
       cursor: external_exports.coerce.number().int().optional()
     }), req.query);
-    const r = await ctx2.db.query(
+    const r = await ctx.db.query(
       `SELECT w.id, w.provider, w.correlation_id, w.received_at, w.signature_ok, w.signature_method, w.outcome, w.reason,
               w.gateway_event, w.transaction_id, w.payment_id, w.processing_ms, w.body_enc IS NOT NULL AS can_replay, i.name AS integration_name
          FROM webhook_receipts w LEFT JOIN integrations i ON i.id = w.integration_id
@@ -81128,10 +81146,10 @@ async function resolveAlert(c, orgId, dedupKey) {
 
 // src/notifications/push.ts
 var import_web_push = __toESM(require_src2(), 1);
-async function sendPushToOrg(ctx2, orgId, payload) {
-  const { VAPID_PUBLIC_KEY: pub, VAPID_PRIVATE_KEY: priv, VAPID_SUBJECT: subject } = ctx2.config;
+async function sendPushToOrg(ctx, orgId, payload) {
+  const { VAPID_PUBLIC_KEY: pub, VAPID_PRIVATE_KEY: priv, VAPID_SUBJECT: subject } = ctx.config;
   if (!pub || !priv) return { sent: 0, failed: 0, removed: 0, configured: false };
-  const subs = await ctx2.db.query("SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE org_id = $1", [orgId]);
+  const subs = await ctx.db.query("SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE org_id = $1", [orgId]);
   let sent = 0, failed = 0, removed = 0;
   const body = JSON.stringify({ ...payload, url: payload.url ?? "/", icon: "/icon-192.png", type: "sale" });
   await Promise.all(subs.rows.map(async (s) => {
@@ -81146,7 +81164,7 @@ async function sendPushToOrg(ctx2, orgId, payload) {
       failed++;
       const code = e.statusCode;
       if (code === 404 || code === 410) {
-        await ctx2.db.query("DELETE FROM push_subscriptions WHERE id = $1", [s.id]);
+        await ctx.db.query("DELETE FROM push_subscriptions WHERE id = $1", [s.id]);
         removed++;
       }
     }
@@ -81287,47 +81305,47 @@ async function resolvePixel(c, orgId, productIds, defaultPixelId) {
   const only = await c.query("SELECT id FROM pixels WHERE org_id = $1 AND active ORDER BY created_at LIMIT 2", [orgId]);
   return only.rowCount === 1 ? loadPixel2(c, orgId, only.rows[0].id) : null;
 }
-async function ingestWebhook(ctx2, input2) {
+async function ingestWebhook(ctx, input2) {
   const started = Date.now();
   const correlationId = randomUUID();
   const bodySha = sha256Hex(input2.rawBody);
   const adapter = ADAPTERS[input2.provider];
   const ms = () => Date.now() - started;
   const base = { provider: input2.provider, correlationId, bodySha };
-  const ir = await ctx2.db.query(
+  const ir = await ctx.db.query(
     "SELECT id, org_id, provider, secret_enc, default_pixel_id, amount_unit, active FROM integrations WHERE token_hash = $1 AND provider = $2",
     [sha256Hex(input2.token), input2.provider]
   );
   const integration = ir.rows[0];
   if (!integration || !integration.active) {
-    await receipt(ctx2.db, { ...base, orgId: integration?.org_id ?? null, integrationId: integration?.id ?? null, outcome: "rejected", reason: integration ? "integration_inactive" : "invalid_token", ms: ms() });
+    await receipt(ctx.db, { ...base, orgId: integration?.org_id ?? null, integrationId: integration?.id ?? null, outcome: "rejected", reason: integration ? "integration_inactive" : "invalid_token", ms: ms() });
     return { httpStatus: 401, body: { success: false, error: "Invalid integration token", correlationId } };
   }
   const ib = { ...base, orgId: integration.org_id, integrationId: integration.id };
   const payload = parsePayload(input2.rawBody, input2.formBody);
   if (!payload) {
     if (!input2.rawBody.trim()) return { httpStatus: 200, body: { success: true, ping: true, correlationId } };
-    await receipt(ctx2.db, { ...ib, outcome: "rejected", reason: "invalid_body", ms: ms() });
+    await receipt(ctx.db, { ...ib, outcome: "rejected", reason: "invalid_body", ms: ms() });
     return { httpStatus: 400, body: { success: false, error: "Invalid body", correlationId } };
   }
   const req = { rawBody: input2.rawBody, headers: input2.headers, query: input2.query, payload };
   if (adapter.isTestPing(req)) return { httpStatus: 200, body: { success: true, test: true, correlationId } };
-  const secret = ctx2.box.decryptNullable(integration.secret_enc);
+  const secret = ctx.box.decryptNullable(integration.secret_enc);
   const sig = adapter.verify(req, secret);
   if (!sig.ok) {
-    await receipt(ctx2.db, { ...ib, signatureOk: false, signatureMethod: sig.method, outcome: "rejected", reason: sig.reason ?? "invalid_signature", ms: ms() });
-    ctx2.log.warn({ correlationId, provider: input2.provider, reason: sig.reason }, "webhook rejeitado (assinatura)");
+    await receipt(ctx.db, { ...ib, signatureOk: false, signatureMethod: sig.method, outcome: "rejected", reason: sig.reason ?? "invalid_signature", ms: ms() });
+    ctx.log.warn({ correlationId, provider: input2.provider, reason: sig.reason }, "webhook rejeitado (assinatura)");
     return { httpStatus: 401, body: { success: false, error: "Invalid signature", reason: sig.reason, correlationId } };
   }
   const sigInfo = { signatureOk: true, signatureMethod: sig.method };
-  const bodyEnc = ctx2.box.encrypt(input2.rawBody);
-  const defaultPixel = await loadPixel2(ctx2.db, integration.org_id, integration.default_pixel_id);
-  const orgCur = await ctx2.db.query("SELECT reporting_currency FROM organizations WHERE id = $1", [integration.org_id]);
+  const bodyEnc = ctx.box.encrypt(input2.rawBody);
+  const defaultPixel = await loadPixel2(ctx.db, integration.org_id, integration.default_pixel_id);
+  const orgCur = await ctx.db.query("SELECT reporting_currency FROM organizations WHERE id = $1", [integration.org_id]);
   const defaultCurrency = defaultPixel?.currency ?? String(orgCur.rows[0]?.reporting_currency ?? "BRL").trim();
-  const normalized = adapter.normalize(payload, { defaultCurrency, amountUnit: integration.amount_unit, now: ctx2.now });
-  await ctx2.db.query("UPDATE integrations SET last_received_at = now() WHERE id = $1", [integration.id]);
+  const normalized = adapter.normalize(payload, { defaultCurrency, amountUnit: integration.amount_unit, now: ctx.now });
+  await ctx.db.query("UPDATE integrations SET last_received_at = now() WHERE id = $1", [integration.id]);
   if (normalized.kind === "ignored") {
-    await receipt(ctx2.db, { ...ib, ...sigInfo, outcome: "ignored", reason: normalized.reason, gatewayEvent: normalized.gatewayEvent, transactionId: normalized.transactionId, ms: ms() });
+    await receipt(ctx.db, { ...ib, ...sigInfo, outcome: "ignored", reason: normalized.reason, gatewayEvent: normalized.gatewayEvent, transactionId: normalized.transactionId, ms: ms() });
     return { httpStatus: 200, body: { success: true, queued: false, ignored: true, reason: normalized.reason, correlationId } };
   }
   const productIds = [
@@ -81335,31 +81353,31 @@ async function ingestWebhook(ctx2, input2) {
     ...input2.provider === "checkout" ? extractProductIds(payload) : []
   ];
   if (normalized.kind === "event") {
-    return ingestServerEvent(ctx2, integration, normalized, productIds, { ...ib, ...sigInfo, bodyEnc }, ms);
+    return ingestServerEvent(ctx, integration, normalized, productIds, { ...ib, ...sigInfo, bodyEnc }, ms);
   }
   try {
-    const out = await tx(ctx2.db, (c) => applyPayment(ctx2, c, integration, normalized, productIds, { ...ib, ...sigInfo, bodyEnc }, ms));
+    const out = await tx(ctx.db, (c) => applyPayment(ctx, c, integration, normalized, productIds, { ...ib, ...sigInfo, bodyEnc }, ms));
     if (out.purchase) {
       const p = out.purchase;
-      sendPushToOrg(ctx2, integration.org_id, {
+      sendPushToOrg(ctx, integration.org_id, {
         title: "Venda aprovada! \u{1F525}",
         body: `${p.amount} \u2022 ${p.pixelName ?? ADAPTERS[input2.provider].label}`,
         url: "/vendas",
         tag: `sale-${normalized.transactionId}`
-      }).catch((e) => ctx2.log.warn({ err: String(e) }, "push falhou"));
+      }).catch((e) => ctx.log.warn({ err: String(e) }, "push falhou"));
     }
     return { httpStatus: 200, body: { success: true, correlationId, ...out.response } };
   } catch (e) {
     if (e.code === "23505") {
-      await receipt(ctx2.db, { ...ib, ...sigInfo, idemKey: null, outcome: "duplicate", reason: "concurrent_duplicate", transactionId: normalized.transactionId, ms: ms() });
+      await receipt(ctx.db, { ...ib, ...sigInfo, idemKey: null, outcome: "duplicate", reason: "concurrent_duplicate", transactionId: normalized.transactionId, ms: ms() });
       return { httpStatus: 200, body: { success: true, duplicate: true, correlationId } };
     }
-    ctx2.log.error({ correlationId, err: e.message }, "falha ao processar webhook");
-    await receipt(ctx2.db, { ...ib, ...sigInfo, outcome: "failed", reason: e.message.slice(0, 300), transactionId: normalized.transactionId, bodyEnc, ms: ms() }).catch(() => void 0);
+    ctx.log.error({ correlationId, err: e.message }, "falha ao processar webhook");
+    await receipt(ctx.db, { ...ib, ...sigInfo, outcome: "failed", reason: e.message.slice(0, 300), transactionId: normalized.transactionId, bodyEnc, ms: ms() }).catch(() => void 0);
     return { httpStatus: 500, body: { success: false, error: "Internal error", correlationId } };
   }
 }
-async function applyPayment(ctx2, c, integration, n, productIds, rb, ms) {
+async function applyPayment(ctx, c, integration, n, productIds, rb, ms) {
   const orgId = integration.org_id;
   const idemKey = idempotencyKey(n);
   const dup = await c.query(
@@ -81391,7 +81409,7 @@ async function applyPayment(ctx2, c, integration, n, productIds, rb, ms) {
     await receipt(c, { ...rb, idemKey, outcome: "duplicate", reason, gatewayEvent: n.gatewayEvent, transactionId: n.transactionId, paymentId: payment.id, ms: ms() });
     return { purchase: null, response: { duplicate: true, reason, status: from } };
   }
-  const at = n.occurredAt ?? ctx2.now();
+  const at = n.occurredAt ?? ctx.now();
   const amountMinor = n.amountMinor ?? payment.amount_minor ?? null;
   const currency = n.amountMinor !== null ? n.currency : payment.currency?.trim() ?? n.currency;
   await c.query(
@@ -81446,12 +81464,12 @@ async function applyPayment(ctx2, c, integration, n, productIds, rb, ms) {
         detail: `Transa\xE7\xE3o ${n.transactionId}: o gateway n\xE3o informou o valor; Purchase n\xE3o enviado \xE0 Meta.`
       });
     } else {
-      const event = await buildPaymentEvent(c, orgId, n, "Purchase", purchaseEventId(n), amountMinor, currency, at, ctx2.now());
+      const event = await buildPaymentEvent(c, orgId, n, "Purchase", purchaseEventId(n), amountMinor, currency, at, ctx.now());
       await c.query("UPDATE payments SET purchase_event_id = $2 WHERE id = $1", [payment.id, event.event_id]);
       queued = await enqueueCapi(c, { orgId, pixelId: effectivePixel.id, event, paymentId: payment.id, correlationId: rb.correlationId }) !== null;
     }
   } else if (isReversal(to) && from === "approved" && effectivePixel?.send_refund_event) {
-    const event = await buildPaymentEvent(c, orgId, n, "Refund", refundEventId(n), null, null, at, ctx2.now());
+    const event = await buildPaymentEvent(c, orgId, n, "Refund", refundEventId(n), null, null, at, ctx.now());
     queued = await enqueueCapi(c, { orgId, pixelId: effectivePixel.id, event, paymentId: payment.id, correlationId: rb.correlationId }) !== null;
   }
   return {
@@ -81482,16 +81500,16 @@ async function buildPaymentEvent(c, orgId, n, eventName, eventId, amountMinor, c
     utms
   });
 }
-async function ingestServerEvent(ctx2, integration, n, productIds, rb, ms) {
+async function ingestServerEvent(ctx, integration, n, productIds, rb, ms) {
   const orgId = integration.org_id;
-  return tx(ctx2.db, async (c) => {
+  return tx(ctx.db, async (c) => {
     const pixel = await resolvePixel(c, orgId, productIds, integration.default_pixel_id);
     if (!pixel) {
       await receipt(c, { ...rb, outcome: "ignored", reason: "no_pixel_for_event", gatewayEvent: n.eventName, ms: ms() });
       return { httpStatus: 200, body: { success: true, queued: false, ignored: true, reason: "no pixel resolved", correlationId: rb.correlationId } };
     }
     const eventId = n.eventId ?? n.transactionId ?? `srv_${sha256(rb.bodySha + n.eventName).slice(0, 32)}`;
-    const event = await buildPaymentEvent(c, orgId, n, n.eventName, eventId, n.amountMinor, n.currency, ctx2.now(), ctx2.now());
+    const event = await buildPaymentEvent(c, orgId, n, n.eventName, eventId, n.amountMinor, n.currency, ctx.now(), ctx.now());
     const te = await c.query(
       `INSERT INTO tracking_events(org_id, pixel_id, event_name, event_id, source, value_minor, currency, match_keys)
        VALUES ($1,$2,$3,$4,'server',$5,$6,$7) ON CONFLICT (pixel_id, event_name, event_id) DO NOTHING RETURNING id`,
@@ -81519,12 +81537,12 @@ function bearer(req) {
   const m = /^Bearer\s+(.+)$/i.exec(a);
   return (m?.[1] ?? String(req.headers["x-integration-token"] ?? "")).trim();
 }
-function webhookRoutes(app2, ctx2) {
+function webhookRoutes(app, ctx) {
   async function handle(req, reply, provider, token) {
     if (!isProvider(provider)) return reply.code(400).send({ success: false, error: "Unsupported gateway", supported: PROVIDERS });
     if (!token) return reply.code(401).send({ success: false, error: "Missing integration token" });
     const form = req.body && typeof req.body === "object" && !req.rawBody?.trim().startsWith("{") ? req.body : null;
-    const out = await ingestWebhook(ctx2, {
+    const out = await ingestWebhook(ctx, {
       provider,
       token,
       rawBody: req.rawBody ?? "",
@@ -81535,12 +81553,12 @@ function webhookRoutes(app2, ctx2) {
     return reply.code(out.httpStatus).header("x-correlation-id", String(out.body.correlationId ?? "")).send(out.body);
   }
   const ping = async (req) => ({ success: true, ping: true, gateway: req.params.provider ?? req.query.gateway ?? null });
-  app2.post("/v1/webhooks/:provider/:token", (req, reply) => handle(req, reply, req.params.provider, req.params.token));
-  app2.get("/v1/webhooks/:provider/:token", ping);
-  app2.post("/v1/webhooks/checkout", (req, reply) => handle(req, reply, "checkout", bearer(req)));
-  app2.post("/api/webhook.php", (req, reply) => handle(req, reply, "checkout", bearer(req)));
-  app2.post("/api/webhook_gateway.php", (req, reply) => handle(req, reply, String(req.query.gateway ?? "").toLowerCase(), String(req.query.token ?? "") || bearer(req)));
-  app2.get("/api/webhook_gateway.php", ping);
+  app.post("/v1/webhooks/:provider/:token", (req, reply) => handle(req, reply, req.params.provider, req.params.token));
+  app.get("/v1/webhooks/:provider/:token", ping);
+  app.post("/v1/webhooks/checkout", (req, reply) => handle(req, reply, "checkout", bearer(req)));
+  app.post("/api/webhook.php", (req, reply) => handle(req, reply, "checkout", bearer(req)));
+  app.post("/api/webhook_gateway.php", (req, reply) => handle(req, reply, String(req.query.gateway ?? "").toLowerCase(), String(req.query.token ?? "") || bearer(req)));
+  app.get("/api/webhook_gateway.php", ping);
 }
 
 // src/collect/routes.ts
@@ -81569,16 +81587,16 @@ function cors(req, reply) {
   reply.header("Access-Control-Max-Age", "86400");
 }
 var str = (v, n = 500) => typeof v === "string" && v.trim() ? v.trim().slice(0, n) : typeof v === "number" ? String(v) : null;
-function collectRoutes(app2, ctx2) {
+function collectRoutes(app, ctx) {
   async function pixelByKey(key, legacyToken) {
     const cols = "p.id, p.org_id, p.meta_pixel_id, p.currency, p.active, p.capi_token_enc, p.allowed_origins";
     if (key && !key.startsWith("itk_")) {
-      const r2 = await ctx2.db.query(`SELECT ${cols} FROM pixels p WHERE p.public_key = $1`, [key]);
+      const r2 = await ctx.db.query(`SELECT ${cols} FROM pixels p WHERE p.public_key = $1`, [key]);
       return r2.rows[0] ?? null;
     }
     const token = key || legacyToken;
     if (!token) return null;
-    const r = await ctx2.db.query(
+    const r = await ctx.db.query(
       `SELECT ${cols} FROM integrations i JOIN pixels p ON p.id = i.default_pixel_id
         WHERE i.token_hash = $1 AND i.provider = 'checkout' AND i.active LIMIT 1`,
       [sha256Hex(token)]
@@ -81631,7 +81649,7 @@ function collectRoutes(app2, ctx2) {
     const event = buildServerEvent({
       eventName,
       eventId,
-      eventTime: Math.floor(ctx2.now().getTime() / 1e3),
+      eventTime: Math.floor(ctx.now().getTime() / 1e3),
       eventSourceUrl: pageUrl,
       customer: {
         email: str(body.email, 190),
@@ -81651,7 +81669,7 @@ function collectRoutes(app2, ctx2) {
       products,
       utms
     });
-    const result = await tx(ctx2.db, async (c) => {
+    const result = await tx(ctx.db, async (c) => {
       const te = await c.query(
         `INSERT INTO tracking_events(org_id, pixel_id, event_name, event_id, source, value_minor, currency, page_url,
                                      utm_source, utm_medium, utm_campaign, utm_content, utm_term, utm_id, match_keys)
@@ -81692,12 +81710,12 @@ function collectRoutes(app2, ctx2) {
     return reply.send({ success: true, ...result, event_id: eventId });
   }
   for (const path3 of ["/v1/collect", "/api/track.php"]) {
-    app2.options(path3, async (req, reply) => {
+    app.options(path3, async (req, reply) => {
       cors(req, reply);
       return reply.code(204).send();
     });
-    app2.post(path3, collect);
-    app2.get(path3, async (req, reply) => {
+    app.post(path3, collect);
+    app.get(path3, async (req, reply) => {
       cors(req, reply);
       return req.query.pt_ping ? { pong: true } : reply.code(405).send({ success: false, error: "Method not allowed" });
     });
@@ -81711,9 +81729,9 @@ function collectRoutes(app2, ctx2) {
     const key = String(q.key ?? q.k ?? "").trim();
     const sql = `SELECT p.meta_pixel_id, p.public_key, p.currency FROM pixel_products pp JOIN pixels p ON p.id = pp.pixel_id
                   WHERE pp.product_id = $1 AND p.active`;
-    const r = key ? await ctx2.db.query(`${sql} AND pp.org_id = (SELECT org_id FROM pixels WHERE public_key = $2)`, [productId, key]) : await ctx2.db.query(`${sql} LIMIT 2`, [productId]);
+    const r = key ? await ctx.db.query(`${sql} AND pp.org_id = (SELECT org_id FROM pixels WHERE public_key = $2)`, [productId, key]) : await ctx.db.query(`${sql} LIMIT 2`, [productId]);
     if (r.rowCount !== 1) {
-      if ((r.rowCount ?? 0) > 1) ctx2.log.warn({ productId }, "pixel-config legado amb\xEDguo entre organiza\xE7\xF5es");
+      if ((r.rowCount ?? 0) > 1) ctx.log.warn({ productId }, "pixel-config legado amb\xEDguo entre organiza\xE7\xF5es");
       return reply.code(404).send({ success: false, error: "No pixel for this product" });
     }
     const p = r.rows[0];
@@ -81722,21 +81740,21 @@ function collectRoutes(app2, ctx2) {
       pixel_id: p.meta_pixel_id,
       public_key: p.public_key,
       currency: String(p.currency).trim(),
-      endpoint: `${ctx2.config.PUBLIC_API_URL}/v1/collect`
+      endpoint: `${ctx.config.PUBLIC_API_URL}/v1/collect`
     };
   }
   for (const path3 of ["/v1/pixel-config", "/api/pixel-config.php"]) {
-    app2.options(path3, async (req, reply) => {
+    app.options(path3, async (req, reply) => {
       cors(req, reply);
       return reply.code(204).send();
     });
-    app2.get(path3, pixelConfig);
+    app.get(path3, pixelConfig);
   }
 }
 
 // src/capi/dispatcher.ts
-async function dispatchBatch(ctx2, limit = 50) {
-  const claimed = await ctx2.db.query(
+async function dispatchBatch(ctx, limit = 50) {
+  const claimed = await ctx.db.query(
     `UPDATE capi_outbox SET status = 'sending', locked_until = now() + interval '2 minutes', attempts = attempts + 1
       WHERE id IN (
         SELECT id FROM capi_outbox
@@ -81749,7 +81767,7 @@ async function dispatchBatch(ctx2, limit = 50) {
   const stats = { claimed: claimed.rowCount ?? 0, sent: 0, retried: 0, dead: 0 };
   if (!claimed.rowCount) return stats;
   const pixelIds = [...new Set(claimed.rows.map((r) => r.pixel_id))];
-  const pr = await ctx2.db.query(
+  const pr = await ctx.db.query(
     "SELECT id, meta_pixel_id, capi_token_enc, test_event_code, active, name FROM pixels WHERE id = ANY($1)",
     [pixelIds]
   );
@@ -81757,7 +81775,7 @@ async function dispatchBatch(ctx2, limit = 50) {
   const queue = [...claimed.rows];
   const workers = Array.from({ length: Math.min(8, queue.length) }, async () => {
     for (let row = queue.shift(); row; row = queue.shift()) {
-      const outcome = await deliver(ctx2, row, pixels.get(row.pixel_id));
+      const outcome = await deliver(ctx, row, pixels.get(row.pixel_id));
       if (outcome === "sent") stats.sent++;
       else if (outcome === "retry") stats.retried++;
       else stats.dead++;
@@ -81766,12 +81784,12 @@ async function dispatchBatch(ctx2, limit = 50) {
   await Promise.all(workers);
   return stats;
 }
-async function deliver(ctx2, row, pixel) {
+async function deliver(ctx, row, pixel) {
   if (!pixel || !pixel.active || !pixel.capi_token_enc) {
     const reason = !pixel ? "Pixel removido." : !pixel.active ? "Pixel inativo: ative o pixel e reprocesse." : "Pixel sem token da CAPI: edite o pixel e reprocesse.";
-    await markDead(ctx2, row, reason, "config", null, void 0);
+    await markDead(ctx, row, reason, "config", null, void 0);
     if (pixel) {
-      await raiseAlert(ctx2.db, row.org_id, {
+      await raiseAlert(ctx.db, row.org_id, {
         kind: "capi_config",
         severity: "critical",
         dedupKey: `capi_config:${row.pixel_id}`,
@@ -81783,15 +81801,15 @@ async function deliver(ctx2, row, pixel) {
   }
   const body = {
     data: [row.payload],
-    access_token: ctx2.box.decrypt(pixel.capi_token_enc)
+    access_token: ctx.box.decrypt(pixel.capi_token_enc)
   };
-  const testCode = pixel.test_event_code || ctx2.config.META_TEST_EVENT_CODE;
+  const testCode = pixel.test_event_code || ctx.config.META_TEST_EVENT_CODE;
   if (testCode) body.test_event_code = testCode;
   const started = Date.now();
   let http = 0;
   let outcome;
   try {
-    const res = await ctx2.fetch(`${ctx2.config.META_GRAPH_BASE_URL}/${ctx2.config.META_GRAPH_VERSION}/${pixel.meta_pixel_id}/events`, {
+    const res = await ctx.fetch(`${ctx.config.META_GRAPH_BASE_URL}/${ctx.config.META_GRAPH_VERSION}/${pixel.meta_pixel_id}/events`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -81804,7 +81822,7 @@ async function deliver(ctx2, row, pixel) {
     outcome = { kind: "retryable", message: `Falha de rede: ${e.message}`.slice(0, 300) };
   }
   const duration3 = Date.now() - started;
-  await ctx2.db.query(
+  await ctx.db.query(
     `INSERT INTO capi_attempts(outbox_id, http_status, duration_ms, outcome, error_code, message, fbtrace_id) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
     [
       row.id,
@@ -81817,20 +81835,20 @@ async function deliver(ctx2, row, pixel) {
     ]
   );
   if (outcome.kind === "sent") {
-    await ctx2.db.query(
+    await ctx.db.query(
       `UPDATE capi_outbox SET status = 'sent', sent_at = now(), locked_until = NULL, last_error = NULL, last_error_class = NULL,
               last_http_status = $2, events_received = $3, fbtrace_id = $4 WHERE id = $1`,
       [row.id, http, outcome.eventsReceived, outcome.fbtraceId ?? null]
     );
-    await resolveAlert(ctx2.db, row.org_id, `capi_failing:${row.pixel_id}`);
-    await resolveAlert(ctx2.db, row.org_id, `capi_config:${row.pixel_id}`);
+    await resolveAlert(ctx.db, row.org_id, `capi_failing:${row.pixel_id}`);
+    await resolveAlert(ctx.db, row.org_id, `capi_config:${row.pixel_id}`);
     return "sent";
   }
-  const max = ctx2.config.CAPI_MAX_ATTEMPTS;
+  const max = ctx.config.CAPI_MAX_ATTEMPTS;
   if (outcome.kind === "permanent" || row.attempts >= max) {
-    await markDead(ctx2, row, outcome.message, outcome.kind, http, outcome.fbtraceId);
+    await markDead(ctx, row, outcome.message, outcome.kind, http, outcome.fbtraceId);
     const tokenProblem = outcome.kind === "permanent" && (outcome.code === 190 || outcome.code === 200 || outcome.code === 10);
-    await raiseAlert(ctx2.db, row.org_id, {
+    await raiseAlert(ctx.db, row.org_id, {
       kind: tokenProblem ? "capi_token" : "capi_failing",
       severity: "critical",
       dedupKey: tokenProblem ? `capi_config:${row.pixel_id}` : `capi_failing:${row.pixel_id}`,
@@ -81841,22 +81859,22 @@ async function deliver(ctx2, row, pixel) {
   }
   let delay = backoffDelayMs(row.attempts);
   if (outcome.kind === "rate_limited") delay = Math.max(delay, 5 * 6e4);
-  await ctx2.db.query(
+  await ctx.db.query(
     `UPDATE capi_outbox SET status = 'pending', locked_until = NULL, next_attempt_at = now() + make_interval(secs => $2),
             last_error = $3, last_error_class = $4, last_http_status = $5, fbtrace_id = $6 WHERE id = $1`,
     [row.id, delay / 1e3, outcome.message, outcome.kind, http || null, outcome.fbtraceId ?? null]
   );
   return "retry";
 }
-async function markDead(ctx2, row, message, cls, http, fbtraceId) {
-  await ctx2.db.query(
+async function markDead(ctx, row, message, cls, http, fbtraceId) {
+  await ctx.db.query(
     `UPDATE capi_outbox SET status = 'dead', locked_until = NULL, last_error = $2, last_error_class = $3, last_http_status = $4,
             fbtrace_id = COALESCE($5, fbtrace_id) WHERE id = $1`,
     [row.id, message.slice(0, 1e3), cls, http, fbtraceId ?? null]
   );
 }
-async function requeue(ctx2, orgId, filter) {
-  const r = await ctx2.db.query(
+async function requeue(ctx, orgId, filter) {
+  const r = await ctx.db.query(
     `UPDATE capi_outbox SET status = 'pending', attempts = 0, next_attempt_at = now(), last_error = NULL, last_error_class = NULL
       WHERE org_id = $1 AND status = 'dead' AND ($2::bigint IS NULL OR id = $2)`,
     [orgId, filter.all ? null : filter.id ?? -1]
@@ -81866,36 +81884,36 @@ async function requeue(ctx2, orgId, filter) {
 
 // src/fx/service.ts
 var LOOKBACK_DAYS = 10;
-async function refreshRates(ctx2) {
+async function refreshRates(ctx) {
   let stored = 0;
   const sources = [];
-  let date5 = localDate(ctx2.now(), "UTC");
+  let date5 = localDate(ctx.now(), "UTC");
   try {
-    const r = await ctx2.fetch("https://api.frankfurter.dev/v1/latest?base=EUR", { signal: AbortSignal.timeout(1e4) });
+    const r = await ctx.fetch("https://api.frankfurter.dev/v1/latest?base=EUR", { signal: AbortSignal.timeout(1e4) });
     if (r.ok) {
       const j = await r.json();
       date5 = j.date;
-      for (const [quote, rate] of Object.entries(j.rates)) stored += await storeRate(ctx2.db, j.date, "EUR", quote, rate, "ecb-frankfurter");
-      stored += await storeRate(ctx2.db, j.date, "EUR", "EUR", 1, "identity");
+      for (const [quote, rate] of Object.entries(j.rates)) stored += await storeRate(ctx.db, j.date, "EUR", quote, rate, "ecb-frankfurter");
+      stored += await storeRate(ctx.db, j.date, "EUR", "EUR", 1, "identity");
       sources.push("ecb-frankfurter");
     }
   } catch (e) {
-    ctx2.log.warn({ err: String(e) }, "Frankfurter indispon\xEDvel");
+    ctx.log.warn({ err: String(e) }, "Frankfurter indispon\xEDvel");
   }
   try {
-    const r = await ctx2.fetch("https://open.er-api.com/v6/latest/EUR", { signal: AbortSignal.timeout(1e4) });
+    const r = await ctx.fetch("https://open.er-api.com/v6/latest/EUR", { signal: AbortSignal.timeout(1e4) });
     if (r.ok) {
       const j = await r.json();
       if (j.result === "success") {
         const d = new Date(j.time_last_update_unix * 1e3).toISOString().slice(0, 10);
         for (const [quote, rate] of Object.entries(j.rates)) {
-          stored += await storeRate(ctx2.db, d, "EUR", quote, rate, "open-er-api", false);
+          stored += await storeRate(ctx.db, d, "EUR", quote, rate, "open-er-api", false);
         }
         sources.push("open-er-api");
       }
     }
   } catch (e) {
-    ctx2.log.warn({ err: String(e) }, "open.er-api indispon\xEDvel");
+    ctx.log.warn({ err: String(e) }, "open.er-api indispon\xEDvel");
   }
   return { date: date5, stored, sources };
 }
@@ -81999,8 +82017,8 @@ function metricsFromInsight(i) {
   };
 }
 var MetaClient = class {
-  constructor(ctx2, token) {
-    this.ctx = ctx2;
+  constructor(ctx, token) {
+    this.ctx = ctx;
     this.token = token;
   }
   get base() {
@@ -82091,22 +82109,22 @@ var MetaClient = class {
     return this.request("POST", `/${id}`, { [field]: amountMinor.toString() });
   }
 };
-function metaAuthUrl(ctx2, state) {
+function metaAuthUrl(ctx, state) {
   const p = new URLSearchParams({
-    client_id: ctx2.config.META_APP_ID,
-    redirect_uri: metaRedirectUri(ctx2),
+    client_id: ctx.config.META_APP_ID,
+    redirect_uri: metaRedirectUri(ctx),
     state,
     response_type: "code"
   });
-  if (ctx2.config.META_LOGIN_CONFIG_ID) p.set("config_id", ctx2.config.META_LOGIN_CONFIG_ID);
+  if (ctx.config.META_LOGIN_CONFIG_ID) p.set("config_id", ctx.config.META_LOGIN_CONFIG_ID);
   else p.set("scope", "ads_read,ads_management");
-  return `https://www.facebook.com/${ctx2.config.META_GRAPH_VERSION}/dialog/oauth?${p.toString()}`;
+  return `https://www.facebook.com/${ctx.config.META_GRAPH_VERSION}/dialog/oauth?${p.toString()}`;
 }
-var metaRedirectUri = (ctx2) => `${ctx2.config.PUBLIC_API_URL}/v1/meta/callback`;
-async function exchangeCode(ctx2, code) {
-  const base = `${ctx2.config.META_GRAPH_BASE_URL}/${ctx2.config.META_GRAPH_VERSION}/oauth/access_token`;
+var metaRedirectUri = (ctx) => `${ctx.config.PUBLIC_API_URL}/v1/meta/callback`;
+async function exchangeCode(ctx, code) {
+  const base = `${ctx.config.META_GRAPH_BASE_URL}/${ctx.config.META_GRAPH_VERSION}/oauth/access_token`;
   const call = async (params) => {
-    const res = await ctx2.fetch(`${base}?${new URLSearchParams(params)}`, { signal: AbortSignal.timeout(2e4) });
+    const res = await ctx.fetch(`${base}?${new URLSearchParams(params)}`, { signal: AbortSignal.timeout(2e4) });
     const j = await res.json().catch(() => ({}));
     if (!res.ok || j.error || !j.access_token) {
       throw new MetaApiError(String(j?.error?.message ?? `HTTP ${res.status}`), j?.error?.code ?? null, res.status);
@@ -82114,24 +82132,24 @@ async function exchangeCode(ctx2, code) {
     return j;
   };
   const short = await call({
-    client_id: ctx2.config.META_APP_ID,
-    client_secret: ctx2.config.META_APP_SECRET,
-    redirect_uri: metaRedirectUri(ctx2),
+    client_id: ctx.config.META_APP_ID,
+    client_secret: ctx.config.META_APP_SECRET,
+    redirect_uri: metaRedirectUri(ctx),
     code
   });
   let long = short;
   try {
     long = await call({
       grant_type: "fb_exchange_token",
-      client_id: ctx2.config.META_APP_ID,
-      client_secret: ctx2.config.META_APP_SECRET,
+      client_id: ctx.config.META_APP_ID,
+      client_secret: ctx.config.META_APP_SECRET,
       fb_exchange_token: short.access_token
     });
   } catch (e) {
-    ctx2.log.warn({ err: String(e) }, "troca por token longo falhou; usando token curto");
+    ctx.log.warn({ err: String(e) }, "troca por token longo falhou; usando token curto");
   }
   const exp = Number(long.expires_in ?? 0);
-  return { token: long.access_token, expiresAt: exp > 0 ? new Date(ctx2.now().getTime() + exp * 1e3) : null };
+  return { token: long.access_token, expiresAt: exp > 0 ? new Date(ctx.now().getTime() + exp * 1e3) : null };
 }
 var normalizeAccountId = (id) => {
   const t = id.trim();
@@ -82139,15 +82157,15 @@ var normalizeAccountId = (id) => {
 };
 
 // src/meta/service.ts
-async function getConnection(ctx2, orgId) {
-  const r = await ctx2.db.query(
+async function getConnection(ctx, orgId) {
+  const r = await ctx.db.query(
     "SELECT access_token_enc, selected_ad_account_id, ad_account_currency, status, token_expires_at, scopes FROM meta_connections WHERE org_id = $1",
     [orgId]
   );
   const row = r.rows[0];
   if (!row) return null;
   return {
-    client: new MetaClient(ctx2, ctx2.box.decrypt(row.access_token_enc)),
+    client: new MetaClient(ctx, ctx.box.decrypt(row.access_token_enc)),
     accountId: row.selected_ad_account_id,
     accountCurrency: row.ad_account_currency?.trim() ?? null,
     status: row.status,
@@ -82155,10 +82173,10 @@ async function getConnection(ctx2, orgId) {
     scopes: row.scopes
   };
 }
-async function handleMetaError(ctx2, orgId, e) {
+async function handleMetaError(ctx, orgId, e) {
   if (e instanceof MetaApiError && e.isTokenError) {
-    await ctx2.db.query(`UPDATE meta_connections SET status = 'expired', last_error = $2, updated_at = now() WHERE org_id = $1`, [orgId, e.message]);
-    await raiseAlert(ctx2.db, orgId, {
+    await ctx.db.query(`UPDATE meta_connections SET status = 'expired', last_error = $2, updated_at = now() WHERE org_id = $1`, [orgId, e.message]);
+    await raiseAlert(ctx.db, orgId, {
       kind: "meta_token",
       severity: "critical",
       dedupKey: "meta_token",
@@ -82166,18 +82184,18 @@ async function handleMetaError(ctx2, orgId, e) {
       detail: "Reconecte a conta em Integra\xE7\xF5es \u2192 Meta Ads."
     });
   } else if (e instanceof MetaApiError) {
-    await ctx2.db.query("UPDATE meta_connections SET last_error = $2, updated_at = now() WHERE org_id = $1", [orgId, e.message]);
+    await ctx.db.query("UPDATE meta_connections SET last_error = $2, updated_at = now() WHERE org_id = $1", [orgId, e.message]);
   }
   throw e;
 }
-async function cached2(ctx2, orgId, key, ttlSec, load) {
-  const r = await ctx2.db.query(
+async function cached2(ctx, orgId, key, ttlSec, load) {
+  const r = await ctx.db.query(
     "SELECT data FROM meta_insights_cache WHERE org_id = $1 AND cache_key = $2 AND fetched_at > now() - make_interval(secs => $3)",
     [orgId, key, ttlSec]
   );
   if (r.rows[0]) return r.rows[0].data;
   const data = await load();
-  await ctx2.db.query(
+  await ctx.db.query(
     `INSERT INTO meta_insights_cache(org_id, cache_key, data) VALUES ($1, $2, $3)
      ON CONFLICT (org_id, cache_key) DO UPDATE SET data = EXCLUDED.data, fetched_at = now()`,
     [orgId, key, JSON.stringify(data)]
@@ -82185,23 +82203,23 @@ async function cached2(ctx2, orgId, key, ttlSec, load) {
   return data;
 }
 var ttlFor = (until) => until >= localDate(/* @__PURE__ */ new Date(), "UTC") ? 300 : 6 * 3600;
-async function accountDaily(ctx2, orgId, since, until) {
-  const conn = await getConnection(ctx2, orgId);
+async function accountDaily(ctx, orgId, since, until) {
+  const conn = await getConnection(ctx, orgId);
   if (!conn || !conn.accountId || conn.status !== "active") return null;
   try {
-    const rows = await cached2(ctx2, orgId, `daily:${conn.accountId}:${since}:${until}`, ttlFor(until), () => conn.client.accountInsightsDaily(conn.accountId, since, until));
+    const rows = await cached2(ctx, orgId, `daily:${conn.accountId}:${since}:${until}`, ttlFor(until), () => conn.client.accountInsightsDaily(conn.accountId, since, until));
     const days = rows.map((r) => ({ ...metricsFromInsight(r), date: String(r.date_start) }));
     return { currency: days[0]?.currency ?? conn.accountCurrency ?? "BRL", days };
   } catch (e) {
-    return handleMetaError(ctx2, orgId, e);
+    return handleMetaError(ctx, orgId, e);
   }
 }
-async function entities(ctx2, orgId, level, since, until, campaignIds = []) {
-  const conn = await getConnection(ctx2, orgId);
+async function entities(ctx, orgId, level, since, until, campaignIds = []) {
+  const conn = await getConnection(ctx, orgId);
   if (!conn || !conn.accountId || conn.status !== "active") return null;
   try {
     const key = `${level}:${conn.accountId}:${since}:${until}:${campaignIds.join(",")}`;
-    const raw = await cached2(ctx2, orgId, key, Math.min(ttlFor(until), 120), () => level === "campaign" ? conn.client.campaigns(conn.accountId, since, until) : conn.client.adsets(conn.accountId, since, until, campaignIds));
+    const raw = await cached2(ctx, orgId, key, Math.min(ttlFor(until), 120), () => level === "campaign" ? conn.client.campaigns(conn.accountId, since, until) : conn.client.adsets(conn.accountId, since, until, campaignIds));
     const currency = conn.accountCurrency ?? "BRL";
     const rows = raw.map((c) => ({
       ...metricsFromInsight(c.insights?.data?.[0]),
@@ -82218,12 +82236,12 @@ async function entities(ctx2, orgId, level, since, until, campaignIds = []) {
     }));
     return { currency, rows };
   } catch (e) {
-    return handleMetaError(ctx2, orgId, e);
+    return handleMetaError(ctx, orgId, e);
   }
 }
 var metaMoneyToMinor = (v, currency) => parseAmount(v, currency, "major") ?? 0n;
-async function invalidateCache(ctx2, orgId) {
-  await ctx2.db.query("DELETE FROM meta_insights_cache WHERE org_id = $1", [orgId]);
+async function invalidateCache(ctx, orgId) {
+  await ctx.db.query("DELETE FROM meta_insights_cache WHERE org_id = $1", [orgId]);
 }
 
 // src/meta/routes.ts
@@ -82241,66 +82259,66 @@ function metaError(e) {
   }
   throw e;
 }
-function metaRoutes(app2, ctx2) {
-  const configured = () => !!ctx2.config.META_APP_ID && !!ctx2.config.META_APP_SECRET;
-  app2.get("/v1/meta/status", async (req) => {
+function metaRoutes(app, ctx) {
+  const configured = () => !!ctx.config.META_APP_ID && !!ctx.config.META_APP_SECRET;
+  app.get("/v1/meta/status", async (req) => {
     const a = requireRole(req, "viewer");
-    const r = await ctx2.db.query(
+    const r = await ctx.db.query(
       "SELECT selected_ad_account_id, ad_account_currency, status, token_expires_at, scopes, last_error, updated_at FROM meta_connections WHERE org_id = $1",
       [a.org.id]
     );
     return {
       appConfigured: configured(),
-      loginMode: ctx2.config.META_LOGIN_CONFIG_ID ? "business_login" : "classic",
-      redirectUri: metaRedirectUri(ctx2),
-      graphVersion: ctx2.config.META_GRAPH_VERSION,
+      loginMode: ctx.config.META_LOGIN_CONFIG_ID ? "business_login" : "classic",
+      redirectUri: metaRedirectUri(ctx),
+      graphVersion: ctx.config.META_GRAPH_VERSION,
       connection: r.rows[0] ?? null
     };
   });
-  app2.post("/v1/meta/connect", async (req) => {
+  app.post("/v1/meta/connect", async (req) => {
     const a = requireRole(req, "admin");
     if (!configured()) throw badRequest("META_APP_ID e META_APP_SECRET n\xE3o est\xE3o configurados no servidor.");
     const state = randomToken(24);
-    await ctx2.db.query(`INSERT INTO oauth_states(state, org_id, user_id, expires_at) VALUES ($1, $2, $3, now() + interval '10 minutes')`, [state, a.org.id, a.user.id]);
-    return { url: metaAuthUrl(ctx2, state) };
+    await ctx.db.query(`INSERT INTO oauth_states(state, org_id, user_id, expires_at) VALUES ($1, $2, $3, now() + interval '10 minutes')`, [state, a.org.id, a.user.id]);
+    return { url: metaAuthUrl(ctx, state) };
   });
-  app2.get("/v1/meta/callback", async (req, reply) => {
+  app.get("/v1/meta/callback", async (req, reply) => {
     const q = req.query;
-    const back = (params) => reply.redirect(`${ctx2.config.APP_URL}/integracoes/meta?${new URLSearchParams(params)}`);
-    const st = await ctx2.db.query("DELETE FROM oauth_states WHERE state = $1 AND expires_at > now() RETURNING org_id, user_id", [q.state ?? ""]);
+    const back = (params) => reply.redirect(`${ctx.config.APP_URL}/integracoes/meta?${new URLSearchParams(params)}`);
+    const st = await ctx.db.query("DELETE FROM oauth_states WHERE state = $1 AND expires_at > now() RETURNING org_id, user_id", [q.state ?? ""]);
     const row = st.rows[0];
     if (!row) return back({ error: "Falha de valida\xE7\xE3o do OAuth (state inv\xE1lido ou expirado). Tente novamente." });
     if (req.auth && req.auth.user.id !== row.user_id) return back({ error: "Sess\xE3o diferente da que iniciou a conex\xE3o." });
     if (q.error || !q.code) return back({ error: `Conex\xE3o cancelada: ${q.error_description ?? q.error ?? "sem c\xF3digo"}` });
     try {
-      const tok = await exchangeCode(ctx2, q.code);
-      const client2 = new MetaClient(ctx2, tok.token);
+      const tok = await exchangeCode(ctx, q.code);
+      const client2 = new MetaClient(ctx, tok.token);
       const scopes = await client2.permissions().catch(() => []);
-      await ctx2.db.query(
+      await ctx.db.query(
         `INSERT INTO meta_connections(org_id, connected_by, access_token_enc, token_expires_at, scopes, status)
          VALUES ($1, $2, $3, $4, $5, 'active')
          ON CONFLICT (org_id) DO UPDATE SET connected_by = EXCLUDED.connected_by, access_token_enc = EXCLUDED.access_token_enc,
            token_expires_at = EXCLUDED.token_expires_at, scopes = EXCLUDED.scopes, status = 'active', last_error = NULL, updated_at = now()`,
-        [row.org_id, row.user_id, ctx2.box.encrypt(tok.token), tok.expiresAt, scopes]
+        [row.org_id, row.user_id, ctx.box.encrypt(tok.token), tok.expiresAt, scopes]
       );
-      await invalidateCache(ctx2, row.org_id);
-      await resolveAlert(ctx2.db, row.org_id, "meta_token");
-      await audit(ctx2, row.org_id, row.user_id, "meta.connected", void 0, { scopes });
+      await invalidateCache(ctx, row.org_id);
+      await resolveAlert(ctx.db, row.org_id, "meta_token");
+      await audit(ctx, row.org_id, row.user_id, "meta.connected", void 0, { scopes });
       return back({ connected: "1" });
     } catch (e) {
       return back({ error: `N\xE3o foi poss\xEDvel conectar: ${e.message}` });
     }
   });
-  app2.post("/v1/meta/disconnect", async (req) => {
+  app.post("/v1/meta/disconnect", async (req) => {
     const a = requireRole(req, "admin");
-    await ctx2.db.query("DELETE FROM meta_connections WHERE org_id = $1", [a.org.id]);
-    await invalidateCache(ctx2, a.org.id);
-    await audit(ctx2, a.org.id, a.user.id, "meta.disconnected");
+    await ctx.db.query("DELETE FROM meta_connections WHERE org_id = $1", [a.org.id]);
+    await invalidateCache(ctx, a.org.id);
+    await audit(ctx, a.org.id, a.user.id, "meta.disconnected");
     return { ok: true };
   });
-  app2.get("/v1/meta/ad-accounts", async (req) => {
+  app.get("/v1/meta/ad-accounts", async (req) => {
     const a = requireRole(req, "viewer");
-    const conn = await getConnection(ctx2, a.org.id);
+    const conn = await getConnection(ctx, a.org.id);
     if (!conn) return { accounts: [], selected: null };
     try {
       const accounts = await conn.client.adAccounts();
@@ -82309,22 +82327,22 @@ function metaRoutes(app2, ctx2) {
         accounts: accounts.map((x) => ({ id: normalizeAccountId(String(x.account_id)), name: x.name, currency: x.currency, status: x.account_status, timezone: x.timezone_name }))
       };
     } catch (e) {
-      return handleMetaError(ctx2, a.org.id, e).catch(metaError);
+      return handleMetaError(ctx, a.org.id, e).catch(metaError);
     }
   });
-  app2.post("/v1/meta/ad-account", async (req) => {
+  app.post("/v1/meta/ad-account", async (req) => {
     const a = requireRole(req, "admin");
     const { accountId, currency } = parse4(external_exports.object({ accountId: external_exports.string().min(3).max(40), currency: external_exports.string().regex(/^[A-Z]{3}$/) }), req.body);
-    const r = await ctx2.db.query(
+    const r = await ctx.db.query(
       "UPDATE meta_connections SET selected_ad_account_id = $2, ad_account_currency = $3, updated_at = now() WHERE org_id = $1",
       [a.org.id, normalizeAccountId(accountId), currency]
     );
     if (!r.rowCount) throw badRequest("Conecte o Facebook Ads antes.");
-    await invalidateCache(ctx2, a.org.id);
-    await audit(ctx2, a.org.id, a.user.id, "meta.ad_account_selected", accountId);
+    await invalidateCache(ctx, a.org.id);
+    await audit(ctx, a.org.id, a.user.id, "meta.ad_account_selected", accountId);
     return { ok: true };
   });
-  app2.get("/v1/meta/campaigns", async (req) => {
+  app.get("/v1/meta/campaigns", async (req) => {
     const a = requireRole(req, "viewer");
     const q = parse4(periodQuery.extend({
       level: external_exports.enum(["campaign", "adset"]).default("campaign"),
@@ -82334,7 +82352,7 @@ function metaRoutes(app2, ctx2) {
     const campaignIds = (q.campaignIds ?? "").split(",").map((s) => s.replace(/\D+/g, "")).filter(Boolean);
     let data;
     try {
-      data = await entities(ctx2, a.org.id, q.level, w.since, w.until, campaignIds);
+      data = await entities(ctx, a.org.id, q.level, w.since, w.until, campaignIds);
     } catch (e) {
       metaError(e);
     }
@@ -82342,15 +82360,15 @@ function metaRoutes(app2, ctx2) {
     const rep = a.org.reporting_currency;
     let adsetMap = /* @__PURE__ */ new Map();
     if (q.level === "campaign") {
-      const adsets = await entities(ctx2, a.org.id, "adset", w.since, w.until).catch(() => null);
+      const adsets = await entities(ctx, a.org.id, "adset", w.since, w.until).catch(() => null);
       adsetMap = new Map((adsets?.rows ?? []).flatMap((s) => [[`id:${s.id}`, s.campaignId ?? ""], [`name:${s.name.toLowerCase()}`, s.campaignId ?? ""]]));
     }
-    const pays = await ctx2.db.query(
+    const pays = await ctx.db.query(
       `SELECT amount_minor, currency, approved_at, utm_campaign, utm_content, utm_term, utm_medium, utm_id
          FROM payments WHERE org_id = $1 AND status = 'approved' AND approved_at >= $2 AND approved_at < $3`,
       [a.org.id, w.startUtc, w.endUtc]
     );
-    const fx = await FxTable.load(ctx2.db, [rep, data.currency, ...pays.rows.map((p) => String(p.currency ?? "").trim())], w.since, w.until);
+    const fx = await FxTable.load(ctx.db, [rep, data.currency, ...pays.rows.map((p) => String(p.currency ?? "").trim())], w.since, w.until);
     const acc = data.rows.map(() => ({ sales: 0, revenue: 0n, unconverted: 0 }));
     const rows = data.rows.map((r) => ({ id: r.id, name: r.name }));
     for (const p of pays.rows) {
@@ -82405,11 +82423,11 @@ function metaRoutes(app2, ctx2) {
   });
   const entityParams = external_exports.object({ id: external_exports.string().regex(/^\d{5,30}$/) });
   async function client(orgId) {
-    const conn = await getConnection(ctx2, orgId);
+    const conn = await getConnection(ctx, orgId);
     if (!conn) throw badRequest("Conecte o Facebook Ads antes.");
     return conn;
   }
-  app2.post("/v1/meta/entities/:id/status", async (req) => {
+  app.post("/v1/meta/entities/:id/status", async (req) => {
     const a = requireRole(req, "admin");
     const { id } = parse4(entityParams, req.params);
     const { status } = parse4(external_exports.object({ status: external_exports.enum(["ACTIVE", "PAUSED"]) }), req.body);
@@ -82419,11 +82437,11 @@ function metaRoutes(app2, ctx2) {
     } catch (e) {
       metaError(e);
     }
-    await invalidateCache(ctx2, a.org.id);
-    await audit(ctx2, a.org.id, a.user.id, "meta.status_changed", id, { status });
+    await invalidateCache(ctx, a.org.id);
+    await audit(ctx, a.org.id, a.user.id, "meta.status_changed", id, { status });
     return { ok: true, status };
   });
-  app2.post("/v1/meta/entities/:id/duplicate", async (req) => {
+  app.post("/v1/meta/entities/:id/duplicate", async (req) => {
     const a = requireRole(req, "admin");
     const { id } = parse4(entityParams, req.params);
     const { type } = parse4(external_exports.object({ type: external_exports.enum(["campaign", "adset"]) }), req.body);
@@ -82434,11 +82452,11 @@ function metaRoutes(app2, ctx2) {
     } catch (e) {
       metaError(e);
     }
-    await invalidateCache(ctx2, a.org.id);
-    await audit(ctx2, a.org.id, a.user.id, "meta.duplicated", id, { type });
+    await invalidateCache(ctx, a.org.id);
+    await audit(ctx, a.org.id, a.user.id, "meta.duplicated", id, { type });
     return { ok: true, newId: String(res?.copied_campaign_id ?? res?.copied_adset_id ?? res?.id ?? "") };
   });
-  app2.post("/v1/meta/entities/:id/budget", async (req) => {
+  app.post("/v1/meta/entities/:id/budget", async (req) => {
     const a = requireRole(req, "admin");
     const { id } = parse4(entityParams, req.params);
     const b = parse4(external_exports.object({ type: external_exports.enum(["daily", "lifetime"]), amount: external_exports.string().min(1).max(20) }), req.body);
@@ -82452,16 +82470,16 @@ function metaRoutes(app2, ctx2) {
     } catch (e) {
       metaError(e);
     }
-    await invalidateCache(ctx2, a.org.id);
-    await audit(ctx2, a.org.id, a.user.id, "meta.budget_changed", id, { type: b.type, amountMinor: minor.toString(), currency: cur });
+    await invalidateCache(ctx, a.org.id);
+    await audit(ctx, a.org.id, a.user.id, "meta.budget_changed", id, { type: b.type, amountMinor: minor.toString(), currency: cur });
     return { ok: true, amountMinor: minor.toString(), currency: cur, exponent: currencyExponent(cur) };
   });
 }
 
 // src/reports/dashboard.ts
 var empty = () => ({ count: 0, amountMinor: 0n, unconverted: 0 });
-async function salesBuckets(ctx2, org, w, f, fx, column, statusFilter) {
-  const r = await ctx2.db.query(
+async function salesBuckets(ctx, org, w, f, fx, column, statusFilter) {
+  const r = await ctx.db.query(
     `SELECT to_char((${column} AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day, currency, count(*)::int AS n, COALESCE(sum(amount_minor), 0)::bigint AS amount
        FROM payments
       WHERE org_id = $1 AND ${column} >= $2 AND ${column} < $3 AND ${statusFilter}
@@ -82490,16 +82508,16 @@ async function salesBuckets(ctx2, org, w, f, fx, column, statusFilter) {
   }
   return { total, byDay };
 }
-async function currenciesInUse(ctx2, orgId) {
-  const r = await ctx2.db.query("SELECT DISTINCT currency FROM payments WHERE org_id = $1 AND currency IS NOT NULL", [orgId]);
+async function currenciesInUse(ctx, orgId) {
+  const r = await ctx.db.query("SELECT DISTINCT currency FROM payments WHERE org_id = $1 AND currency IS NOT NULL", [orgId]);
   return r.rows.map((x) => String(x.currency).trim());
 }
-async function windowKpis(ctx2, org, w, f, withMeta) {
-  const meta3 = withMeta && !f.pixelId && !f.provider ? await accountDaily(ctx2, org.id, w.since, w.until).catch(() => null) : null;
-  const fx = await FxTable.load(ctx2.db, [org.reporting_currency, ...await currenciesInUse(ctx2, org.id), meta3?.currency ?? ""], w.since, w.until);
-  const confirmed = await salesBuckets(ctx2, org, w, f, fx, "approved_at", `status = 'approved'`);
-  const reversed = await salesBuckets(ctx2, org, w, f, fx, "reversed_at", `status IN ('refunded', 'chargeback') AND approved_at IS NOT NULL`);
-  const created = await ctx2.db.query(
+async function windowKpis(ctx, org, w, f, withMeta) {
+  const meta3 = withMeta && !f.pixelId && !f.provider ? await accountDaily(ctx, org.id, w.since, w.until).catch(() => null) : null;
+  const fx = await FxTable.load(ctx.db, [org.reporting_currency, ...await currenciesInUse(ctx, org.id), meta3?.currency ?? ""], w.since, w.until);
+  const confirmed = await salesBuckets(ctx, org, w, f, fx, "approved_at", `status = 'approved'`);
+  const reversed = await salesBuckets(ctx, org, w, f, fx, "reversed_at", `status IN ('refunded', 'chargeback') AND approved_at IS NOT NULL`);
+  const created = await ctx.db.query(
     `SELECT status, count(*)::int AS n, COALESCE(sum(amount_minor), 0)::bigint AS amount, max(currency) AS any_currency, count(DISTINCT currency)::int AS currencies
        FROM payments WHERE org_id = $1 AND created_at >= $2 AND created_at < $3
         AND ($4::uuid IS NULL OR pixel_id = $4) AND ($5::text IS NULL OR provider = $5)
@@ -82531,7 +82549,7 @@ async function windowKpis(ctx2, org, w, f, withMeta) {
       lpv += d.landingPageViews;
     }
   }
-  const funnel = await ctx2.db.query(
+  const funnel = await ctx.db.query(
     `SELECT event_name, count(*)::int AS n FROM tracking_events
       WHERE org_id = $1 AND received_at >= $2 AND received_at < $3 AND ($4::uuid IS NULL OR pixel_id = $4)
         AND event_name IN ('PageView', 'InitiateCheckout') GROUP BY event_name`,
@@ -82566,26 +82584,26 @@ async function windowKpis(ctx2, org, w, f, withMeta) {
     }))
   };
 }
-async function dashboard(ctx2, org, q) {
-  const w = reportWindow(q.preset, org.timezone, { now: ctx2.now(), since: q.since, until: q.until });
+async function dashboard(ctx, org, q) {
+  const w = reportWindow(q.preset, org.timezone, { now: ctx.now(), since: q.since, until: q.until });
   const filters = { pixelId: q.pixelId, provider: q.provider };
   const [current, previous] = await Promise.all([
-    windowKpis(ctx2, org, w, filters, true),
-    windowKpis(ctx2, org, previousWindow(w), filters, true)
+    windowKpis(ctx, org, w, filters, true),
+    windowKpis(ctx, org, previousWindow(w), filters, true)
   ]);
-  const fxToday = await FxTable.load(ctx2.db, [org.reporting_currency, ...await currenciesInUse(ctx2, org.id)], reportWindow("this_month", org.timezone, { now: ctx2.now() }).since, reportWindow("today", org.timezone, { now: ctx2.now() }).until);
-  const today = await salesBuckets(ctx2, org, reportWindow("today", org.timezone, { now: ctx2.now() }), {}, fxToday, "approved_at", `status = 'approved'`);
-  const month = await salesBuckets(ctx2, org, reportWindow("this_month", org.timezone, { now: ctx2.now() }), {}, fxToday, "approved_at", `status = 'approved'`);
-  const capi = await ctx2.db.query(
+  const fxToday = await FxTable.load(ctx.db, [org.reporting_currency, ...await currenciesInUse(ctx, org.id)], reportWindow("this_month", org.timezone, { now: ctx.now() }).since, reportWindow("today", org.timezone, { now: ctx.now() }).until);
+  const today = await salesBuckets(ctx, org, reportWindow("today", org.timezone, { now: ctx.now() }), {}, fxToday, "approved_at", `status = 'approved'`);
+  const month = await salesBuckets(ctx, org, reportWindow("this_month", org.timezone, { now: ctx.now() }), {}, fxToday, "approved_at", `status = 'approved'`);
+  const capi = await ctx.db.query(
     `SELECT status, count(*)::int AS n FROM capi_outbox WHERE org_id = $1 AND created_at >= $2 AND created_at < $3
         AND ($4::uuid IS NULL OR pixel_id = $4) GROUP BY status`,
     [org.id, w.startUtc, w.endUtc, q.pixelId ?? null]
   );
-  const tracked = await ctx2.db.query(
+  const tracked = await ctx.db.query(
     "SELECT count(*)::int AS n FROM tracking_events WHERE org_id = $1 AND received_at >= $2 AND received_at < $3 AND ($4::uuid IS NULL OR pixel_id = $4)",
     [org.id, w.startUtc, w.endUtc, q.pixelId ?? null]
   );
-  const alerts = await ctx2.db.query(`SELECT count(*)::int AS n FROM alerts WHERE org_id = $1 AND resolved_at IS NULL`, [org.id]);
+  const alerts = await ctx.db.query(`SELECT count(*)::int AS n FROM alerts WHERE org_id = $1 AND resolved_at IS NULL`, [org.id]);
   return {
     reportingCurrency: org.reporting_currency,
     timezone: org.timezone,
@@ -82605,13 +82623,13 @@ async function dashboard(ctx2, org, q) {
 
 // src/reports/routes.ts
 var uuidOpt = external_exports.string().uuid().optional();
-function reportRoutes(app2, ctx2) {
-  app2.get("/v1/reports/dashboard", async (req) => {
+function reportRoutes(app, ctx) {
+  app.get("/v1/reports/dashboard", async (req) => {
     const a = requireRole(req, "viewer");
     const q = parse4(periodQuery.extend({ pixelId: uuidOpt, provider: external_exports.string().max(20).optional() }), req.query);
-    return jsonSafe(await dashboard(ctx2, a.org, { ...q, preset: q.preset }));
+    return jsonSafe(await dashboard(ctx, a.org, { ...q, preset: q.preset }));
   });
-  app2.get("/v1/payments", async (req) => {
+  app.get("/v1/payments", async (req) => {
     const a = requireRole(req, "viewer");
     const q = parse4(periodQuery.extend({
       status: external_exports.enum(["pending", "approved", "refunded", "chargeback", "canceled", "failed"]).optional(),
@@ -82625,8 +82643,8 @@ function reportRoutes(app2, ctx2) {
     const where = `p.org_id = $1 AND p.created_at >= $2 AND p.created_at < $3 AND ($4::text IS NULL OR p.status = $4)
                    AND ($5::text IS NULL OR p.provider = $5) AND ($6::uuid IS NULL OR p.pixel_id = $6)
                    AND ($7::text IS NULL OR p.transaction_id ILIKE $7)`;
-    const total = await ctx2.db.query(`SELECT count(*)::int AS n FROM payments p WHERE ${where}`, params);
-    const rows = await ctx2.db.query(
+    const total = await ctx.db.query(`SELECT count(*)::int AS n FROM payments p WHERE ${where}`, params);
+    const rows = await ctx.db.query(
       `SELECT p.id, p.provider, p.transaction_id, p.status, p.amount_minor, p.currency, p.utm_source, p.utm_campaign, p.utm_content,
               p.created_at, p.approved_at, p.reversed_at, px.name AS pixel_name,
               (SELECT status FROM capi_outbox o WHERE o.payment_id = p.id AND o.event_name = 'Purchase' LIMIT 1) AS purchase_capi_status
@@ -82636,18 +82654,18 @@ function reportRoutes(app2, ctx2) {
     );
     return jsonSafe({ total: total.rows[0]?.n ?? 0, page: q.page, pageSize: 50, payments: rows.rows });
   });
-  app2.get("/v1/payments/:id", async (req) => {
+  app.get("/v1/payments/:id", async (req) => {
     const a = requireRole(req, "viewer");
     const { id } = parse4(external_exports.object({ id: external_exports.string().uuid() }), req.params);
-    const p = await ctx2.db.query(
+    const p = await ctx.db.query(
       `SELECT p.*, px.name AS pixel_name FROM payments p LEFT JOIN pixels px ON px.id = p.pixel_id WHERE p.id = $1 AND p.org_id = $2`,
       [id, a.org.id]
     );
     if (!p.rows[0]) throw notFound("Pagamento n\xE3o encontrado.");
     const [transitions, receipts, outbox] = await Promise.all([
-      ctx2.db.query("SELECT from_status, to_status, occurred_at, receipt_id FROM payment_transitions WHERE payment_id = $1 ORDER BY id", [id]),
-      ctx2.db.query(`SELECT id, received_at, outcome, reason, gateway_event, correlation_id, signature_method FROM webhook_receipts WHERE payment_id = $1 AND org_id = $2 ORDER BY id`, [id, a.org.id]),
-      ctx2.db.query(
+      ctx.db.query("SELECT from_status, to_status, occurred_at, receipt_id FROM payment_transitions WHERE payment_id = $1 ORDER BY id", [id]),
+      ctx.db.query(`SELECT id, received_at, outcome, reason, gateway_event, correlation_id, signature_method FROM webhook_receipts WHERE payment_id = $1 AND org_id = $2 ORDER BY id`, [id, a.org.id]),
+      ctx.db.query(
         `SELECT o.id, o.event_name, o.event_id, o.status, o.attempts, o.last_error, o.events_received, o.fbtrace_id, o.sent_at, o.payload,
                 (SELECT json_agg(json_build_object('at', attempted_at, 'http', http_status, 'outcome', outcome, 'message', message) ORDER BY id)
                    FROM capi_attempts t WHERE t.outbox_id = o.id) AS attempts_log
@@ -82657,7 +82675,7 @@ function reportRoutes(app2, ctx2) {
     ]);
     return jsonSafe({ payment: p.rows[0], transitions: transitions.rows, receipts: receipts.rows, capi: outbox.rows });
   });
-  app2.get("/v1/events", async (req) => {
+  app.get("/v1/events", async (req) => {
     const a = requireRole(req, "viewer");
     const q = parse4(periodQuery.extend({
       status: external_exports.enum(["pending", "sending", "sent", "dead"]).optional(),
@@ -82671,30 +82689,30 @@ function reportRoutes(app2, ctx2) {
                    AND ($5::text IS NULL OR o.event_name = $5) AND ($6::uuid IS NULL OR o.pixel_id = $6)`;
     const where = `${base} AND ($4::text IS NULL OR o.status = $4)`;
     const [rows, counts] = await Promise.all([
-      ctx2.db.query(
+      ctx.db.query(
         `SELECT o.id, o.event_name, o.event_id, o.status, o.attempts, o.next_attempt_at, o.last_error, o.last_error_class,
                 o.last_http_status, o.events_received, o.fbtrace_id, o.created_at, o.sent_at, o.payment_id, o.correlation_id,
                 o.payload, px.name AS pixel_name
            FROM capi_outbox o JOIN pixels px ON px.id = o.pixel_id WHERE ${where} ORDER BY o.id DESC LIMIT 50 OFFSET $7`,
         [...params, (q.page - 1) * 50]
       ),
-      ctx2.db.query(`SELECT o.status, count(*)::int AS n FROM capi_outbox o WHERE ${base} AND ($4::text IS NULL OR $4::text IS NOT NULL) GROUP BY o.status`, params)
+      ctx.db.query(`SELECT o.status, count(*)::int AS n FROM capi_outbox o WHERE ${base} AND ($4::text IS NULL OR $4::text IS NOT NULL) GROUP BY o.status`, params)
     ]);
     return jsonSafe({ page: q.page, pageSize: 50, events: rows.rows, counts: Object.fromEntries(counts.rows.map((r) => [r.status, r.n])) });
   });
-  app2.post("/v1/events/requeue", async (req) => {
+  app.post("/v1/events/requeue", async (req) => {
     const a = requireRole(req, "analyst");
     const b = parse4(external_exports.object({ id: external_exports.coerce.number().int().positive().optional(), all: external_exports.boolean().optional() }), req.body);
-    const n = await requeue(ctx2, a.org.id, b);
-    await audit(ctx2, a.org.id, a.user.id, "capi.requeued", b.id ? String(b.id) : "all", { count: n });
+    const n = await requeue(ctx, a.org.id, b);
+    await audit(ctx, a.org.id, a.user.id, "capi.requeued", b.id ? String(b.id) : "all", { count: n });
     return { requeued: n };
   });
-  app2.get("/v1/reports/capi", async (req) => {
+  app.get("/v1/reports/capi", async (req) => {
     const a = requireRole(req, "viewer");
     const q = parse4(periodQuery, req.query);
     const w = reportWindow(q.preset, a.org.timezone, { since: q.since, until: q.until });
     const [byPixel, failures, latency, receipts] = await Promise.all([
-      ctx2.db.query(
+      ctx.db.query(
         `SELECT px.id AS pixel_id, px.name AS pixel_name, px.meta_pixel_id, o.event_name,
                 count(*)::int AS total, count(*) FILTER (WHERE o.status = 'sent')::int AS sent,
                 count(*) FILTER (WHERE o.status IN ('pending', 'sending'))::int AS pending,
@@ -82704,7 +82722,7 @@ function reportRoutes(app2, ctx2) {
           GROUP BY 1, 2, 3, 4 ORDER BY 2, 4`,
         [a.org.id, w.startUtc, w.endUtc]
       ),
-      ctx2.db.query(
+      ctx.db.query(
         `SELECT o.id, o.event_name, o.event_id, o.status, o.attempts, o.last_error, o.last_error_class, o.last_http_status, o.fbtrace_id,
                 o.created_at, px.name AS pixel_name
            FROM capi_outbox o JOIN pixels px ON px.id = o.pixel_id
@@ -82712,13 +82730,13 @@ function reportRoutes(app2, ctx2) {
           ORDER BY o.id DESC LIMIT 50`,
         [a.org.id, w.startUtc, w.endUtc]
       ),
-      ctx2.db.query(
+      ctx.db.query(
         `SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY extract(epoch FROM (sent_at - created_at))) AS p50,
                 percentile_cont(0.95) WITHIN GROUP (ORDER BY extract(epoch FROM (sent_at - created_at))) AS p95
            FROM capi_outbox WHERE org_id = $1 AND status = 'sent' AND created_at >= $2 AND created_at < $3`,
         [a.org.id, w.startUtc, w.endUtc]
       ),
-      ctx2.db.query(
+      ctx.db.query(
         `SELECT provider, outcome, count(*)::int AS n FROM webhook_receipts
           WHERE org_id = $1 AND received_at >= $2 AND received_at < $3 GROUP BY 1, 2 ORDER BY 1, 2`,
         [a.org.id, w.startUtc, w.endUtc]
@@ -82729,10 +82747,10 @@ function reportRoutes(app2, ctx2) {
       failures: failures.rows,
       latencySeconds: { p50: latency.rows[0]?.p50 ?? null, p95: latency.rows[0]?.p95 ?? null },
       webhooks: receipts.rows,
-      dispatchPaused: ctx2.config.CAPI_DISPATCH === "paused"
+      dispatchPaused: ctx.config.CAPI_DISPATCH === "paused"
     };
   });
-  app2.get("/v1/reports/coverage", async (req) => {
+  app.get("/v1/reports/coverage", async (req) => {
     const a = requireRole(req, "viewer");
     const q = parse4(periodQuery.extend({ pixelId: uuidOpt, group: external_exports.enum(["day", "week", "month"]).default("day") }), req.query);
     const w = reportWindow(q.preset, a.org.timezone, { since: q.since, until: q.until });
@@ -82740,8 +82758,8 @@ function reportRoutes(app2, ctx2) {
     const base = `FROM tracking_events WHERE org_id = $1 AND received_at >= $2 AND received_at < $3 AND ($4::uuid IS NULL OR pixel_id = $4)`;
     const params = [a.org.id, w.startUtc, w.endUtc, q.pixelId ?? null, a.org.timezone];
     const [totals, periods, byEvent] = await Promise.all([
-      ctx2.db.query(`SELECT count(*)::int AS total, ${presence} ${base}`, params.slice(0, 4)),
-      ctx2.db.query(
+      ctx.db.query(`SELECT count(*)::int AS total, ${presence} ${base}`, params.slice(0, 4)),
+      ctx.db.query(
         `SELECT to_char(date_trunc('${q.group}', received_at AT TIME ZONE $5), 'YYYY-MM-DD') AS period, count(*)::int AS total,
                 avg(cardinality(match_keys))::float AS avg_params,
                 count(*) FILTER (WHERE match_keys && ARRAY['fbp','fbc','external_id'])::int AS dedup_ready,
@@ -82749,7 +82767,7 @@ function reportRoutes(app2, ctx2) {
            ${base} GROUP BY 1 ORDER BY 1 DESC`,
         params
       ),
-      ctx2.db.query(
+      ctx.db.query(
         `SELECT event_name, count(*)::int AS total, avg(cardinality(match_keys))::float AS avg_params,
                 count(*) FILTER (WHERE match_keys && ARRAY['fbp','fbc','external_id'])::int AS dedup_ready
            ${base} GROUP BY 1 ORDER BY 2 DESC`,
@@ -82765,26 +82783,26 @@ function reportRoutes(app2, ctx2) {
       byEvent: byEvent.rows
     };
   });
-  app2.get("/v1/reports/attribution", async (req) => {
+  app.get("/v1/reports/attribution", async (req) => {
     const a = requireRole(req, "viewer");
     const q = parse4(periodQuery.extend({ dimension: external_exports.enum(["utm_source", "utm_campaign", "utm_medium", "utm_content", "utm_term"]).default("utm_campaign") }), req.query);
     const w = reportWindow(q.preset, a.org.timezone, { since: q.since, until: q.until });
     const dim = q.dimension;
     if (!UTM_KEYS.includes(dim)) throw notFound();
-    const events = await ctx2.db.query(
+    const events = await ctx.db.query(
       `SELECT COALESCE(utm_source, '(direto)') AS source, COALESCE(${dim}, '\u2014') AS key,
               count(*) FILTER (WHERE event_name = 'PageView')::int AS page_views,
               count(*) FILTER (WHERE event_name = 'InitiateCheckout')::int AS initiate_checkouts
          FROM tracking_events WHERE org_id = $1 AND received_at >= $2 AND received_at < $3 GROUP BY 1, 2`,
       [a.org.id, w.startUtc, w.endUtc]
     );
-    const sales = await ctx2.db.query(
+    const sales = await ctx.db.query(
       `SELECT COALESCE(utm_source, '(direto)') AS source, COALESCE(${dim}, '\u2014') AS key, currency,
               to_char((approved_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day, count(*)::int AS n, COALESCE(sum(amount_minor), 0)::bigint AS amount
          FROM payments WHERE org_id = $1 AND status = 'approved' AND approved_at >= $2 AND approved_at < $3 GROUP BY 1, 2, 3, 4`,
       [a.org.id, w.startUtc, w.endUtc, a.org.timezone]
     );
-    const fx = await FxTable.load(ctx2.db, [a.org.reporting_currency, ...sales.rows.map((r) => String(r.currency ?? "").trim())], w.since, w.until);
+    const fx = await FxTable.load(ctx.db, [a.org.reporting_currency, ...sales.rows.map((r) => String(r.currency ?? "").trim())], w.since, w.until);
     const rows = /* @__PURE__ */ new Map();
     const get = (s, k) => {
       const id = `${s}\0${k}`;
@@ -82804,26 +82822,26 @@ function reportRoutes(app2, ctx2) {
     const list = [...rows.values()].sort((x, y) => y.revenueMinor > x.revenueMinor ? 1 : y.revenueMinor < x.revenueMinor ? -1 : y.pageViews - x.pageViews);
     return jsonSafe({ dimension: dim, reportingCurrency: a.org.reporting_currency, rows: list.slice(0, 500) });
   });
-  app2.get("/v1/alerts", async (req) => {
+  app.get("/v1/alerts", async (req) => {
     const a = requireRole(req, "viewer");
-    const r = await ctx2.db.query(
+    const r = await ctx.db.query(
       `SELECT id, kind, severity, title, detail, occurrences, first_seen_at, last_seen_at, resolved_at FROM alerts
         WHERE org_id = $1 ORDER BY resolved_at IS NOT NULL, last_seen_at DESC LIMIT 100`,
       [a.org.id]
     );
     return { alerts: r.rows };
   });
-  app2.post("/v1/alerts/:id/resolve", async (req) => {
+  app.post("/v1/alerts/:id/resolve", async (req) => {
     const a = requireRole(req, "analyst");
     const { id } = parse4(external_exports.object({ id: external_exports.coerce.number().int() }), req.params);
-    await ctx2.db.query("UPDATE alerts SET resolved_at = now() WHERE id = $1 AND org_id = $2", [id, a.org.id]);
+    await ctx.db.query("UPDATE alerts SET resolved_at = now() WHERE id = $1 AND org_id = $2", [id, a.org.id]);
     return { ok: true };
   });
-  app2.get("/v1/reports/reconciliation", async (req) => {
+  app.get("/v1/reports/reconciliation", async (req) => {
     const a = requireRole(req, "viewer");
     const q = parse4(periodQuery, req.query);
     const w = reportWindow(q.preset, a.org.timezone, { since: q.since, until: q.until });
-    const r = await ctx2.db.query(
+    const r = await ctx.db.query(
       `SELECT
          count(*)::int AS approved,
          count(*) FILTER (WHERE o.status = 'sent')::int AS purchase_sent,
@@ -82845,36 +82863,36 @@ var PERIOD_DAYS = 30;
 function wooviSignature(rawBody, secret) {
   return createHmac4("sha256", secret).update(rawBody, "utf8").digest("base64");
 }
-function billingRoutes(app2, ctx2) {
-  app2.get("/v1/billing", async (req) => {
+function billingRoutes(app, ctx) {
+  app.get("/v1/billing", async (req) => {
     const a = requireRole(req, "viewer", { allowExpiredPlan: true });
-    const charges = await ctx2.db.query(
+    const charges = await ctx.db.query(
       `SELECT id, correlation_id, amount_minor, status, paid_at, expires_at, created_at, br_code, qr_code_image, payment_link_url
          FROM billing_charges WHERE org_id = $1 ORDER BY created_at DESC LIMIT 24`,
       [a.org.id]
     );
     return jsonSafe({
-      plan: { ...planState(a.org, ctx2.now()), expiresAt: a.org.plan_expires_at, priceMinor: ctx2.config.PLAN_PRICE_MINOR, currency: "BRL" },
+      plan: { ...planState(a.org, ctx.now()), expiresAt: a.org.plan_expires_at, priceMinor: ctx.config.PLAN_PRICE_MINOR, currency: "BRL" },
       charges: charges.rows,
-      wooviConfigured: !!ctx2.config.WOOVI_APP_ID
+      wooviConfigured: !!ctx.config.WOOVI_APP_ID
     });
   });
-  app2.post("/v1/billing/charge", async (req) => {
+  app.post("/v1/billing/charge", async (req) => {
     const a = requireRole(req, "owner", { allowExpiredPlan: true });
-    await hit(ctx2.db, `charge:org:${a.org.id}`, 10, 3600);
-    if (!ctx2.config.WOOVI_APP_ID) throw new AppError(503, "billing_unavailable", "Pagamento indispon\xEDvel: WOOVI_APP_ID n\xE3o configurado.");
-    const open2 = await ctx2.db.query(
+    await hit(ctx.db, `charge:org:${a.org.id}`, 10, 3600);
+    if (!ctx.config.WOOVI_APP_ID) throw new AppError(503, "billing_unavailable", "Pagamento indispon\xEDvel: WOOVI_APP_ID n\xE3o configurado.");
+    const open2 = await ctx.db.query(
       `SELECT * FROM billing_charges WHERE org_id = $1 AND status = 'pending' AND expires_at > now() + interval '10 minutes' ORDER BY created_at DESC LIMIT 1`,
       [a.org.id]
     );
     if (open2.rows[0]) return jsonSafe({ charge: open2.rows[0], reused: true });
     const correlationID = `pt_sub_${a.org.id.replace(/-/g, "").slice(0, 12)}_${randomToken(8)}`;
-    const res = await ctx2.fetch(`${ctx2.config.WOOVI_API_BASE}/api/v1/charge`, {
+    const res = await ctx.fetch(`${ctx.config.WOOVI_API_BASE}/api/v1/charge`, {
       method: "POST",
-      headers: { Authorization: ctx2.config.WOOVI_APP_ID, "Content-Type": "application/json" },
+      headers: { Authorization: ctx.config.WOOVI_APP_ID, "Content-Type": "application/json" },
       body: JSON.stringify({
         correlationID,
-        value: ctx2.config.PLAN_PRICE_MINOR,
+        value: ctx.config.PLAN_PRICE_MINOR,
         comment: "Assinatura mensal PayTracking",
         customer: { name: a.org.name.slice(0, 60), email: a.user.email },
         expiresIn: 86400
@@ -82883,20 +82901,20 @@ function billingRoutes(app2, ctx2) {
     });
     const j = await res.json().catch(() => ({}));
     if (!res.ok || !j.charge) {
-      ctx2.log.error({ http: res.status, error: j?.error ?? j?.message }, "Woovi: falha ao criar cobran\xE7a");
+      ctx.log.error({ http: res.status, error: j?.error ?? j?.message }, "Woovi: falha ao criar cobran\xE7a");
       throw new AppError(502, "billing_provider_error", `Falha ao criar cobran\xE7a PIX (HTTP ${res.status}). Tente novamente.`);
     }
     const c = j.charge;
-    const ins = await ctx2.db.query(
+    const ins = await ctx.db.query(
       `INSERT INTO billing_charges(org_id, correlation_id, provider_charge_id, amount_minor, br_code, qr_code_image, payment_link_url, expires_at)
        VALUES ($1,$2,$3,$4,$5,$6,$7, now() + interval '24 hours') RETURNING *`,
-      [a.org.id, correlationID, c.identifier ?? null, ctx2.config.PLAN_PRICE_MINOR, c.brCode ?? null, c.qrCodeImage ?? null, c.paymentLinkUrl ?? null]
+      [a.org.id, correlationID, c.identifier ?? null, ctx.config.PLAN_PRICE_MINOR, c.brCode ?? null, c.qrCodeImage ?? null, c.paymentLinkUrl ?? null]
     );
     return jsonSafe({ charge: ins.rows[0], reused: false });
   });
   async function wooviWebhook(req) {
     const raw = req.rawBody ?? "";
-    const secret = ctx2.config.WOOVI_WEBHOOK_SECRET;
+    const secret = ctx.config.WOOVI_WEBHOOK_SECRET;
     if (!secret) return { status: 503, body: { ok: false, error: "webhook_secret_not_configured" } };
     const sig = String(req.headers["x-webhook-signature"] ?? "");
     if (!sig || !safeEqual(wooviSignature(raw, secret), sig)) return { status: 401, body: { ok: false, error: "invalid_signature" } };
@@ -82912,7 +82930,7 @@ function billingRoutes(app2, ctx2) {
     if (!paid) return { status: 200, body: { ok: true, ignored: event || "not_paid" } };
     const correlationID = String(charge?.correlationID ?? data?.correlationID ?? "");
     const value = Number(charge?.value ?? data?.pix?.value ?? 0);
-    return tx(ctx2.db, async (c) => {
+    return tx(ctx.db, async (c) => {
       const r = await c.query(
         `UPDATE billing_charges SET status = 'paid', paid_at = now() WHERE correlation_id = $1 AND status <> 'paid' RETURNING org_id, amount_minor, period_days`,
         [correlationID]
@@ -82936,7 +82954,7 @@ function billingRoutes(app2, ctx2) {
     });
   }
   for (const path3 of ["/v1/webhooks/woovi", "/api/billing_webhook.php"]) {
-    app2.post(path3, async (req, reply) => {
+    app.post(path3, async (req, reply) => {
       const out = await wooviWebhook(req);
       return reply.code(out.status).send(out.body);
     });
@@ -82944,10 +82962,10 @@ function billingRoutes(app2, ctx2) {
 }
 
 // src/admin/routes.ts
-function adminRoutes(app2, ctx2) {
-  app2.get("/v1/admin/overview", async (req) => {
+function adminRoutes(app, ctx) {
+  app.get("/v1/admin/overview", async (req) => {
     requirePlatformAdmin(req);
-    const totals = await ctx2.db.query(
+    const totals = await ctx.db.query(
       `SELECT count(*)::int AS orgs,
               count(*) FILTER (WHERE plan_status = 'active' AND plan_expires_at > now())::int AS active,
               count(*) FILTER (WHERE plan_status = 'trial' AND plan_expires_at > now())::int AS trial,
@@ -82955,15 +82973,15 @@ function adminRoutes(app2, ctx2) {
               count(*) FILTER (WHERE plan_status = 'exempt')::int AS exempt
          FROM organizations`
     );
-    const mrr = await ctx2.db.query(
+    const mrr = await ctx.db.query(
       `SELECT COALESCE(sum(amount_minor), 0)::bigint AS minor FROM billing_charges WHERE status = 'paid' AND paid_at > now() - interval '30 days'`
     );
     return jsonSafe({ ...totals.rows[0], revenueLast30dMinor: mrr.rows[0]?.minor ?? 0n });
   });
-  app2.get("/v1/admin/orgs", async (req) => {
+  app.get("/v1/admin/orgs", async (req) => {
     requirePlatformAdmin(req);
     const q = parse4(external_exports.object({ q: external_exports.string().max(120).optional(), status: external_exports.enum(["all", "trial", "active", "expired", "exempt"]).default("all") }), req.query);
-    const r = await ctx2.db.query(
+    const r = await ctx.db.query(
       `SELECT o.id, o.name, o.plan_status, o.plan_expires_at, o.created_at,
               (SELECT u.email FROM memberships m JOIN users u ON u.id = m.user_id WHERE m.org_id = o.id AND m.role = 'owner' ORDER BY m.created_at LIMIT 1) AS owner_email,
               (SELECT count(*) FROM pixels p WHERE p.org_id = o.id)::int AS pixels,
@@ -82980,7 +82998,7 @@ function adminRoutes(app2, ctx2) {
     );
     return { orgs: r.rows };
   });
-  app2.post("/v1/admin/orgs/:id/plan", async (req) => {
+  app.post("/v1/admin/orgs/:id/plan", async (req) => {
     const a = requirePlatformAdmin(req);
     const { id } = parse4(external_exports.object({ id: external_exports.string().uuid() }), req.params);
     const b = parse4(external_exports.object({ action: external_exports.enum(["extend_trial", "activate", "expire", "exempt"]), days: external_exports.coerce.number().int().min(1).max(3650).default(30) }), req.body);
@@ -82991,52 +83009,52 @@ function adminRoutes(app2, ctx2) {
       expire: `UPDATE organizations SET plan_status = 'expired', plan_expires_at = now() WHERE id = $1 AND $2::int IS NOT NULL`,
       exempt: `UPDATE organizations SET plan_status = 'exempt', plan_expires_at = NULL WHERE id = $1 AND $2::int IS NOT NULL`
     };
-    const r = await ctx2.db.query(sql[b.action], [id, b.days]);
+    const r = await ctx.db.query(sql[b.action], [id, b.days]);
     if (!r.rowCount) throw notFound("Organiza\xE7\xE3o n\xE3o encontrada.");
-    await audit(ctx2, id, a.user.id, `admin.plan_${b.action}`, id, { days: b.days });
+    await audit(ctx, id, a.user.id, `admin.plan_${b.action}`, id, { days: b.days });
     return { ok: true };
   });
-  app2.delete("/v1/admin/orgs/:id", async (req) => {
+  app.delete("/v1/admin/orgs/:id", async (req) => {
     const a = requirePlatformAdmin(req);
     const { id } = parse4(external_exports.object({ id: external_exports.string().uuid() }), req.params);
     const { confirm } = parse4(external_exports.object({ confirm: external_exports.literal("EXCLUIR") }), req.body);
     if (id === a.org.id) throw badRequest("Voc\xEA n\xE3o pode excluir a pr\xF3pria organiza\xE7\xE3o.");
-    const r = await ctx2.db.query("DELETE FROM organizations WHERE id = $1", [id]);
+    const r = await ctx.db.query("DELETE FROM organizations WHERE id = $1", [id]);
     if (!r.rowCount) throw notFound("Organiza\xE7\xE3o n\xE3o encontrada.");
-    await audit(ctx2, null, a.user.id, "admin.org_deleted", id);
+    await audit(ctx, null, a.user.id, "admin.org_deleted", id);
     return { ok: true };
   });
 }
 
 // src/notifications/routes.ts
-function pushRoutes(app2, ctx2) {
-  app2.get("/v1/push/config", async (req) => {
+function pushRoutes(app, ctx) {
+  app.get("/v1/push/config", async (req) => {
     const a = auth(req);
-    const n = await ctx2.db.query("SELECT count(*)::int AS n FROM push_subscriptions WHERE user_id = $1 AND org_id = $2", [a.user.id, a.org.id]);
-    return { vapidPublicKey: ctx2.config.VAPID_PUBLIC_KEY || null, configured: !!(ctx2.config.VAPID_PUBLIC_KEY && ctx2.config.VAPID_PRIVATE_KEY), subscriptions: n.rows[0]?.n ?? 0 };
+    const n = await ctx.db.query("SELECT count(*)::int AS n FROM push_subscriptions WHERE user_id = $1 AND org_id = $2", [a.user.id, a.org.id]);
+    return { vapidPublicKey: ctx.config.VAPID_PUBLIC_KEY || null, configured: !!(ctx.config.VAPID_PUBLIC_KEY && ctx.config.VAPID_PRIVATE_KEY), subscriptions: n.rows[0]?.n ?? 0 };
   });
-  app2.post("/v1/push/subscriptions", async (req) => {
+  app.post("/v1/push/subscriptions", async (req) => {
     const a = requireRole(req, "viewer");
     const b = parse4(external_exports.object({
       endpoint: external_exports.string().url().max(800),
       keys: external_exports.object({ p256dh: external_exports.string().min(10).max(255), auth: external_exports.string().min(8).max(255) })
     }), req.body);
-    await ctx2.db.query(
+    await ctx.db.query(
       `INSERT INTO push_subscriptions(user_id, org_id, endpoint, p256dh, auth, user_agent) VALUES ($1,$2,$3,$4,$5,$6)
        ON CONFLICT (endpoint) DO UPDATE SET user_id = EXCLUDED.user_id, org_id = EXCLUDED.org_id, p256dh = EXCLUDED.p256dh, auth = EXCLUDED.auth`,
       [a.user.id, a.org.id, b.endpoint, b.keys.p256dh, b.keys.auth, String(req.headers["user-agent"] ?? "").slice(0, 255)]
     );
     return { ok: true };
   });
-  app2.post("/v1/push/unsubscribe", async (req) => {
+  app.post("/v1/push/unsubscribe", async (req) => {
     const a = auth(req);
     const { endpoint } = parse4(external_exports.object({ endpoint: external_exports.string().url().max(800) }), req.body);
-    await ctx2.db.query("DELETE FROM push_subscriptions WHERE endpoint = $1 AND user_id = $2", [endpoint, a.user.id]);
+    await ctx.db.query("DELETE FROM push_subscriptions WHERE endpoint = $1 AND user_id = $2", [endpoint, a.user.id]);
     return { ok: true };
   });
-  app2.post("/v1/push/test", async (req) => {
+  app.post("/v1/push/test", async (req) => {
     const a = requireRole(req, "viewer");
-    return sendPushToOrg(ctx2, a.org.id, { title: "Teste de notifica\xE7\xE3o", body: "As notifica\xE7\xF5es de venda est\xE3o funcionando.", url: "/" });
+    return sendPushToOrg(ctx, a.org.id, { title: "Teste de notifica\xE7\xE3o", body: "As notifica\xE7\xF5es de venda est\xE3o funcionando.", url: "/" });
   });
 }
 
@@ -83044,10 +83062,10 @@ function pushRoutes(app2, ctx2) {
 var SEVERITY = { trace: "DEBUG", debug: "DEBUG", info: "INFO", warn: "WARNING", error: "ERROR", fatal: "CRITICAL" };
 var PUBLIC_PREFIXES = ["/v1/webhooks", "/api/", "/v1/collect", "/v1/pixel-config", "/v1/meta/callback", "/healthz", "/pixel.js", "/checkout-loader"];
 var isPublic = (url2) => PUBLIC_PREFIXES.some((p) => url2.startsWith(p));
-async function buildApp(ctx2) {
-  const app2 = (0, import_fastify.default)({
-    logger: ctx2.config.NODE_ENV === "test" ? false : {
-      level: ctx2.config.isProd ? "info" : "debug",
+async function buildApp(ctx) {
+  const app = (0, import_fastify.default)({
+    logger: ctx.config.NODE_ENV === "test" ? false : {
+      level: ctx.config.isProd ? "info" : "debug",
       formatters: { level: (label, level) => ({ level, severity: SEVERITY[label] ?? "DEFAULT" }) },
       redact: ["req.headers.authorization", "req.headers.cookie", 'req.headers["x-hotmart-hottok"]', 'req.headers["security-token"]'],
       serializers: {
@@ -83056,13 +83074,13 @@ async function buildApp(ctx2) {
       }
     },
     // número = confia só nos N últimos saltos (o que o proxy acrescentou), igual ao proxy-addr
-    trustProxy: typeof ctx2.config.TRUST_PROXY === "number" ? /* @__PURE__ */ ((hops) => (_addr, i) => i < hops)(ctx2.config.TRUST_PROXY) : ctx2.config.TRUST_PROXY,
+    trustProxy: typeof ctx.config.TRUST_PROXY === "number" ? /* @__PURE__ */ ((hops) => (_addr, i) => i < hops)(ctx.config.TRUST_PROXY) : ctx.config.TRUST_PROXY,
     bodyLimit: 1048576,
     genReqId: () => randomUUID3()
   });
-  await app2.register(import_cookie.default);
-  app2.setReplySerializer((payload) => JSON.stringify(payload, (_k, v) => typeof v === "bigint" ? v.toString() : v));
-  app2.addContentTypeParser(["application/json", "text/plain"], { parseAs: "string" }, (req, body, done) => {
+  await app.register(import_cookie.default);
+  app.setReplySerializer((payload) => JSON.stringify(payload, (_k, v) => typeof v === "bigint" ? v.toString() : v));
+  app.addContentTypeParser(["application/json", "text/plain"], { parseAs: "string" }, (req, body, done) => {
     const s = String(body);
     req.rawBody = s;
     if (!s.trim()) return done(null, {});
@@ -83072,23 +83090,26 @@ async function buildApp(ctx2) {
       done(null, null);
     }
   });
-  app2.addContentTypeParser("application/x-www-form-urlencoded", { parseAs: "string" }, (req, body, done) => {
+  app.addContentTypeParser("application/x-www-form-urlencoded", { parseAs: "string" }, (req, body, done) => {
     const s = String(body);
     req.rawBody = s;
     done(null, Object.fromEntries(new URLSearchParams(s)));
   });
-  app2.addContentTypeParser("*", { parseAs: "string" }, (req, body, done) => {
+  app.addContentTypeParser("*", { parseAs: "string" }, (req, body, done) => {
     req.rawBody = String(body);
     done(null, null);
   });
-  const appOrigin = new URL(ctx2.config.APP_URL).origin;
-  const apiOrigin = new URL(ctx2.config.PUBLIC_API_URL).origin;
-  app2.addHook("onRequest", async (req, reply) => {
+  const appOrigin = new URL(ctx.config.APP_URL).origin;
+  const apiOrigin = new URL(ctx.config.PUBLIC_API_URL).origin;
+  app.addHook("onResponse", async (req) => {
+    if (req.method !== "GET" && req.method !== "HEAD") wakeDispatcher();
+  });
+  app.addHook("onRequest", async (req, reply) => {
     reply.header("X-Content-Type-Options", "nosniff");
     reply.header("Referrer-Policy", "strict-origin-when-cross-origin");
     reply.header("X-Frame-Options", "DENY");
     reply.header("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
-    if (ctx2.config.isProd) reply.header("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+    if (ctx.config.isProd) reply.header("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
     const url2 = req.url;
     if (url2.startsWith("/v1/") && !isPublic(url2)) {
       reply.header("Cache-Control", "no-store");
@@ -83101,10 +83122,10 @@ async function buildApp(ctx2) {
     }
     const token = req.cookies[SESSION_COOKIE];
     if (token && (url2.startsWith("/v1/") || url2 === "/v1")) {
-      req.auth = await resolveSession(ctx2, token) ?? void 0;
+      req.auth = await resolveSession(ctx, token) ?? void 0;
     }
   });
-  app2.setErrorHandler((err, req, reply) => {
+  app.setErrorHandler((err, req, reply) => {
     if (err instanceof AppError) {
       return reply.code(err.status).send({ error: { code: err.code, message: err.message, details: err.details } });
     }
@@ -83114,35 +83135,35 @@ async function buildApp(ctx2) {
     req.log.error({ err }, "erro n\xE3o tratado");
     return reply.code(500).send({ error: { code: "internal", message: "Erro interno. Tente novamente.", requestId: req.id } });
   });
-  app2.get("/healthz", async (_req, reply) => {
+  app.get("/healthz", async (_req, reply) => {
     try {
-      await ctx2.db.query("SELECT 1");
+      await ctx.db.query("SELECT 1");
       return { ok: true };
     } catch {
       return reply.code(503).send({ ok: false, db: "unavailable" });
     }
   });
-  authRoutes(app2, ctx2);
-  orgRoutes(app2, ctx2);
-  pixelRoutes(app2, ctx2);
-  integrationRoutes(app2, ctx2);
-  webhookRoutes(app2, ctx2);
-  collectRoutes(app2, ctx2);
-  reportRoutes(app2, ctx2);
-  metaRoutes(app2, ctx2);
-  billingRoutes(app2, ctx2);
-  adminRoutes(app2, ctx2);
-  pushRoutes(app2, ctx2);
+  authRoutes(app, ctx);
+  orgRoutes(app, ctx);
+  pixelRoutes(app, ctx);
+  integrationRoutes(app, ctx);
+  webhookRoutes(app, ctx);
+  collectRoutes(app, ctx);
+  reportRoutes(app, ctx);
+  metaRoutes(app, ctx);
+  billingRoutes(app, ctx);
+  adminRoutes(app, ctx);
+  pushRoutes(app, ctx);
   const here2 = path2.dirname(fileURLToPath2(import.meta.url));
   const firstDir = (...dirs) => dirs.find((d) => existsSync2(d)) ?? dirs[dirs.length - 1];
-  const pixelDir = ctx2.config.PIXEL_DIST_DIR || firstDir(path2.join(here2, "pixel"), path2.resolve(here2, "../../../packages/pixel/dist"));
+  const pixelDir = ctx.config.PIXEL_DIST_DIR || firstDir(path2.join(here2, "pixel"), path2.resolve(here2, "../../../packages/pixel/dist"));
   const scripts = {
     "/pixel.js": "pixel.js",
     "/checkout-loader.js": "checkout-loader.js",
     "/checkout-loader-ic-only.js": "checkout-loader.js"
   };
   for (const [route, file2] of Object.entries(scripts)) {
-    app2.get(route, async (_req, reply) => {
+    app.get(route, async (_req, reply) => {
       const p = path2.join(pixelDir, file2);
       if (!existsSync2(p)) return reply.code(404).send("// build do pixel ausente");
       reply.header("Content-Type", "application/javascript; charset=utf-8");
@@ -83151,11 +83172,11 @@ async function buildApp(ctx2) {
       return readFileSync(p, "utf8");
     });
   }
-  const webDir = ctx2.config.WEB_DIST_DIR || firstDir(path2.join(here2, "web", "index.html"), path2.resolve(here2, "../../web/dist/index.html")).replace(/[\\/]index\.html$/, "");
+  const webDir = ctx.config.WEB_DIST_DIR || firstDir(path2.join(here2, "web", "index.html"), path2.resolve(here2, "../../web/dist/index.html")).replace(/[\\/]index\.html$/, "");
   if (existsSync2(path2.join(webDir, "index.html"))) {
-    await app2.register(import_static.default, { root: webDir, wildcard: false, maxAge: "1h", index: false });
+    await app.register(import_static.default, { root: webDir, wildcard: false, maxAge: "1h", index: false });
     const indexHtml = readFileSync(path2.join(webDir, "index.html"), "utf8");
-    app2.setNotFoundHandler((req, reply) => {
+    app.setNotFoundHandler((req, reply) => {
       if (req.method === "GET" && !req.url.startsWith("/v1/") && !req.url.startsWith("/api/")) {
         reply.header("Content-Security-Policy", [
           "default-src 'self'",
@@ -83173,15 +83194,15 @@ async function buildApp(ctx2) {
       return reply.code(404).send({ error: { code: "not_found", message: "Rota n\xE3o encontrada." } });
     });
   }
-  return app2;
+  return app;
 }
 
 // src/worker.ts
-async function maintenance(ctx2) {
-  const q = (sql, p = []) => ctx2.db.query(sql, p).then((r) => r.rowCount ?? 0);
+async function maintenance(ctx) {
+  const q = (sql, p = []) => ctx.db.query(sql, p).then((r) => r.rowCount ?? 0);
   const out = {
-    trackingEvents: await q(`DELETE FROM tracking_events WHERE received_at < now() - make_interval(days => $1)`, [ctx2.config.TRACKING_RETENTION_DAYS]),
-    webhookBodies: await q(`UPDATE webhook_receipts SET body_enc = NULL WHERE body_enc IS NOT NULL AND received_at < now() - make_interval(days => $1)`, [ctx2.config.WEBHOOK_BODY_RETENTION_DAYS]),
+    trackingEvents: await q(`DELETE FROM tracking_events WHERE received_at < now() - make_interval(days => $1)`, [ctx.config.TRACKING_RETENTION_DAYS]),
+    webhookBodies: await q(`UPDATE webhook_receipts SET body_enc = NULL WHERE body_enc IS NOT NULL AND received_at < now() - make_interval(days => $1)`, [ctx.config.WEBHOOK_BODY_RETENTION_DAYS]),
     identities: await q(`DELETE FROM visitor_identities WHERE updated_at < now() - interval '120 days'`),
     sessions: await q(`DELETE FROM sessions WHERE expires_at < now() - interval '7 days' OR revoked_at < now() - interval '7 days'`),
     tokens: await q(`DELETE FROM auth_tokens WHERE expires_at < now() - interval '1 day'`),
@@ -83190,11 +83211,11 @@ async function maintenance(ctx2) {
     cache: await q(`DELETE FROM meta_insights_cache WHERE fetched_at < now() - interval '2 days'`),
     expiredCharges: await q(`UPDATE billing_charges SET status = 'expired' WHERE status = 'pending' AND expires_at < now()`)
   };
-  const exp = await ctx2.db.query(
+  const exp = await ctx.db.query(
     `SELECT org_id FROM meta_connections WHERE status = 'active' AND token_expires_at IS NOT NULL AND token_expires_at < now() + interval '7 days'`
   );
   for (const r of exp.rows) {
-    await raiseAlert(ctx2.db, r.org_id, {
+    await raiseAlert(ctx.db, r.org_id, {
       kind: "meta_token_expiring",
       severity: "warning",
       dedupKey: "meta_token_expiring",
@@ -83204,62 +83225,157 @@ async function maintenance(ctx2) {
   }
   return out;
 }
-function startWorker(ctx2, opts = {}) {
+function startWorker(ctx, opts = {}) {
   let stopped = false;
   const interval = opts.intervalMs ?? 1e3;
+  const idleMax = opts.idleMaxMs ?? ctx.config.CAPI_IDLE_POLL_SECONDS * 1e3;
   let lastFx = 0;
   let lastMaint = 0;
+  let woken = false;
+  let wakeUp = null;
+  const sleep = (ms) => new Promise((resolve) => {
+    if (woken || stopped) {
+      woken = false;
+      return resolve();
+    }
+    const t = setTimeout(() => {
+      wakeUp = null;
+      resolve();
+    }, ms);
+    wakeUp = () => {
+      clearTimeout(t);
+      wakeUp = null;
+      resolve();
+    };
+  });
+  const offWake = onWake(() => {
+    setTimeout(() => {
+      if (wakeUp) wakeUp();
+      else woken = true;
+    }, 50);
+  });
+  const nextDueMs = async () => {
+    const r = await ctx.db.query(
+      `SELECT GREATEST(0, EXTRACT(EPOCH FROM (min(CASE WHEN status = 'pending' THEN next_attempt_at ELSE locked_until END) - now())) * 1000)::bigint AS ms
+         FROM capi_outbox WHERE status = 'pending' OR (status = 'sending' AND locked_until IS NOT NULL)`
+    );
+    const v = r.rows[0]?.ms;
+    return v === null || v === void 0 ? null : Number(v);
+  };
   const loop = async () => {
     while (!stopped) {
       try {
-        const s = ctx2.config.CAPI_DISPATCH === "paused" ? { claimed: 0, sent: 0, retried: 0, dead: 0 } : await dispatchBatch(ctx2, 50);
-        if (s.claimed) ctx2.log.info({ ...s }, "capi dispatch");
+        const s = ctx.config.CAPI_DISPATCH === "paused" ? { claimed: 0, sent: 0, retried: 0, dead: 0 } : await dispatchBatch(ctx, 50);
+        if (s.claimed) ctx.log.info({ ...s }, "capi dispatch");
         const now = Date.now();
         if (now - lastFx > 6 * 36e5) {
           lastFx = now;
-          refreshRates(ctx2).then((r) => ctx2.log.info(r, "c\xE2mbio atualizado")).catch((e) => ctx2.log.warn({ err: String(e) }, "c\xE2mbio falhou"));
+          refreshRates(ctx).then((r) => ctx.log.info(r, "c\xE2mbio atualizado")).catch((e) => ctx.log.warn({ err: String(e) }, "c\xE2mbio falhou"));
         }
         if (now - lastMaint > 36e5) {
           lastMaint = now;
-          maintenance(ctx2).then((r) => ctx2.log.info(r, "manuten\xE7\xE3o")).catch((e) => ctx2.log.warn({ err: String(e) }, "manuten\xE7\xE3o falhou"));
+          maintenance(ctx).then((r) => ctx.log.info(r, "manuten\xE7\xE3o")).catch((e) => ctx.log.warn({ err: String(e) }, "manuten\xE7\xE3o falhou"));
         }
-        if (s.claimed < 50) await new Promise((r) => setTimeout(r, interval));
+        if (s.claimed >= 50) continue;
+        if (s.claimed > 0) {
+          await sleep(interval);
+          continue;
+        }
+        const due = ctx.config.CAPI_DISPATCH === "paused" ? null : await nextDueMs();
+        await sleep(Math.min(idleMax, Math.max(interval, due ?? idleMax)));
       } catch (e) {
-        ctx2.log.error({ err: String(e) }, "worker: erro no ciclo");
-        await new Promise((r) => setTimeout(r, 5e3));
+        ctx.log.error({ err: String(e) }, "worker: erro no ciclo");
+        await sleep(5e3);
       }
     }
   };
   const done = loop();
   return { stop: async () => {
     stopped = true;
+    offWake();
+    wakeUp?.();
     await done;
   } };
 }
 
 // src/server.ts
-var config2 = loadConfig();
-var pool = createPool(config2.DATABASE_URL, 10);
-var ctx = createCtx(config2, pool);
-if (process.env.MIGRATE_ON_START === "true") {
-  const direct = createPool(directDatabaseUrl(config2.DATABASE_URL, config2.DATABASE_URL_UNPOOLED), 1);
+function listenTarget(raw) {
+  const v = (raw ?? "").trim();
+  if (v === "") return { port: 8080, host: "0.0.0.0" };
+  return /^\d+$/.test(v) ? { port: Number(v), host: "0.0.0.0" } : { path: v };
+}
+var sanitize = (msg) => msg.replace(/(\w+:\/\/)[^@\s/]+@/g, "$1***@").slice(0, 1e3);
+var log = (level, msg, extra = {}) => (level === "error" ? console.error : console.log)(JSON.stringify({ level, severity: level.toUpperCase(), msg, ...extra }));
+var RETRY_MS = 3e4;
+async function boot(target) {
+  const config2 = loadConfig();
+  let pool = null;
   try {
-    await migrate(direct);
-  } finally {
-    await direct.end();
+    if (process.env.MIGRATE_ON_START === "true") {
+      const direct = createPool(directDatabaseUrl(config2.DATABASE_URL, config2.DATABASE_URL_UNPOOLED), 1);
+      try {
+        await migrate(direct);
+      } finally {
+        await direct.end();
+      }
+    }
+    pool = createPool(config2.DATABASE_URL, 10);
+    const ctx = createCtx(config2, pool);
+    const app = await buildApp(ctx);
+    await app.listen("path" in target ? { path: target.path } : target);
+    const worker = process.env.EMBEDDED_WORKER === "true" ? startWorker(ctx) : null;
+    log("info", "PayTracking no ar", { listen: "path" in target ? "socket" : target.port });
+    const shutdown = async () => {
+      await app.close();
+      await worker?.stop();
+      await pool?.end();
+      process.exit(0);
+    };
+    process.on("SIGTERM", shutdown);
+    process.on("SIGINT", shutdown);
+  } catch (e) {
+    await pool?.end().catch(() => void 0);
+    throw e;
   }
 }
-var app = await buildApp(ctx);
-var worker = process.env.EMBEDDED_WORKER === "true" ? startWorker(ctx) : null;
-await app.listen({ port: config2.PORT, host: "0.0.0.0" });
-var shutdown = async () => {
-  await app.close();
-  await worker?.stop();
-  await pool.end();
-  process.exit(0);
+function serveFailure(target, reason) {
+  return new Promise((resolve) => {
+    const body = JSON.stringify({
+      ok: false,
+      erro: "O PayTracking n\xE3o conseguiu iniciar.",
+      motivo: reason,
+      proximaTentativaEmSegundos: RETRY_MS / 1e3
+    });
+    const srv = createServer((_req, res) => {
+      res.writeHead(503, { "content-type": "application/json; charset=utf-8", "retry-after": String(RETRY_MS / 1e3), "cache-control": "no-store" });
+      res.end(body);
+    });
+    srv.on("error", (e) => {
+      log("error", "falha ao abrir a porta de diagn\xF3stico", { err: sanitize(String(e)) });
+      setTimeout(resolve, RETRY_MS);
+    });
+    srv.listen("path" in target ? target.path : target.port, () => {
+      setTimeout(() => srv.close(() => resolve()), RETRY_MS);
+    });
+  });
+}
+async function main() {
+  const target = listenTarget(process.env.PORT);
+  for (; ; ) {
+    try {
+      await boot(target);
+      return;
+    } catch (e) {
+      const reason = sanitize(e instanceof Error ? e.message : String(e));
+      log("error", "falha ao iniciar", { motivo: reason });
+      await serveFailure(target, reason);
+    }
+  }
+}
+void main();
+export {
+  listenTarget
 };
-process.on("SIGTERM", shutdown);
-process.on("SIGINT", shutdown);
 /*! Bundled license information:
 
 toad-cache/dist/toad-cache.cjs:

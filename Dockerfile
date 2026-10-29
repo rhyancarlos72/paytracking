@@ -15,20 +15,14 @@ COPY packages/db/package.json packages/db/
 COPY packages/pixel/package.json packages/pixel/
 RUN pnpm install --frozen-lockfile
 COPY . .
-RUN pnpm build \
- && pnpm --filter @pt/server deploy --prod --legacy /out \
- && rm -rf /out/src /out/test
+RUN pnpm build
 
+# apps/server/dist é autossuficiente (dependências, painel, pixel e migrações embutidos)
 FROM ${NODE_IMAGE}
 ENV NODE_ENV=production \
-    PORT=8080 \
-    MIGRATIONS_DIR=/app/dist/migrations \
-    WEB_DIST_DIR=/app/web \
-    PIXEL_DIST_DIR=/app/pixel
+    PORT=8080
 WORKDIR /app
-COPY --from=build --chown=node:node /out ./
-COPY --from=build --chown=node:node /src/apps/web/dist ./web
-COPY --from=build --chown=node:node /src/packages/pixel/dist ./pixel
+COPY --from=build --chown=node:node /src/apps/server/dist ./dist
 USER node
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s CMD node -e "fetch('http://127.0.0.1:'+process.env.PORT+'/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"

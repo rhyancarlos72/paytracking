@@ -4,6 +4,7 @@ import fastifyStatic from '@fastify/static';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { wakeDispatcher } from './capi/wake.js';
 import { randomUUID } from 'node:crypto';
 import { ZodError } from 'zod';
 import type { Ctx } from './context.js';
@@ -75,6 +76,9 @@ export async function buildApp(ctx: Ctx): Promise<FastifyInstance> {
 
   const appOrigin = new URL(ctx.config.APP_URL).origin;
   const apiOrigin = new URL(ctx.config.PUBLIC_API_URL).origin;
+
+  // escrita terminada (transação já confirmada): acorda o worker para enviar eventos novos na hora
+  app.addHook('onResponse', async (req) => { if (req.method !== 'GET' && req.method !== 'HEAD') wakeDispatcher(); });
 
   app.addHook('onRequest', async (req, reply) => {
     reply.header('X-Content-Type-Options', 'nosniff');

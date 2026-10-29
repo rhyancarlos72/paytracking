@@ -24536,7 +24536,8 @@ var opt = (t) => external_exports.preprocess((v) => v === "" ? void 0 : v, t);
 var bool = external_exports.enum(["true", "false", "1", "0"]).transform((v) => v === "true" || v === "1");
 var schema = external_exports.object({
   NODE_ENV: external_exports.enum(["development", "test", "production"]).default("development"),
-  PORT: external_exports.coerce.number().int().default(8080),
+  /** Porta TCP, ou caminho de socket quando a hospedagem (LiteSpeed/Passenger) passa um. */
+  PORT: external_exports.string().trim().default("8080"),
   DATABASE_URL: external_exports.string().min(1),
   /** Conexão direta (sem pooler), usada nas migrações. O `neon env pull` preenche. */
   DATABASE_URL_UNPOOLED: external_exports.string().optional(),
@@ -24584,6 +24585,8 @@ var schema = external_exports.object({
    * para a Meta (o sistema antigo continua enviando). Ver docs/PLANO-MIGRACAO.md.
    */
   CAPI_DISPATCH: opt(external_exports.enum(["enabled", "paused"]).default("enabled")),
+  /** Fila vazia: o worker dorme até o próximo reenvio, no máximo isto (evento novo acorda na hora). */
+  CAPI_IDLE_POLL_SECONDS: external_exports.coerce.number().int().min(1).max(3600).default(600),
   CAPI_MAX_ATTEMPTS: external_exports.coerce.number().int().min(1).max(30).default(10),
   /** Diretório do build do painel para servir junto da API (deploy em um container). */
   WEB_DIST_DIR: external_exports.string().default(""),
@@ -25046,6 +25049,13 @@ async function storeRate(db, date5, base, quote, rate, source, overwrite = true)
   return r.rowCount ?? 0;
 }
 
+// src/capi/wake.ts
+var listeners = /* @__PURE__ */ new Set();
+function onWake(fn) {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
+
 // src/worker.ts
 async function maintenance(ctx2) {
   const q = (sql, p = []) => ctx2.db.query(sql, p).then((r) => r.rowCount ?? 0);
@@ -25077,8 +25087,40 @@ async function maintenance(ctx2) {
 function startWorker(ctx2, opts = {}) {
   let stopped = false;
   const interval = opts.intervalMs ?? 1e3;
+  const idleMax = opts.idleMaxMs ?? ctx2.config.CAPI_IDLE_POLL_SECONDS * 1e3;
   let lastFx = 0;
   let lastMaint = 0;
+  let woken = false;
+  let wakeUp = null;
+  const sleep = (ms) => new Promise((resolve) => {
+    if (woken || stopped) {
+      woken = false;
+      return resolve();
+    }
+    const t = setTimeout(() => {
+      wakeUp = null;
+      resolve();
+    }, ms);
+    wakeUp = () => {
+      clearTimeout(t);
+      wakeUp = null;
+      resolve();
+    };
+  });
+  const offWake = onWake(() => {
+    setTimeout(() => {
+      if (wakeUp) wakeUp();
+      else woken = true;
+    }, 50);
+  });
+  const nextDueMs = async () => {
+    const r = await ctx2.db.query(
+      `SELECT GREATEST(0, EXTRACT(EPOCH FROM (min(CASE WHEN status = 'pending' THEN next_attempt_at ELSE locked_until END) - now())) * 1000)::bigint AS ms
+         FROM capi_outbox WHERE status = 'pending' OR (status = 'sending' AND locked_until IS NOT NULL)`
+    );
+    const v = r.rows[0]?.ms;
+    return v === null || v === void 0 ? null : Number(v);
+  };
   const loop = async () => {
     while (!stopped) {
       try {
@@ -25093,16 +25135,24 @@ function startWorker(ctx2, opts = {}) {
           lastMaint = now;
           maintenance(ctx2).then((r) => ctx2.log.info(r, "manuten\xE7\xE3o")).catch((e) => ctx2.log.warn({ err: String(e) }, "manuten\xE7\xE3o falhou"));
         }
-        if (s.claimed < 50) await new Promise((r) => setTimeout(r, interval));
+        if (s.claimed >= 50) continue;
+        if (s.claimed > 0) {
+          await sleep(interval);
+          continue;
+        }
+        const due = ctx2.config.CAPI_DISPATCH === "paused" ? null : await nextDueMs();
+        await sleep(Math.min(idleMax, Math.max(interval, due ?? idleMax)));
       } catch (e) {
         ctx2.log.error({ err: String(e) }, "worker: erro no ciclo");
-        await new Promise((r) => setTimeout(r, 5e3));
+        await sleep(5e3);
       }
     }
   };
   const done = loop();
   return { stop: async () => {
     stopped = true;
+    offWake();
+    wakeUp?.();
     await done;
   } };
 }
@@ -25111,7 +25161,7 @@ function startWorker(ctx2, opts = {}) {
 var config2 = loadConfig();
 var pool = createPool(config2.DATABASE_URL, 5);
 var ctx = createCtx(config2, pool);
-var w = startWorker(ctx);
+var w = startWorker(ctx, { idleMaxMs: 5e3 });
 var shutdown = async () => {
   await w.stop();
   await pool.end();

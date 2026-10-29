@@ -1,7 +1,6 @@
 {
   "name": "paytracking",
   "private": true,
-  "type": "module",
   "main": "server.js",
   "packageManager": "pnpm@11.24.0",
   "engines": {

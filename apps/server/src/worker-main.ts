@@ -8,7 +8,8 @@ import { startWorker } from './worker.js';
 const config = loadConfig();
 const pool = createPool(config.DATABASE_URL, 5);
 const ctx = createCtx(config, pool);
-const w = startWorker(ctx);
+// processo separado não recebe o sinal de evento novo: verifica a fila a cada 5 s
+const w = startWorker(ctx, { idleMaxMs: 5000 });
 const shutdown = async () => { await w.stop(); await pool.end(); process.exit(0); };
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
