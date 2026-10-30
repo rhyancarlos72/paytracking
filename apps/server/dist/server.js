@@ -95887,6 +95887,10 @@ function wooviSignature(rawBody, secret) {
   return createHmac5("sha256", secret).update(rawBody, "utf8").digest("base64");
 }
 function billingRoutes(app, ctx) {
+  app.get("/v1/public/plan", async (_req, reply) => {
+    reply.header("Cache-Control", "public, max-age=300");
+    return { priceMinor: ctx.config.PLAN_PRICE_MINOR, currency: "BRL", trialDays: ctx.config.PLAN_TRIAL_DAYS };
+  });
   app.get("/v1/billing", async (req) => {
     const a = requireRole(req, "viewer", { allowExpiredPlan: true });
     const charges = await ctx.db.query(
@@ -96108,7 +96112,7 @@ var FLOOD_LIMITS = [
 
 // src/app.ts
 var SEVERITY = { trace: "DEBUG", debug: "DEBUG", info: "INFO", warn: "WARNING", error: "ERROR", fatal: "CRITICAL" };
-var PUBLIC_PREFIXES = ["/v1/webhooks", "/api/", "/v1/collect", "/v1/pixel-config", "/v1/meta/callback", "/healthz", "/pixel.js", "/checkout-loader"];
+var PUBLIC_PREFIXES = ["/v1/webhooks", "/api/", "/v1/collect", "/v1/pixel-config", "/v1/meta/callback", "/v1/public/", "/healthz", "/pixel.js", "/checkout-loader"];
 var isPublic = (url2) => PUBLIC_PREFIXES.some((p) => url2.startsWith(p));
 async function buildApp(ctx) {
   const app = (0, import_fastify.default)({

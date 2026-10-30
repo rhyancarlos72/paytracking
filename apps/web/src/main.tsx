@@ -34,6 +34,7 @@ const Reset = lazy(() => import('./pages/auth').then((m) => ({ default: m.ResetP
 const VerifyEmail = lazy(() => import('./pages/auth').then((m) => ({ default: m.VerifyEmailPage })));
 const Invite = lazy(() => import('./pages/auth').then((m) => ({ default: m.InvitePage })));
 const Dashboard = lazy(() => import('./pages/dashboard'));
+const Landing = lazy(() => import('./pages/landing'));
 const Campaigns = lazy(() => import('./pages/campaigns'));
 const Sales = lazy(() => import('./pages/sales'));
 const SaleDetail = lazy(() => import('./pages/sale-detail'));
@@ -66,6 +67,8 @@ function Protected() {
     if (e.status === 402) nav('/financeiro?expirado=1');
   }), [nav]);
   if (isLoading) return <Loading />;
+  // visitante na página inicial: mostra a página de vendas em vez de mandar para o login
+  if (!data && loc.pathname === '/') return <Landing />;
   if (!data) return <Navigate to={`/entrar?voltar=${encodeURIComponent(loc.pathname + loc.search)}`} replace />;
   if (data.plan.blocked && !data.user.isPlatformAdmin && !ALLOWED_WHEN_EXPIRED.some((p) => loc.pathname.startsWith(p))) {
     return <Navigate to="/financeiro?expirado=1" replace />;
@@ -83,6 +86,7 @@ function App() {
         <Route path="/redefinir-senha" element={<Reset />} />
         <Route path="/verificar-email" element={<VerifyEmail />} />
         <Route path="/convite" element={<Invite />} />
+        <Route path="/conheca" element={<Landing />} />
         <Route element={<Protected />}>
           <Route index element={<Dashboard />} />
           <Route path="campanhas" element={<Campaigns />} />

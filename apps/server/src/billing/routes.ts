@@ -23,6 +23,12 @@ export function wooviSignature(rawBody: string, secret: string): string {
 }
 
 export function billingRoutes(app: FastifyInstance, ctx: Ctx) {
+  // público (página de vendas): o preço e o teste exibidos são sempre os que o sistema cobra
+  app.get('/v1/public/plan', async (_req, reply) => {
+    reply.header('Cache-Control', 'public, max-age=300');
+    return { priceMinor: ctx.config.PLAN_PRICE_MINOR, currency: 'BRL', trialDays: ctx.config.PLAN_TRIAL_DAYS };
+  });
+
   app.get('/v1/billing', async (req) => {
     const a = requireRole(req, 'viewer', { allowExpiredPlan: true });
     const charges = await ctx.db.query(

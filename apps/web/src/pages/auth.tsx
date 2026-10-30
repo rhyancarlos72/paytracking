@@ -54,10 +54,10 @@ function AuthLayout({ title, subtitle, children }: { title: string; subtitle?: R
         <div className="pointer-events-none absolute -left-32 -top-32 h-[480px] w-[480px] animate-drift rounded-full bg-[#6d4aff]/35 blur-[120px]" aria-hidden />
         <div className="pointer-events-none absolute -bottom-40 -right-20 h-[420px] w-[420px] animate-drift rounded-full bg-cyan-400/15 blur-[120px] [animation-delay:-7s]" aria-hidden />
         <div className="grid-fade opacity-60 [--fg:255_255_255]" aria-hidden />
-        <div className="relative flex items-center gap-2.5">
+        <Link to="/conheca" className="relative flex w-fit items-center gap-2.5">
           <span className="relative"><span className="absolute inset-0 rounded-xl bg-violet-500/50 blur-md" aria-hidden /><img src="/favicon.svg" alt="" className="relative h-9 w-9" /></span>
           <span className="text-lg font-semibold">PayTracking</span>
-        </div>
+        </Link>
         <div className="relative">
           <h2 className="max-w-lg text-[38px] font-semibold leading-[1.1] tracking-tight">
             Cada venda confirmada, <span className="bg-gradient-to-r from-violet-300 via-fuchsia-200 to-cyan-200 bg-clip-text text-transparent">atribuída e entregue à Meta.</span>
@@ -74,9 +74,9 @@ function AuthLayout({ title, subtitle, children }: { title: string; subtitle?: R
       <main className="relative flex items-center justify-center overflow-hidden px-4 py-12 sm:px-8">
         <div className="aurora" aria-hidden />
         <div className="w-full max-w-[420px] animate-slide-up">
-          <div className="mb-10 flex items-center gap-2.5 lg:hidden">
+          <Link to="/conheca" className="mb-10 flex w-fit items-center gap-2.5 lg:hidden">
             <img src="/favicon.svg" alt="" className="h-10 w-10" /><span className="text-lg font-semibold">PayTracking</span>
-          </div>
+          </Link>
           <h1 className="text-[30px] font-semibold leading-tight">{title}</h1>
           {subtitle && <p className="mt-2 text-[15px] text-muted">{subtitle}</p>}
           <div className="mt-8">{children}</div>
