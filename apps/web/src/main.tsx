@@ -3,6 +3,7 @@ import { lazy as reactLazy, StrictMode, Suspense, useEffect, type ComponentType 
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import './styles/index.css';
+import './lib/push-client'; // captura o pedido de instalação do app (Android) desde o início
 import { AppShell } from './components/shell';
 import { ToastProvider } from './components/toast';
 import { Spinner } from './components/ui';

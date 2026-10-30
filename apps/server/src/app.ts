@@ -160,7 +160,15 @@ export async function buildApp(ctx: Ctx): Promise<FastifyInstance> {
   // Painel (SPA) servido pelo mesmo container quando WEB_DIST_DIR estiver definido.
   const webDir = ctx.config.WEB_DIST_DIR || firstDir(path.join(here, 'web', 'index.html'), path.resolve(here, '../../web/dist/index.html')).replace(/[\\/]index\.html$/, '');
   if (existsSync(path.join(webDir, 'index.html'))) {
-    await app.register(fastifyStatic, { root: webDir, wildcard: false, maxAge: '1h', index: false });
+    await app.register(fastifyStatic, {
+      root: webDir, wildcard: false, maxAge: '1h', index: false,
+      setHeaders(res, filePath) {
+        // service worker e manifest sempre revalidados (senão o celular fica com a versão antiga)
+        if (/(?:^|[\\/])(?:sw\.js|manifest\.webmanifest)$/.test(filePath)) res.header('Cache-Control', 'no-cache');
+        // arquivos com hash no nome nunca mudam
+        else if (/[\\/]assets[\\/]/.test(filePath)) res.header('Cache-Control', 'public, max-age=31536000, immutable');
+      },
+    });
     const indexHtml = readFileSync(path.join(webDir, 'index.html'), 'utf8');
     app.setNotFoundHandler((req, reply) => {
       // arquivo de build inexistente (ex.: aba aberta durante um deploy pedindo um chunk antigo):

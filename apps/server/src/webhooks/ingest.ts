@@ -191,10 +191,12 @@ export async function ingestWebhook(ctx: Ctx, input: IngestInput): Promise<Inges
     const out = await tx(ctx.db, (c) => applyPayment(ctx, c, integration, normalized, productIds, { ...ib, ...sigInfo, bodyEnc }, ms));
     if (out.purchase) {
       const p = out.purchase;
+      const paymentId = (out.response as { paymentId?: string }).paymentId;
       sendPushToOrg(ctx, integration.org_id, {
+        kind: 'sale',
         title: 'Venda aprovada! 🔥',
         body: `${p.amount} • ${p.pixelName ?? ADAPTERS[input.provider].label}`,
-        url: '/vendas',
+        url: paymentId ? `/vendas/${paymentId}` : '/vendas',
         tag: `sale-${normalized.transactionId}`,
       }).catch((e) => ctx.log.warn({ err: String(e) }, 'push falhou'));
     }

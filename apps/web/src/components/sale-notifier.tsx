@@ -52,7 +52,8 @@ export function useSaleNotifier() {
       void qc.invalidateQueries({ queryKey: ['recent-sales'] });
       void qc.invalidateQueries({ queryKey: ['payments'] });
       if (!mine.length) return;
-      void playSaleSound();
+      // aba em segundo plano: quem avisa é a notificação do sistema (som/vibração do celular)
+      if (document.visibilityState === 'visible') void playSaleSound();
       for (const x of mine.slice(0, 3)) {
         const value = x.amount_minor && x.currency ? money(x.amount_minor, x.currency) : 'valor não informado';
         toastRef.current.ok(`Venda aprovada! ${value}`, [x.utm_campaign, PROVIDER_LABEL[x.provider] ?? x.provider, x.pixel_name].filter(Boolean).join(' · '));
@@ -79,7 +80,13 @@ export function useSaleNotifier() {
 
     // push do service worker (venda aprovada): consulta na hora
     const onMessage = (e: MessageEvent) => {
-      if ((e.data as { type?: string } | null)?.type === 'sale' && cursor) { clearTimeout(timer); void tick(); }
+      const msg = e.data as { type?: string; payload?: { title?: string; body?: string } } | null;
+      if (msg?.type === 'sale' && cursor) { clearTimeout(timer); void tick(); }
+      // push de teste com o painel aberto: toca o som escolhido para confirmar que está tudo certo
+      if (msg?.type === 'sale-test') {
+        void playSaleSound();
+        toastRef.current.ok(msg.payload?.title ?? 'Notificação de teste', msg.payload?.body);
+      }
     };
     navigator.serviceWorker?.addEventListener('message', onMessage);
     return () => {

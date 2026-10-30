@@ -1,12 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { Play, Upload, Volume2 } from 'lucide-react';
+import { Bell, BellOff, BellRing, Download, Play, Send, Smartphone, Upload, Volume2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { PageHeader } from '../components/shell';
 import { useToast } from '../components/toast';
-import { Badge, Button, Card, ConfirmButton, Field, Input, Select, Switch, Tabs } from '../components/ui';
+import { Badge, Button, Callout, Card, ConfirmButton, Field, Input, Select, Switch, Tabs } from '../components/ui';
 import { del, get, patch, post } from '../lib/api';
-import { dateTime, exponent, minorToNumber } from '../lib/format';
+import { dateTime, exponent, minorToNumber, relative } from '../lib/format';
+import { canInstall, currentSubscription, endpointHash, isIOS, isStandalone, onInstallChange, permission, promptInstall, pushSupported, subscribe } from '../lib/push-client';
 import { customSound, loadSettings, onSoundChange, playSaleSound, PRESETS, removeCustomSound, saveSettings, setCustomSound, unlockAudio, type SoundPreset, type SoundSettings } from '../lib/sale-sound';
 import { useSession, type Role } from '../lib/session';
 
@@ -15,7 +16,10 @@ const CURRENCIES = ['BRL', 'EUR', 'USD', 'GBP', 'CHF', 'CAD', 'AUD', 'MXN', 'ARS
 const TZS = ['America/Sao_Paulo', 'America/Manaus', 'America/Fortaleza', 'America/Recife', 'America/Belem', 'America/Cuiaba', 'America/Rio_Branco', 'America/Noronha', 'Europe/Lisbon', 'Europe/Madrid', 'Europe/London', 'America/New_York', 'UTC'];
 
 export default function SettingsPage() {
-  const [tab, setTab] = useState<'account' | 'org' | 'members' | 'security' | 'notifications'>('account');
+  type Tab = 'account' | 'org' | 'members' | 'security' | 'notifications';
+  // ?aba=notificacoes / seguranca abre direto na aba (atalhos da busca e dos avisos)
+  const initial = ({ notificacoes: 'notifications', seguranca: 'security', equipe: 'members', organizacao: 'org' } as Record<string, Tab>)[new URLSearchParams(location.search).get('aba') ?? ''] ?? 'account';
+  const [tab, setTab] = useState<Tab>(initial);
   return (
     <>
       <PageHeader title="Configurações" description="Sua conta, a organização, a equipe e a segurança." />
@@ -167,42 +171,139 @@ function Security() {
   );
 }
 
-function urlB64ToUint8Array(b64: string) {
-  const pad = '='.repeat((4 - (b64.length % 4)) % 4);
-  const raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
-  return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
-}
 
 function Notifications() {
-  const toast = useToast();
-  const cfg = useQuery({ queryKey: ['push-config'], queryFn: () => get('/v1/push/config') });
-  const supported = 'serviceWorker' in navigator && 'PushManager' in window;
-  const enable = async () => {
-    try {
-      const perm = await Notification.requestPermission();
-      if (perm !== 'granted') throw new Error('Permissão negada no navegador.');
-      const reg = await navigator.serviceWorker.ready;
-      const sub = (await reg.pushManager.getSubscription()) ?? (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8Array(cfg.data.vapidPublicKey) }));
-      await post('/v1/push/subscriptions', sub.toJSON());
-      toast.ok('Notificações ativadas neste dispositivo');
-      void cfg.refetch();
-    } catch (e) { toast.err(e); }
-  };
   return (
     <div className="space-y-6">
-    <SaleSoundCard />
-    <Card title="Notificações de venda" description="Receba um aviso no celular ou no computador a cada venda aprovada.">
-      {!supported ? <p className="text-sm text-muted">Este navegador não suporta notificações push.</p>
-        : !cfg.data?.configured ? <p className="text-sm text-muted">Notificações ainda não configuradas no servidor (VAPID).</p>
-        : (
-          <div className="flex flex-wrap items-center gap-3">
-            <Button variant="primary" onClick={enable}>Ativar neste dispositivo</Button>
-            <Button onClick={async () => { const r = await post('/v1/push/test'); toast.info('Teste enviado', `${r.sent} dispositivo(s)`); }}>Enviar teste</Button>
-            <span className="text-sm text-muted">{cfg.data.subscriptions} dispositivo(s) inscrito(s)</span>
+      <PushCard />
+      <SaleSoundCard />
+    </div>
+  );
+}
+
+interface PushDevice { id: string; name: string; createdAt: string; lastSuccessAt: string | null; endpointHash: string }
+
+function PushCard() {
+  const toast = useToast();
+  const cfg = useQuery<{ vapidPublicKey: string; configured: boolean }>({ queryKey: ['push-config'], queryFn: () => get('/v1/push/config') });
+  const devices = useQuery<{ devices: PushDevice[] }>({ queryKey: ['push-devices'], queryFn: () => get('/v1/push/devices') });
+  const [mine, setMine] = useState<string | null>(null); // hash da inscrição deste navegador
+  const [perm, setPerm] = useState(permission());
+  const [busy, setBusy] = useState<'on' | 'off' | 'test' | null>(null);
+  const [, force] = useState(0);
+  useEffect(() => { void currentSubscription().then((s) => setMine(s ? endpointHash(s.endpoint) : null)); }, []);
+  useEffect(() => onInstallChange(() => force((n) => n + 1)), []);
+  const refresh = () => { void devices.refetch(); };
+  const active = !!mine && (devices.data?.devices ?? []).some((d) => d.endpointHash === mine);
+  const ios = isIOS();
+  const needsInstall = ios && !isStandalone();
+
+  const enable = async () => {
+    if (!cfg.data) return;
+    setBusy('on');
+    try {
+      await unlockAudio(); // aproveita o toque para liberar o som do painel
+      const sub = await subscribe(cfg.data.vapidPublicKey);
+      await post('/v1/push/subscriptions', sub.toJSON());
+      setMine(endpointHash(sub.endpoint));
+      setPerm(permission());
+      refresh();
+      toast.ok('Notificações ativadas neste dispositivo', 'Toque em “Enviar teste” para conferir.');
+    } catch (e) { setPerm(permission()); toast.err(e, 'Não foi possível ativar'); } finally { setBusy(null); }
+  };
+  const disable = async () => {
+    setBusy('off');
+    try {
+      const sub = await currentSubscription();
+      if (sub) { await post('/v1/push/unsubscribe', { endpoint: sub.endpoint }); await sub.unsubscribe(); }
+      setMine(null);
+      refresh();
+      toast.info('Notificações desativadas neste dispositivo');
+    } catch (e) { toast.err(e); } finally { setBusy(null); }
+  };
+  const test = async () => {
+    setBusy('test');
+    try {
+      const r = await post<{ sent: number; failed: number; removed: number }>('/v1/push/test');
+      if (r.sent > 0) toast.ok(`Teste enviado para ${r.sent} dispositivo(s)`, 'A notificação chega em alguns segundos.');
+      else toast.err(new Error(r.removed ? 'A inscrição deste dispositivo expirou. Ative de novo.' : 'Nenhum dispositivo recebeu. Ative as notificações primeiro.'), 'Teste não entregue');
+      refresh();
+    } catch (e) { toast.err(e); } finally { setBusy(null); }
+  };
+
+  return (
+    <Card title="Notificações no celular" icon={<Smartphone />}
+      description="Um aviso com som e vibração a cada venda aprovada, mesmo com o app fechado.">
+      <div className="space-y-5">
+        {!pushSupported() && !needsInstall ? (
+          <Callout tone="warn" title="Este navegador não suporta notificações">Use o Chrome no Android, ou o Safari no iPhone (iOS 16.4 ou mais novo) com o app instalado.</Callout>
+        ) : needsInstall ? (
+          <Callout tone="info" title="No iPhone, instale o app primeiro">
+            <ol className="mt-1 list-decimal space-y-1 pl-5">
+              <li>No Safari, toque em <strong>Compartilhar</strong> (quadrado com seta).</li>
+              <li>Escolha <strong>Adicionar à Tela de Início</strong> e confirme.</li>
+              <li>Abra o PayTracking pelo novo ícone, venha até aqui e toque em <strong>Ativar neste dispositivo</strong>.</li>
+            </ol>
+            <p className="mt-2">O iPhone só permite notificações de sites instalados na Tela de Início (iOS 16.4 ou mais novo).</p>
+          </Callout>
+        ) : (
+          <div className={clsx('flex flex-wrap items-center justify-between gap-4 rounded-2xl border p-4', active ? 'border-ok/30 bg-ok/[0.06]' : 'border-border bg-surface-2/40')}>
+            <div className="flex items-center gap-3">
+              <span className={clsx('flex h-10 w-10 items-center justify-center rounded-xl', active ? 'bg-ok/15 text-ok' : 'bg-surface-3 text-muted')} aria-hidden>
+                {active ? <BellRing className="h-5 w-5" /> : <BellOff className="h-5 w-5" />}
+              </span>
+              <div>
+                <p className="text-sm font-semibold">{active ? 'Ativadas neste dispositivo' : perm === 'denied' ? 'Bloqueadas neste navegador' : 'Desativadas neste dispositivo'}</p>
+                <p className="text-xs text-muted">{active ? 'Você recebe um aviso a cada venda aprovada.'
+                  : perm === 'denied' ? 'Libere em: ícone de cadeado ao lado do endereço → Notificações → Permitir.' : 'Ative para receber as vendas aqui.'}</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {active
+                ? <Button variant="ghost" loading={busy === 'off'} onClick={disable}>Desativar</Button>
+                : <Button variant="primary" loading={busy === 'on'} disabled={!cfg.data || perm === 'denied'} onClick={enable} icon={<Bell className="h-4 w-4" />}>Ativar neste dispositivo</Button>}
+              <Button loading={busy === 'test'} disabled={!(devices.data?.devices.length)} onClick={test} icon={<Send className="h-4 w-4" />}>Enviar teste</Button>
+            </div>
           </div>
         )}
+
+        {canInstall() && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/25 bg-primary/[0.06] p-4">
+            <p className="text-sm"><span className="font-semibold">Instale o app</span> <span className="text-muted">— abre em tela cheia, como um aplicativo, e as notificações ficam mais confiáveis.</span></p>
+            <Button variant="primary" icon={<Download className="h-4 w-4" />} onClick={async () => { if (await promptInstall()) toast.ok('App instalado'); }}>Instalar app</Button>
+          </div>
+        )}
+
+        {(devices.data?.devices.length ?? 0) > 0 && (
+          <div>
+            <p className="label">Seus dispositivos com notificações</p>
+            <ul className="divide-y divide-border rounded-2xl border border-border">
+              {devices.data!.devices.map((d) => (
+                <li key={d.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Smartphone className="h-4 w-4 shrink-0 text-muted" aria-hidden />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{d.name}{d.endpointHash === mine && <Badge tone="primary">este dispositivo</Badge>}</p>
+                      <p className="text-xs text-muted">Ativado {relative(d.createdAt)} · {d.lastSuccessAt ? `último aviso ${relative(d.lastSuccessAt)}` : 'nenhum aviso entregue ainda'}</p>
+                    </div>
+                  </div>
+                  <Button size="sm" variant="ghost" aria-label={`Remover ${d.name}`} onClick={async () => {
+                    await del(`/v1/push/devices/${d.id}`);
+                    if (d.endpointHash === mine) { const s = await currentSubscription(); await s?.unsubscribe(); setMine(null); }
+                    refresh();
+                  }}>Remover</Button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <p className="text-xs leading-relaxed text-muted">
+          <strong className="text-fg">Som:</strong> com o app fechado, o celular toca o som de notificação dele (Android e iPhone não permitem som personalizado em notificações de sites).
+          Com o painel aberto, toca o som escolhido abaixo. No Android, em Configurações → Apps → Chrome (ou PayTracking) → Notificações, você pode escolher o som e deixar o aviso como “prioritário”.
+        </p>
+      </div>
     </Card>
-    </div>
   );
 }
 

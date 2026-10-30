@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import {
-  Activity, BarChart3, BookOpen, ChevronsUpDown, CreditCard, GitBranch, LayoutDashboard, LogOut, Megaphone, Menu, Moon,
+  Activity, BarChart3, BellRing, BookOpen, ChevronsUpDown, CreditCard, GitBranch, LayoutDashboard, LogOut, Megaphone, Menu, Moon,
   Plug, Plus, Receipt, Search, Settings, Shield, Sparkles, Stethoscope, Sun, Target, X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
@@ -195,6 +195,8 @@ export function AppShell() {
       { id: 'act:pixel', label: 'Novo pixel', group: 'Ações', icon: <Plus />, keywords: 'criar adicionar', run: () => nav('/pixels?novo=1') },
       { id: 'act:integ', label: 'Nova integração', group: 'Ações', icon: <Plug />, keywords: 'gateway checkout webhook', run: () => nav('/integracoes?nova=1') },
     ] : []),
+    { id: 'act:notif', label: 'Notificações no celular e som de venda', group: 'Ações', icon: <BellRing />, keywords: 'push celular som alerta aviso', run: () => nav('/configuracoes?aba=notificacoes') },
+    { id: 'act:2fa', label: 'Segurança da conta', group: 'Ações', icon: <Shield />, keywords: 'senha sessões duas etapas 2fa', run: () => nav('/configuracoes?aba=seguranca') },
     { id: 'act:theme', label: dark ? 'Usar tema claro' : 'Usar tema escuro', group: 'Ações', icon: dark ? <Sun /> : <Moon />, keywords: 'tema escuro claro dark light', run: toggle },
     { id: 'act:logout', label: 'Sair', group: 'Ações', icon: <LogOut />, keywords: 'logout encerrar', run: logout },
   ], [s, dark, nav, toggle, logout]);

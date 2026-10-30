@@ -18739,8 +18739,8 @@ var require_content_type_parser = __commonJS({
     };
     ContentTypeParser.prototype.getParser = function(contentType) {
       if (typeof contentType === "string") {
-        const cached3 = this.cache.get(contentType);
-        if (cached3 !== void 0) return cached3;
+        const cached4 = this.cache.get(contentType);
+        if (cached4 !== void 0) return cached4;
         contentType = new ContentType(contentType);
       }
       const ct = contentType.toString();
@@ -34344,9 +34344,9 @@ var require_range = __commonJS({
         range = range.replace(BUILDSTRIPRE, "");
         const memoOpts = (this.options.includePrerelease && FLAG_INCLUDE_PRERELEASE) | (this.options.loose && FLAG_LOOSE);
         const memoKey = memoOpts + ":" + range;
-        const cached3 = cache.get(memoKey);
-        if (cached3) {
-          return cached3;
+        const cached4 = cache.get(memoKey);
+        if (cached4) {
+          return cached4;
         }
         const loose = this.options.loose;
         const hr = loose ? re[t.HYPHENRANGELOOSE] : re[t.HYPHENRANGE];
@@ -64074,9 +64074,9 @@ var NONE = 0;
 var ASSUMED = 1;
 var PROVEN = 2;
 function isRecursive(inst, stack, resolve) {
-  const cached3 = recursive.get(inst);
-  if (cached3 !== void 0)
-    return cached3 ? PROVEN : NONE;
+  const cached4 = recursive.get(inst);
+  if (cached4 !== void 0)
+    return cached4 ? PROVEN : NONE;
   if (stack.has(inst))
     return PROVEN;
   stack.add(inst);
@@ -78505,15 +78505,15 @@ function visit(schema2, fnOrHandlers) {
   };
   const cache = /* @__PURE__ */ new Map();
   function run(s) {
-    const cached3 = cache.get(s);
-    if (cached3 === RESOLVING) {
+    const cached4 = cache.get(s);
+    if (cached4 === RESOLVING) {
       return new $ZodLazy({
         type: "lazy",
         getter: () => cache.get(s)
       });
     }
-    if (cached3 !== void 0)
-      return cached3;
+    if (cached4 !== void 0)
+      return cached4;
     cache.set(s, RESOLVING);
     const inner = mapInner(s);
     const mapped = fn(inner, inner !== s);
@@ -81153,31 +81153,83 @@ async function resolveAlert(c, orgId, dedupKey) {
 }
 
 // src/notifications/push.ts
+var import_web_push2 = __toESM(require_src2(), 1);
+
+// src/notifications/vapid.ts
 var import_web_push = __toESM(require_src2(), 1);
-async function sendPushToOrg(ctx, orgId, payload) {
-  const { VAPID_PUBLIC_KEY: pub, VAPID_PRIVATE_KEY: priv, VAPID_SUBJECT: subject } = ctx.config;
-  if (!pub || !priv) return { sent: 0, failed: 0, removed: 0, configured: false };
-  const subs = await ctx.db.query("SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE org_id = $1", [orgId]);
+var cached2 = null;
+async function getVapidKeys(ctx) {
+  const subject = ctx.config.VAPID_SUBJECT;
+  if (ctx.config.VAPID_PUBLIC_KEY && ctx.config.VAPID_PRIVATE_KEY) {
+    return { publicKey: ctx.config.VAPID_PUBLIC_KEY, privateKey: ctx.config.VAPID_PRIVATE_KEY, subject, source: "env" };
+  }
+  if (cached2 && cached2.db === ctx.db) return cached2.keys;
+  const read = async () => {
+    const r = await ctx.db.query(`SELECT key, value FROM app_settings WHERE key IN ('vapid_public', 'vapid_private_enc')`);
+    const m = new Map(r.rows.map((x) => [x.key, x.value]));
+    const pub = m.get("vapid_public");
+    const priv = m.get("vapid_private_enc");
+    return pub && priv ? { publicKey: pub, privateKey: ctx.box.decrypt(priv) } : null;
+  };
+  let found = await read();
+  if (!found) {
+    const k = import_web_push.default.generateVAPIDKeys();
+    await ctx.db.query(
+      `INSERT INTO app_settings(key, value) VALUES ('vapid_public', $1), ('vapid_private_enc', $2) ON CONFLICT (key) DO NOTHING`,
+      [k.publicKey, ctx.box.encrypt(k.privateKey)]
+    );
+    found = await read();
+    if (!found) throw new Error("N\xE3o foi poss\xEDvel guardar as chaves do Web Push");
+    ctx.log.info({}, "chaves VAPID do Web Push geradas e guardadas no banco");
+  }
+  const keys = { ...found, subject, source: "database" };
+  cached2 = { db: ctx.db, keys };
+  return keys;
+}
+
+// src/notifications/push.ts
+async function deliver(ctx, subs, payload) {
+  const vapid = await getVapidKeys(ctx);
+  const body = JSON.stringify({ type: payload.kind ?? "sale", title: payload.title, body: payload.body, url: payload.url ?? "/", tag: payload.tag, ts: Date.now() });
   let sent = 0, failed = 0, removed = 0;
-  const body = JSON.stringify({ ...payload, url: payload.url ?? "/", icon: "/icon-192.png", type: "sale" });
-  await Promise.all(subs.rows.map(async (s) => {
+  await Promise.all(subs.map(async (s) => {
     try {
-      await import_web_push.default.sendNotification(
+      const req = import_web_push2.default.generateRequestDetails(
         { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
         body,
-        { TTL: 3600, vapidDetails: { subject, publicKey: pub, privateKey: priv } }
+        // urgência alta: o Android entrega na hora mesmo com a tela apagada (economia de bateria)
+        { TTL: 6 * 3600, urgency: "high", topic: void 0, vapidDetails: { subject: vapid.subject, publicKey: vapid.publicKey, privateKey: vapid.privateKey } }
       );
-      sent++;
-    } catch (e) {
-      failed++;
-      const code = e.statusCode;
-      if (code === 404 || code === 410) {
+      const res = await ctx.fetch(req.endpoint, {
+        method: req.method,
+        headers: req.headers,
+        body: req.body,
+        signal: AbortSignal.timeout(1e4)
+      });
+      if (res.status === 404 || res.status === 410) {
         await ctx.db.query("DELETE FROM push_subscriptions WHERE id = $1", [s.id]);
         removed++;
+      } else if (res.ok) {
+        sent++;
+        await ctx.db.query("UPDATE push_subscriptions SET last_success_at = now() WHERE id = $1", [s.id]).catch(() => void 0);
+      } else {
+        failed++;
+        ctx.log.warn({ status: res.status, host: new URL(s.endpoint).host }, "push recusado pelo servi\xE7o de notifica\xE7\xF5es");
       }
+    } catch (e) {
+      failed++;
+      ctx.log.warn({ err: String(e) }, "push falhou");
     }
   }));
   return { sent, failed, removed, configured: true };
+}
+async function sendPushToOrg(ctx, orgId, payload) {
+  const subs = await ctx.db.query("SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE org_id = $1", [orgId]);
+  return deliver(ctx, subs.rows, payload);
+}
+async function sendPushToUser(ctx, userId, orgId, payload) {
+  const subs = await ctx.db.query("SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = $1 AND org_id = $2", [userId, orgId]);
+  return deliver(ctx, subs.rows, payload);
 }
 
 // src/tracking/identity.ts
@@ -81374,10 +81426,12 @@ async function ingestWebhook(ctx, input2) {
     const out = await tx(ctx.db, (c) => applyPayment(ctx, c, integration, normalized, productIds, { ...ib, ...sigInfo, bodyEnc }, ms));
     if (out.purchase) {
       const p = out.purchase;
+      const paymentId = out.response.paymentId;
       sendPushToOrg(ctx, integration.org_id, {
+        kind: "sale",
         title: "Venda aprovada! \u{1F525}",
         body: `${p.amount} \u2022 ${p.pixelName ?? ADAPTERS[input2.provider].label}`,
-        url: "/vendas",
+        url: paymentId ? `/vendas/${paymentId}` : "/vendas",
         tag: `sale-${normalized.transactionId}`
       }).catch((e) => ctx.log.warn({ err: String(e) }, "push falhou"));
     }
@@ -81791,7 +81845,7 @@ async function dispatchBatch(ctx, limit = 50) {
   const queue = [...claimed.rows];
   const workers = Array.from({ length: Math.min(8, queue.length) }, async () => {
     for (let row = queue.shift(); row; row = queue.shift()) {
-      const outcome = await deliver(ctx, row, pixels.get(row.pixel_id));
+      const outcome = await deliver2(ctx, row, pixels.get(row.pixel_id));
       if (outcome === "sent") stats.sent++;
       else if (outcome === "retry") stats.retried++;
       else stats.dead++;
@@ -81800,7 +81854,7 @@ async function dispatchBatch(ctx, limit = 50) {
   await Promise.all(workers);
   return stats;
 }
-async function deliver(ctx, row, pixel) {
+async function deliver2(ctx, row, pixel) {
   if (!pixel || !pixel.active || !pixel.capi_token_enc) {
     const reason = !pixel ? "Pixel removido." : !pixel.active ? "Pixel inativo: ative o pixel e reprocesse." : "Pixel sem token da CAPI: edite o pixel e reprocesse.";
     await markDead(ctx, row, reason, "config", null, void 0);
@@ -82204,7 +82258,7 @@ async function handleMetaError(ctx, orgId, e) {
   }
   throw e;
 }
-async function cached2(ctx, orgId, key, ttlSec, load) {
+async function cached3(ctx, orgId, key, ttlSec, load) {
   const r = await ctx.db.query(
     "SELECT data FROM meta_insights_cache WHERE org_id = $1 AND cache_key = $2 AND fetched_at > now() - make_interval(secs => $3)",
     [orgId, key, ttlSec]
@@ -82223,7 +82277,7 @@ async function accountDaily(ctx, orgId, since, until) {
   const conn = await getConnection(ctx, orgId);
   if (!conn || !conn.accountId || conn.status !== "active") return null;
   try {
-    const rows = await cached2(ctx, orgId, `daily:${conn.accountId}:${since}:${until}`, ttlFor(until), () => conn.client.accountInsightsDaily(conn.accountId, since, until));
+    const rows = await cached3(ctx, orgId, `daily:${conn.accountId}:${since}:${until}`, ttlFor(until), () => conn.client.accountInsightsDaily(conn.accountId, since, until));
     const days = rows.map((r) => ({ ...metricsFromInsight(r), date: String(r.date_start) }));
     return { currency: days[0]?.currency ?? conn.accountCurrency ?? "BRL", days };
   } catch (e) {
@@ -82235,7 +82289,7 @@ async function entities(ctx, orgId, level, since, until, campaignIds = []) {
   if (!conn || !conn.accountId || conn.status !== "active") return null;
   try {
     const key = `${level}:${conn.accountId}:${since}:${until}:${campaignIds.join(",")}`;
-    const raw = await cached2(ctx, orgId, key, Math.min(ttlFor(until), 120), () => level === "campaign" ? conn.client.campaigns(conn.accountId, since, until) : conn.client.adsets(conn.accountId, since, until, campaignIds));
+    const raw = await cached3(ctx, orgId, key, Math.min(ttlFor(until), 120), () => level === "campaign" ? conn.client.campaigns(conn.accountId, since, until) : conn.client.adsets(conn.accountId, since, until, campaignIds));
     const currency = conn.accountCurrency ?? "BRL";
     const rows = raw.map((c) => ({
       ...metricsFromInsight(c.insights?.data?.[0]),
@@ -83067,21 +83121,46 @@ function adminRoutes(app, ctx) {
 }
 
 // src/notifications/routes.ts
+function deviceName(ua) {
+  const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) ? "iPad" : /Android/.test(ua) ? "Android" : /Windows/.test(ua) ? "Windows" : /Mac OS X|Macintosh/.test(ua) ? "Mac" : /Linux/.test(ua) ? "Linux" : "Dispositivo";
+  const browser = /EdgA?\//.test(ua) ? "Edge" : /SamsungBrowser/.test(ua) ? "Samsung Internet" : /OPR\//.test(ua) ? "Opera" : /Firefox|FxiOS/.test(ua) ? "Firefox" : /CriOS|Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : "navegador";
+  return `${os} \xB7 ${browser}`;
+}
 function pushRoutes(app, ctx) {
   app.get("/v1/push/config", async (req) => {
     const a = auth(req);
+    const keys = await getVapidKeys(ctx);
     const n = await ctx.db.query("SELECT count(*)::int AS n FROM push_subscriptions WHERE user_id = $1 AND org_id = $2", [a.user.id, a.org.id]);
-    return { vapidPublicKey: ctx.config.VAPID_PUBLIC_KEY || null, configured: !!(ctx.config.VAPID_PUBLIC_KEY && ctx.config.VAPID_PRIVATE_KEY), subscriptions: n.rows[0]?.n ?? 0 };
+    return { vapidPublicKey: keys.publicKey, configured: true, subscriptions: n.rows[0]?.n ?? 0 };
+  });
+  app.get("/v1/push/devices", async (req) => {
+    const a = auth(req);
+    const r = await ctx.db.query(
+      `SELECT id, endpoint, user_agent, created_at, last_success_at FROM push_subscriptions
+        WHERE user_id = $1 AND org_id = $2 ORDER BY created_at DESC`,
+      [a.user.id, a.org.id]
+    );
+    return {
+      devices: r.rows.map((d) => ({
+        id: d.id,
+        name: deviceName(String(d.user_agent ?? "")),
+        createdAt: d.created_at,
+        lastSuccessAt: d.last_success_at,
+        // o painel compara com a inscrição deste navegador para mostrar "este dispositivo"
+        endpointHash: Buffer.from(String(d.endpoint)).toString("base64url").slice(-24)
+      }))
+    };
   });
   app.post("/v1/push/subscriptions", async (req) => {
     const a = requireRole(req, "viewer");
     const b = parse4(external_exports.object({
-      endpoint: external_exports.string().url().max(800),
+      endpoint: external_exports.string().url().max(800).refine((u) => u.startsWith("https://"), "endpoint de push precisa ser https"),
       keys: external_exports.object({ p256dh: external_exports.string().min(10).max(255), auth: external_exports.string().min(8).max(255) })
     }), req.body);
     await ctx.db.query(
       `INSERT INTO push_subscriptions(user_id, org_id, endpoint, p256dh, auth, user_agent) VALUES ($1,$2,$3,$4,$5,$6)
-       ON CONFLICT (endpoint) DO UPDATE SET user_id = EXCLUDED.user_id, org_id = EXCLUDED.org_id, p256dh = EXCLUDED.p256dh, auth = EXCLUDED.auth`,
+       ON CONFLICT (endpoint) DO UPDATE SET user_id = EXCLUDED.user_id, org_id = EXCLUDED.org_id, p256dh = EXCLUDED.p256dh,
+         auth = EXCLUDED.auth, user_agent = EXCLUDED.user_agent`,
       [a.user.id, a.org.id, b.endpoint, b.keys.p256dh, b.keys.auth, String(req.headers["user-agent"] ?? "").slice(0, 255)]
     );
     return { ok: true };
@@ -83092,9 +83171,21 @@ function pushRoutes(app, ctx) {
     await ctx.db.query("DELETE FROM push_subscriptions WHERE endpoint = $1 AND user_id = $2", [endpoint, a.user.id]);
     return { ok: true };
   });
+  app.delete("/v1/push/devices/:id", async (req) => {
+    const a = auth(req);
+    const { id } = parse4(external_exports.object({ id: external_exports.string().uuid() }), req.params);
+    const r = await ctx.db.query("DELETE FROM push_subscriptions WHERE id = $1 AND user_id = $2", [id, a.user.id]);
+    return { ok: (r.rowCount ?? 0) > 0 };
+  });
   app.post("/v1/push/test", async (req) => {
     const a = requireRole(req, "viewer");
-    return sendPushToOrg(ctx, a.org.id, { title: "Teste de notifica\xE7\xE3o", body: "As notifica\xE7\xF5es de venda est\xE3o funcionando.", url: "/" });
+    return sendPushToUser(ctx, a.user.id, a.org.id, {
+      kind: "test",
+      title: "Venda aprovada! \u{1F525} (teste)",
+      body: "R$ 197,00 \xB7 as notifica\xE7\xF5es deste dispositivo est\xE3o funcionando.",
+      url: "/",
+      tag: `test-${Date.now()}`
+    });
   });
 }
 
@@ -83214,7 +83305,16 @@ async function buildApp(ctx) {
   }
   const webDir = ctx.config.WEB_DIST_DIR || firstDir(path2.join(here2, "web", "index.html"), path2.resolve(here2, "../../web/dist/index.html")).replace(/[\\/]index\.html$/, "");
   if (existsSync2(path2.join(webDir, "index.html"))) {
-    await app.register(import_static.default, { root: webDir, wildcard: false, maxAge: "1h", index: false });
+    await app.register(import_static.default, {
+      root: webDir,
+      wildcard: false,
+      maxAge: "1h",
+      index: false,
+      setHeaders(res, filePath) {
+        if (/(?:^|[\\/])(?:sw\.js|manifest\.webmanifest)$/.test(filePath)) res.header("Cache-Control", "no-cache");
+        else if (/[\\/]assets[\\/]/.test(filePath)) res.header("Cache-Control", "public, max-age=31536000, immutable");
+      }
+    });
     const indexHtml = readFileSync(path2.join(webDir, "index.html"), "utf8");
     app.setNotFoundHandler((req, reply) => {
       const isAsset = /^\/assets\//.test(req.url) || /\.(?:js|mjs|css|map|woff2?|png|svg|ico|webmanifest)(?:\?|$)/.test(req.url);
