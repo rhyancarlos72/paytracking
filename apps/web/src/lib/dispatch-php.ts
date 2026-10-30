@@ -1,9 +1,22 @@
 import { DISPATCH_PHP_TEMPLATE } from './dispatch-template';
+// fonte única do arquivo novo (também executado de verdade em apps/server/test/paytracking-php.test.ts)
+import PAYTRACKING_PHP_TEMPLATE from '../../../../packages/checkout-php/paytracking.php?raw';
 
 /** Texto seguro dentro de uma string PHP entre aspas simples. */
 const phpString = (v: string) => v.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
-/** paytrack_dispatch.php com URL, token e segredo desta integração (gerado no navegador). */
+/**
+ * paytracking.php (arquivo novo e independente: convive com o paytrack_dispatch.php antigo)
+ * com URL, token e segredo desta integração — gerado no navegador.
+ */
+export function buildPaytrackingPhp(o: { webhookUrl: string; token?: string | null; secret?: string | null }): string {
+  return PAYTRACKING_PHP_TEMPLATE
+    .split('__PAYTRACKING_URL__').join(phpString(o.webhookUrl))
+    .split('__PAYTRACKING_TOKEN__').join(phpString(o.token || 'itk_cole_seu_token_aqui'))
+    .split('__PAYTRACKING_SECRET__').join(phpString(o.secret || ''));
+}
+
+/** paytrack_dispatch.php (formato antigo, compatível) com URL, token e segredo desta integração (gerado no navegador). */
 export function buildDispatchPhp(o: { webhookUrl: string; token?: string | null; secret?: string | null }): string {
   return DISPATCH_PHP_TEMPLATE
     .split('__PAYTRACK_URL__').join(phpString(o.webhookUrl))

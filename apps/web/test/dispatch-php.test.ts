@@ -3,7 +3,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { buildDispatchPhp, checkoutEndpoint } from '../src/lib/dispatch-php';
+import { buildDispatchPhp, buildPaytrackingPhp, checkoutEndpoint } from '../src/lib/dispatch-php';
 
 const hasPhp = (() => { try { execFileSync('php', ['-v'], { stdio: 'ignore' }); return true; } catch { return false; } })();
 
@@ -28,6 +28,26 @@ describe('paytrack_dispatch.php gerado pelo painel', () => {
   it.skipIf(!hasPhp)('é PHP válido (php -l)', () => {
     const dir = mkdtempSync(join(tmpdir(), 'ptphp-'));
     const f = join(dir, 'paytrack_dispatch.php');
+    writeFileSync(f, php);
+    expect(execFileSync('php', ['-l', f]).toString()).toContain('No syntax errors');
+  });
+});
+
+describe('paytracking.php (arquivo novo, independente) gerado pelo painel', () => {
+  const php = buildPaytrackingPhp({ webhookUrl: 'https://paytracking.com.br/api/webhook.php', token: 'itk_novo', secret: "s'e\\c" });
+
+  it('preenche as constantes da classe e usa nomes que não colidem com o arquivo antigo', () => {
+    expect(php).toContain("private const URL = 'https://paytracking.com.br/api/webhook.php';");
+    expect(php).toContain("private const TOKEN = 'itk_novo';");
+    expect(php).toContain("private const SECRET = 's\\'e\\\\c';");
+    expect(php).toContain('namespace PayTracking;');
+    expect(php).not.toMatch(/__PAYTRACKING_(URL|TOKEN|SECRET)__/);
+    expect(php).not.toMatch(/define\('PAYTRACK_|function paytrack_/); // nada do arquivo antigo
+  });
+
+  it.skipIf(!hasPhp)('é PHP válido (php -l)', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ptphp2-'));
+    const f = join(dir, 'paytracking.php');
     writeFileSync(f, php);
     expect(execFileSync('php', ['-l', f]).toString()).toContain('No syntax errors');
   });

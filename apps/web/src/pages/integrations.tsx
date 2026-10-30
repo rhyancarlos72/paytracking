@@ -1,25 +1,25 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { CheckCircle2, Code2, Download, FileCode2, KeyRound, Plug, Plus, ShieldCheck, Webhook } from 'lucide-react';
+import { CheckCircle2, Code2, Download, EyeOff, FileCode2, KeyRound, Plug, Plus, Send, ShieldCheck, Webhook } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { PageHeader } from '../components/shell';
 import { useToast } from '../components/toast';
 import { Badge, Button, Callout, Card, CodeBlock, ConfirmButton, EmptyState, ErrorState, Field, Input, Modal, Select, Skeleton, Switch } from '../components/ui';
 import { del, get, patch, post } from '../lib/api';
-import { buildDispatchPhp, checkoutEndpoint, downloadText } from '../lib/dispatch-php';
+import { buildPaytrackingPhp, checkoutEndpoint, downloadText } from '../lib/dispatch-php';
 import { int, relative } from '../lib/format';
 import { useSession } from '../lib/session';
 
 interface Integration {
   id: string; provider: string; providerLabel: string; authMethod: string; requiresSecret: boolean; configurableAmountUnit: boolean;
   name: string; tokenHint: string; secretConfigured: boolean; defaultPixelId: string | null; amountUnit: 'major' | 'minor'; active: boolean;
-  lastReceivedAt: string | null; stats: Record<string, number> | null;
+  lastReceivedAt: string | null; stats: Record<string, number> | null; sendToMeta: boolean;
 }
-interface Revealed { url: string; token: string; provider: string; secret?: string }
+interface Revealed { url: string; token: string; provider: string; secret?: string; sendToMeta?: boolean }
 
 const HELP: Record<string, string> = {
-  checkout: 'Use o paytrack_dispatch.php gerado aqui: ele envia o PIX gerado e o pagamento aprovado com o token (Bearer) e assina o corpo com HMAC-SHA256 quando há segredo.',
+  checkout: 'Use o paytracking.php gerado aqui: arquivo independente (convive com o paytrack_dispatch.php antigo), que envia o PIX gerado e o pagamento aprovado com token e assinatura HMAC-SHA256.',
   kiwify: 'Kiwify → Apps → Webhooks → Adicionar. Cole a URL e copie o "Token" do webhook para o campo segredo.',
   cakto: 'Cakto → Integrações → Webhooks. Cole a URL e use o mesmo "secret" aqui.',
   kirvano: 'Kirvano → Integrações → Webhooks. Cole a URL e use o mesmo token (enviado em security-token).',
@@ -94,6 +94,7 @@ export default function IntegrationsPage() {
                       <div className="min-w-0"><h2 className="truncate font-semibold">{i.name}</h2><p className="truncate text-xs text-muted">{i.providerLabel} · {i.authMethod}</p></div>
                     </div>
                     <div className="flex items-center gap-2">
+                      {i.active && !i.sendToMeta && <Badge tone="info"><EyeOff className="h-3 w-3" aria-hidden />Modo sombra</Badge>}
                       <Badge tone={i.active ? (missingSecret ? 'warn' : 'ok') : 'neutral'} dot>{!i.active ? 'Pausada' : missingSecret ? 'Falta segredo' : 'Ativa'}</Badge>
                       {admin && <Switch checked={i.active} label={`Ativar ${i.name}`} onChange={(v) => update.mutate({ id: i.id, body: { active: v } })} />}
                     </div>
@@ -111,14 +112,21 @@ export default function IntegrationsPage() {
                     <dt className="text-muted">Pixel padrão</dt><dd className="truncate">{pixelName(i.defaultPixelId) ?? 'por produto'}</dd>
                     {i.configurableAmountUnit && <><dt className="text-muted">Unidade do valor</dt><dd>{i.amountUnit === 'minor' ? 'centavos' : 'reais'}</dd></>}
                   </dl>
+                  <div className={clsx('mt-4 flex items-center justify-between gap-3 rounded-xl border px-3.5 py-3', i.sendToMeta ? 'border-border bg-surface-2/40' : 'border-info/30 bg-info/[0.06]')}>
+                    <div className="min-w-0">
+                      <p className="flex items-center gap-1.5 text-[13px] font-semibold">{i.sendToMeta ? <Send className="h-3.5 w-3.5 text-primary" aria-hidden /> : <EyeOff className="h-3.5 w-3.5 text-info" aria-hidden />}{i.sendToMeta ? 'Enviando à Meta' : 'Modo sombra: registra sem enviar à Meta'}</p>
+                      <p className="mt-0.5 text-xs text-muted">{i.sendToMeta ? 'Vendas aprovadas viram Purchase na Conversions API.' : 'Use enquanto o sistema antigo ainda envia as conversões. Ao ligar, só as vendas novas são enviadas.'}</p>
+                    </div>
+                    {admin && <Switch checked={i.sendToMeta} label={`Enviar vendas de ${i.name} à Meta`} onChange={(v) => update.mutate({ id: i.id, body: { sendToMeta: v } })} />}
+                  </div>
                   <p className="mt-3 text-xs leading-relaxed text-muted">{HELP[i.provider]}</p>
 
                   {admin && (
                     <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
                       {i.provider === 'checkout' && (
-                        <Button size="sm" icon={<Download className="h-4 w-4" />} title="O token só aparece na criação: o arquivo vem com PAYTRACK_TOKEN para você colar. Para um arquivo completo, use “Novo token”."
-                          onClick={() => downloadText('paytrack_dispatch.php', buildDispatchPhp({ webhookUrl: checkoutEndpoint(location.origin), token: null }))}>
-                          Baixar PHP (sem token)
+                        <Button size="sm" icon={<Download className="h-4 w-4" />} title="O token só aparece na criação: o arquivo vem sem ele (defina PAYTRACKING_TOKEN). Para um arquivo completo, use “Novo token”."
+                          onClick={() => downloadText('paytracking.php', buildPaytrackingPhp({ webhookUrl: checkoutEndpoint(location.origin), token: null }))}>
+                          Baixar paytracking.php (sem token)
                         </Button>
                       )}
                       <Button size="sm" icon={<KeyRound className="h-4 w-4" />} onClick={() => setSecretFor(i)}>{i.secretConfigured ? 'Trocar segredo' : 'Definir segredo'}</Button>
@@ -166,14 +174,14 @@ function CheckoutHero({ onStart }: { onStart: () => void }) {
         <div>
           <Badge tone="primary">Checkout próprio</Badge>
           <h2 className="mt-3 text-2xl font-semibold">Conecte o seu checkout em 3 passos</h2>
-          <p className="mt-2 text-sm text-muted">Geramos o <code className="rounded bg-surface-2 px-1 py-0.5 font-mono text-[12px]">paytrack_dispatch.php</code> já configurado. Ele envia o PIX gerado e o pagamento aprovado, com order bumps, UTMs e o mesmo event_id do Pixel — e cada envio é assinado.</p>
+          <p className="mt-2 text-sm text-muted">Geramos o <code className="rounded bg-surface-2 px-1 py-0.5 font-mono text-[12px]">paytracking.php</code> já configurado — um arquivo independente, que convive com o paytrack_dispatch.php antigo sem misturar nada. Ele envia o PIX gerado e o pagamento aprovado, com order bumps, UTMs e o mesmo event_id do Pixel, e cada envio é assinado.</p>
           <Button variant="primary" size="lg" className="mt-6" icon={<Plus className="h-4 w-4" />} onClick={onStart}>Criar integração do checkout</Button>
         </div>
         <ol className="space-y-3">
           {[
             { icon: <Plug />, t: 'Crie a integração', d: 'Defina um segredo para bloquear envios forjados.' },
-            { icon: <Download />, t: 'Baixe o paytrack_dispatch.php', d: 'URL, token e segredo já vêm preenchidos.' },
-            { icon: <FileCode2 />, t: 'Chame no webhook do gateway', d: 'Uma linha quando o PIX for pago.' },
+            { icon: <Download />, t: 'Baixe o paytracking.php', d: 'URL, token e segredo já vêm preenchidos.' },
+            { icon: <FileCode2 />, t: 'Chame no webhook do gateway', d: 'Uma linha quando o PIX for gerado e outra quando for pago.' },
           ].map((x, i) => (
             <li key={x.t} className="flex items-start gap-3 rounded-2xl border border-border bg-surface/70 p-4">
               <span className="icon-tile-primary h-9 w-9 text-sm font-semibold" aria-hidden>{i + 1}</span>
@@ -208,23 +216,38 @@ function RevealedPanel({ r, onDone }: { r: Revealed; onDone: () => void }) {
         <div className="relative mt-6 grid gap-6 lg:grid-cols-2">
           <div className="space-y-4">
             <div className="rounded-2xl border border-primary/25 bg-primary/[0.06] p-5">
-              <p className="flex items-center gap-2 text-sm font-semibold"><FileCode2 className="h-4 w-4 text-primary" aria-hidden />1. Baixe o arquivo já configurado</p>
-              <p className="mt-1 text-xs text-muted">Gerado no seu navegador com a URL, o token{r.secret ? ' e o segredo' : ''} desta integração. Guarde como um segredo.</p>
+              <p className="flex items-center gap-2 text-sm font-semibold"><FileCode2 className="h-4 w-4 text-primary" aria-hidden />1. Baixe o paytracking.php já configurado</p>
+              <p className="mt-1 text-xs text-muted">Gerado no seu navegador com a URL, o token{r.secret ? ' e o segredo' : ''} desta integração. É um arquivo novo e independente: pode ficar ao lado do paytrack_dispatch.php antigo sem misturar nada. Guarde como um segredo.</p>
               <Button variant="primary" className="mt-4 w-full" icon={downloaded ? <CheckCircle2 className="h-4 w-4" /> : <Download className="h-4 w-4" />}
-                onClick={() => { downloadText('paytrack_dispatch.php', buildDispatchPhp({ webhookUrl: endpoint, token: r.token, secret: r.secret })); setDownloaded(true); }}>
-                {downloaded ? 'Baixado — baixar de novo' : 'Baixar paytrack_dispatch.php'}
+                onClick={() => { downloadText('paytracking.php', buildPaytrackingPhp({ webhookUrl: endpoint, token: r.token, secret: r.secret })); setDownloaded(true); }}>
+                {downloaded ? 'Baixado — baixar de novo' : 'Baixar paytracking.php'}
               </Button>
               {!r.secret && <p className="mt-3 text-xs text-warn">Sem segredo: qualquer pessoa com o token consegue enviar vendas. Defina um segredo no cartão da integração e baixe o arquivo de novo.</p>}
             </div>
+            {r.sendToMeta === false && (
+              <Callout tone="info" title="Modo sombra ligado">As vendas serão registradas aqui, mas nada vai para a Meta enquanto o sistema antigo estiver ativo. Quando trocar, ligue “Enviar à Meta” no cartão da integração.</Callout>
+            )}
             <CodeBlock label="URL (Authorization: Bearer)" code={endpoint} />
             <CodeBlock label="Token" code={r.token} />
           </div>
           <div className="space-y-4">
             <p className="text-sm font-semibold">2. Suba na pasta dos webhooks e inclua no topo</p>
-            <CodeBlock label="webhook do gateway (EFI, Woovi…)" code={"if (file_exists(__DIR__ . '/paytrack_dispatch.php')) {\n    require_once __DIR__ . '/paytrack_dispatch.php';\n}"} />
-            <p className="text-sm font-semibold">3. Quando o PIX for pago, chame</p>
-            <CodeBlock label="pagamento aprovado" code={"// $transacao = linha da tabela transacoes (com tracking_parameters)\npaytrack_dispatch_checkout_purchase($pdo, $transacao, 'efi');"} />
-            <p className="text-xs text-muted">Para o PIX gerado use <code className="font-mono">paytrack_dispatch_sale($pdo, ['event' =&gt; 'sale.pending', …])</code>: a venda entra como pendente e não vira Purchase até o pagamento.</p>
+            <CodeBlock label="webhook do gateway (EFI, Woovi…)" code={"require_once __DIR__ . '/paytracking.php';"} />
+            <p className="text-sm font-semibold">3. Chame nos momentos certos</p>
+            <CodeBlock label="PIX gerado · pago · estorno · expirado" code={[
+              '// PIX/boleto gerado → venda pendente (não vira Purchase)',
+              "\\PayTracking\\Checkout::pixGerado($transacao, 'efi');",
+              '',
+              '// PIX pago → venda aprovada → Purchase na Meta (com order bumps via $pdo)',
+              "\\PayTracking\\Checkout::pagamentoAprovado($transacao, $pdo, 'efi');",
+              '',
+              '// estorno do pagamento',
+              "\\PayTracking\\Checkout::reembolso($transacao, 'efi');",
+              '',
+              '// PIX expirado / pedido cancelado antes de pagar',
+              "\\PayTracking\\Checkout::cancelado($transacao, 'efi');",
+            ].join('\n')} />
+            <p className="text-xs text-muted">Nunca interrompe o seu checkout: retorna <code className="font-mono">true</code>/<code className="font-mono">false</code> e registra o motivo em <code className="font-mono">logs/paytracking.log</code>. Pode manter as chamadas do arquivo antigo enquanto migra — o Purchase usa o mesmo event_id, então a Meta conta uma venda só.</p>
           </div>
         </div>
       ) : (
@@ -243,6 +266,7 @@ function CreateModal({ initial, pixels, onClose, onCreated }: { initial: string;
   const [secret, setSecret] = useState('');
   const [pixel, setPixel] = useState('');
   const [unit, setUnit] = useState<'major' | 'minor'>('major');
+  const [sendToMeta, setSendToMeta] = useState(true);
   const [busy, setBusy] = useState(false);
   const list: Array<{ provider: string; label: string; authMethod: string; requiresSecret: boolean; configurableAmountUnit: boolean }> = providers.data?.providers ?? [];
   const meta = list.find((p) => p.provider === provider);
@@ -253,8 +277,8 @@ function CreateModal({ initial, pixels, onClose, onCreated }: { initial: string;
       <Button variant="primary" loading={busy} disabled={!!meta?.requiresSecret && secret.length < 4} onClick={async () => {
         setBusy(true);
         try {
-          const r = await post('/v1/integrations', { provider, secret: secret || undefined, defaultPixelId: pixel || undefined, amountUnit: unit });
-          onCreated({ url: r.webhookUrl, token: r.token, provider, secret: secret || undefined });
+          const r = await post('/v1/integrations', { provider, secret: secret || undefined, defaultPixelId: pixel || undefined, amountUnit: unit, sendToMeta });
+          onCreated({ url: r.webhookUrl, token: r.token, provider, secret: secret || undefined, sendToMeta });
         } catch (e) { toast.err(e); } finally { setBusy(false); }
       }}>Criar integração</Button>
     </>}>
@@ -273,7 +297,7 @@ function CreateModal({ initial, pixels, onClose, onCreated }: { initial: string;
         </fieldset>
         <p className="rounded-xl bg-surface-2/60 p-3 text-xs leading-relaxed text-muted"><Webhook className="mr-1 inline h-3.5 w-3.5" aria-hidden />{HELP[provider]}</p>
         <Field label={meta?.requiresSecret ? 'Segredo do webhook (obrigatório)' : isCheckout ? 'Segredo de assinatura (recomendado)' : 'Segredo (opcional)'} htmlFor="sec"
-          hint={isCheckout ? 'Vai junto no paytrack_dispatch.php. Com ele, o PayTracking só aceita envios assinados com HMAC-SHA256.' : meta?.authMethod}>
+          hint={isCheckout ? 'Vai junto no paytracking.php. Com ele, o PayTracking só aceita envios assinados com HMAC-SHA256.' : meta?.authMethod}>
           <div className="flex gap-2">
             <Input id="sec" type="password" autoComplete="off" value={secret} onChange={(e) => setSecret(e.target.value)} />
             {isCheckout && <Button onClick={() => setSecret(`whsec_${Array.from(crypto.getRandomValues(new Uint8Array(24)), (b) => b.toString(16).padStart(2, '0')).join('')}`)}>Gerar</Button>}
@@ -292,7 +316,16 @@ function CreateModal({ initial, pixels, onClose, onCreated }: { initial: string;
             </Field>
           )}
         </div>
-        {isCheckout && <Callout tone="info" title="Order bumps, UTMs e event_id já incluídos">O arquivo lê os bumps da tabela transacoes_adicionais e reaproveita o purchase_event_id salvo pelo seu checkout, para a Meta deduplicar com o Pixel.</Callout>}
+        <div className={clsx('flex items-start justify-between gap-4 rounded-2xl border p-4', sendToMeta ? 'border-border' : 'border-info/30 bg-info/[0.06]')}>
+          <div>
+            <p className="text-sm font-semibold">Enviar vendas à Meta (Conversions API)</p>
+            <p className="mt-1 text-xs text-muted">{sendToMeta
+              ? 'Desligue se outro sistema (ex.: o PayTracking antigo) ainda envia estas conversões: as vendas ficam registradas aqui em modo sombra, sem duplicar nada na Meta.'
+              : 'Modo sombra: tudo é registrado e aparece no painel, mas nada vai para a Meta. Ligue quando o sistema antigo for desativado.'}</p>
+          </div>
+          <Switch checked={sendToMeta} label="Enviar vendas à Meta" onChange={setSendToMeta} />
+        </div>
+        {isCheckout && <Callout tone="info" title="Order bumps, UTMs e event_id já incluídos">O paytracking.php lê os bumps da tabela transacoes_adicionais e reaproveita o purchase_event_id salvo pelo seu checkout, para a Meta deduplicar com o Pixel.</Callout>}
       </div>
     </Modal>
   );
@@ -306,7 +339,7 @@ function SecretModal({ integ, onClose, onSave }: { integ: Integration; onClose: 
       {!integ.requiresSecret && integ.secretConfigured && <Button variant="ghost" onClick={async () => { setBusy(true); await onSave(null).finally(() => setBusy(false)); }}>Remover segredo</Button>}
       <Button variant="primary" loading={busy} disabled={v.length < 4} onClick={async () => { setBusy(true); await onSave(v).finally(() => setBusy(false)); }}>Salvar</Button>
     </>}>
-      <Field label="Novo segredo" htmlFor="ns" hint={integ.provider === 'checkout' ? 'Use o mesmo valor em PAYTRACK_SECRET no paytrack_dispatch.php. Armazenado criptografado.' : 'Armazenado criptografado. Nunca é exibido novamente.'}>
+      <Field label="Novo segredo" htmlFor="ns" hint={integ.provider === 'checkout' ? 'Depois de salvar, baixe o paytracking.php de novo (ou defina PAYTRACKING_SECRET com o mesmo valor). Armazenado criptografado.' : 'Armazenado criptografado. Nunca é exibido novamente.'}>
         <Input id="ns" type="password" autoComplete="off" value={v} onChange={(e) => setV(e.target.value)} />
       </Field>
     </Modal>

@@ -93,10 +93,22 @@ node apps/web/e2e/smoke.mjs
 | Legado (continua aceito) | `POST /api/webhook_gateway.php?gateway=…&token=…` e `POST /api/webhook.php` |
 | Pixel do navegador | `/pixel.js`, `/checkout-loader.js` (e o antigo `/checkout-loader-ic-only.js`) |
 
-**Checkout próprio:** em Integrações → Checkout próprio, o painel gera o `paytrack_dispatch.php`
-com URL, token e segredo preenchidos (o arquivo é montado no navegador). No webhook do seu gateway
-(EFI, Woovi…), chame `paytrack_dispatch_checkout_purchase($pdo, $transacao, 'efi')` quando o PIX for
-pago. As requisições reais desse arquivo são testadas em `apps/server/test/checkout-dispatch.test.ts`.
+**Checkout próprio:** em Integrações → Checkout próprio, o painel gera o `paytracking.php`
+(fonte: `packages/checkout-php/paytracking.php`) com URL, token e segredo preenchidos — o arquivo é
+montado no navegador. É independente do `paytrack_dispatch.php` antigo (namespace `PayTracking`,
+constantes `PAYTRACKING_*`, log próprio), então os dois podem rodar juntos durante a migração. No
+webhook do gateway (EFI, Woovi…):
+
+```php
+require_once __DIR__ . '/paytracking.php';
+\PayTracking\Checkout::pixGerado($transacao, 'efi');                // PIX gerado → pendente
+\PayTracking\Checkout::pagamentoAprovado($transacao, $pdo, 'efi');  // pago → Purchase
+```
+
+Cada integração tem o interruptor **Enviar à Meta**: desligado, ela fica em modo sombra (registra
+as vendas sem enviar nada à Conversions API) — útil enquanto o sistema antigo ainda envia. O arquivo
+real é executado nos testes (`apps/server/test/paytracking-php.test.ts`), inclusive convivendo com o
+antigo.
 
 A importação do banco antigo mantém os mesmos tokens, então as URLs já cadastradas nos gateways não precisam ser trocadas. Veja [`docs/PLANO-MIGRACAO.md`](docs/PLANO-MIGRACAO.md).
 

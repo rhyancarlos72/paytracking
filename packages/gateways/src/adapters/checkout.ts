@@ -139,9 +139,13 @@ export const checkout: GatewayAdapter = {
     const eventSourceUrl = pick(b, ['event_source_url', 'page_url', 'url']) ?? pick(obj(b.tracking), ['event_source_url', 'page_url', 'url']);
     if (eventSourceUrl) tracking.eventSourceUrl = eventSourceUrl;
 
-    if (!metaEvent) return { kind: 'ignored', provider: 'checkout', reason: 'unmapped_event', gatewayEvent: webhookEvent };
+    const resolved = resolveStatus(collectStatuses(b));
+    // evento com nome desconhecido (ex.: sale.canceled, sale.chargeback) só vale se trouxer um status explícito
+    if (!metaEvent && (resolved === 'none' || resolved === 'unknown')) {
+      return { kind: 'ignored', provider: 'checkout', reason: 'unmapped_event', gatewayEvent: webhookEvent };
+    }
 
-    if (SERVER_EVENTS.includes(metaEvent)) {
+    if (metaEvent && SERVER_EVENTS.includes(metaEvent)) {
       return {
         kind: 'event', provider: 'checkout', eventName: metaEvent, eventId: checkoutEventId(b, metaEvent),
         transactionId, amountMinor: value, currency, customer, products, tracking,
@@ -149,7 +153,6 @@ export const checkout: GatewayAdapter = {
     }
 
     let status: PaymentStatus | undefined;
-    const resolved = resolveStatus(collectStatuses(b));
     if (resolved === 'unknown') return { kind: 'ignored', provider: 'checkout', reason: 'unknown_status', gatewayEvent: webhookEvent };
     if (resolved !== 'none') status = resolved;
     else if (metaEvent === 'Refund') status = 'refunded';

@@ -44,6 +44,8 @@ interface Integration {
   default_pixel_id: string | null;
   amount_unit: 'major' | 'minor';
   active: boolean;
+  /** false = modo sombra: registra tudo, mas não envia nada à Meta */
+  send_to_meta: boolean;
 }
 
 interface Pixel {
@@ -124,7 +126,7 @@ export async function ingestWebhook(ctx: Ctx, input: IngestInput): Promise<Inges
   const base = { provider: input.provider, correlationId, bodySha };
 
   const ir = await ctx.db.query<Integration>(
-    'SELECT id, org_id, provider, secret_enc, default_pixel_id, amount_unit, active FROM integrations WHERE token_hash = $1 AND provider = $2',
+    'SELECT id, org_id, provider, secret_enc, default_pixel_id, amount_unit, active, send_to_meta FROM integrations WHERE token_hash = $1 AND provider = $2',
     [sha256Hex(input.token), input.provider],
   );
   const integration = ir.rows[0];
@@ -287,17 +289,17 @@ async function applyPayment(
     } else {
       const event = await buildPaymentEvent(c, orgId, n, 'Purchase', purchaseEventId(n), amountMinor, currency, at, ctx.now());
       await c.query('UPDATE payments SET purchase_event_id = $2 WHERE id = $1', [payment.id, event.event_id]);
-      queued = (await enqueueCapi(c, { orgId, pixelId: effectivePixel.id, event, paymentId: payment.id, correlationId: rb.correlationId })) !== null;
+      if (integration.send_to_meta) queued = (await enqueueCapi(c, { orgId, pixelId: effectivePixel.id, event, paymentId: payment.id, correlationId: rb.correlationId })) !== null;
     }
   } else if (isReversal(to) && from === 'approved' && effectivePixel?.send_refund_event) {
     // comportamento legado: evento customizado "Refund" (sem valor); o faturamento é abatido em payments
     const event = await buildPaymentEvent(c, orgId, n, 'Refund', refundEventId(n), null, null, at, ctx.now());
-    queued = (await enqueueCapi(c, { orgId, pixelId: effectivePixel.id, event, paymentId: payment.id, correlationId: rb.correlationId })) !== null;
+    if (integration.send_to_meta) queued = (await enqueueCapi(c, { orgId, pixelId: effectivePixel.id, event, paymentId: payment.id, correlationId: rb.correlationId })) !== null;
   }
 
   return {
     purchase,
-    response: { processed: true, paymentId: payment.id, status: to, previousStatus: from, queued, eventName: queued ? (to === 'approved' ? 'Purchase' : 'Refund') : null },
+    response: { processed: true, paymentId: payment.id, status: to, previousStatus: from, queued, ...(integration.send_to_meta ? {} : { shadow: true }), eventName: queued ? (to === 'approved' ? 'Purchase' : 'Refund') : null },
   };
 }
 
@@ -352,8 +354,8 @@ async function ingestServerEvent(
       await receipt(c, { ...rb, outcome: 'duplicate', reason: 'event_already_received', gatewayEvent: n.eventName, ms: ms() });
       return { httpStatus: 200, body: { success: true, duplicate: true, correlationId: rb.correlationId } };
     }
-    await enqueueCapi(c, { orgId, pixelId: pixel.id, event, trackingEventId: te.rows[0].id, correlationId: rb.correlationId });
+    if (integration.send_to_meta) await enqueueCapi(c, { orgId, pixelId: pixel.id, event, trackingEventId: te.rows[0].id, correlationId: rb.correlationId });
     await receipt(c, { ...rb, outcome: 'processed', gatewayEvent: n.eventName, transactionId: n.transactionId, ms: ms() });
-    return { httpStatus: 200, body: { success: true, queued: true, event_name: n.eventName, event_id: eventId, correlationId: rb.correlationId } };
+    return { httpStatus: 200, body: { success: true, queued: integration.send_to_meta, ...(integration.send_to_meta ? {} : { shadow: true }), event_name: n.eventName, event_id: eventId, correlationId: rb.correlationId } };
   });
 }

@@ -80637,8 +80637,11 @@ var checkout = {
     const tracking = trackingFrom(obj(b.tracking), obj(b.tracking_parameters), obj(b.utm), b, payer);
     const eventSourceUrl = pick2(b, ["event_source_url", "page_url", "url"]) ?? pick2(obj(b.tracking), ["event_source_url", "page_url", "url"]);
     if (eventSourceUrl) tracking.eventSourceUrl = eventSourceUrl;
-    if (!metaEvent) return { kind: "ignored", provider: "checkout", reason: "unmapped_event", gatewayEvent: webhookEvent };
-    if (SERVER_EVENTS.includes(metaEvent)) {
+    const resolved = resolveStatus(collectStatuses(b));
+    if (!metaEvent && (resolved === "none" || resolved === "unknown")) {
+      return { kind: "ignored", provider: "checkout", reason: "unmapped_event", gatewayEvent: webhookEvent };
+    }
+    if (metaEvent && SERVER_EVENTS.includes(metaEvent)) {
       return {
         kind: "event",
         provider: "checkout",
@@ -80653,7 +80656,6 @@ var checkout = {
       };
     }
     let status;
-    const resolved = resolveStatus(collectStatuses(b));
     if (resolved === "unknown") return { kind: "ignored", provider: "checkout", reason: "unknown_status", gatewayEvent: webhookEvent };
     if (resolved !== "none") status = resolved;
     else if (metaEvent === "Refund") status = "refunded";
@@ -80971,6 +80973,7 @@ function dto(r) {
     defaultPixelId: r.default_pixel_id,
     amountUnit: r.amount_unit,
     active: r.active,
+    sendToMeta: r.send_to_meta,
     lastReceivedAt: r.last_received_at,
     createdAt: r.created_at,
     stats: r.stats ?? null
@@ -80981,7 +80984,9 @@ var updateSchema = external_exports.object({
   secret: external_exports.string().trim().min(4).max(255).optional().nullable(),
   defaultPixelId: external_exports.string().uuid().optional().nullable(),
   amountUnit: external_exports.enum(["major", "minor"]).optional(),
-  active: external_exports.boolean().optional()
+  active: external_exports.boolean().optional(),
+  /** false = modo sombra (registra sem enviar à Meta) */
+  sendToMeta: external_exports.boolean().optional()
 });
 function integrationRoutes(app, ctx) {
   async function assertPixel(orgId, pixelId) {
@@ -81024,8 +81029,8 @@ function integrationRoutes(app, ctx) {
     await assertPixel(a.org.id, b.defaultPixelId);
     const token = integrationToken();
     const r = await ctx.db.query(
-      `INSERT INTO integrations(org_id, provider, name, token_hash, token_hint, secret_enc, default_pixel_id, amount_unit, active)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,COALESCE($9, true)) RETURNING *`,
+      `INSERT INTO integrations(org_id, provider, name, token_hash, token_hint, secret_enc, default_pixel_id, amount_unit, active, send_to_meta)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,COALESCE($9, true),COALESCE($10, true)) RETURNING *`,
       [
         a.org.id,
         b.provider,
@@ -81035,7 +81040,8 @@ function integrationRoutes(app, ctx) {
         ctx.box.encryptNullable(b.secret),
         b.defaultPixelId ?? null,
         b.amountUnit ?? "major",
-        b.active ?? null
+        b.active ?? null,
+        b.sendToMeta ?? null
       ]
     );
     await audit(ctx, a.org.id, a.user.id, "integration.created", r.rows[0].id, { provider: b.provider });
@@ -81053,7 +81059,8 @@ function integrationRoutes(app, ctx) {
       `UPDATE integrations SET name = COALESCE($3, name),
               secret_enc = CASE WHEN $4::boolean THEN $5 ELSE secret_enc END,
               default_pixel_id = CASE WHEN $6::boolean THEN $7::uuid ELSE default_pixel_id END,
-              amount_unit = COALESCE($8, amount_unit), active = COALESCE($9, active), updated_at = now()
+              amount_unit = COALESCE($8, amount_unit), active = COALESCE($9, active),
+              send_to_meta = COALESCE($10, send_to_meta), updated_at = now()
         WHERE id = $1 AND org_id = $2 RETURNING *`,
       [
         id,
@@ -81064,10 +81071,11 @@ function integrationRoutes(app, ctx) {
         b.defaultPixelId !== void 0,
         b.defaultPixelId ?? null,
         b.amountUnit ?? null,
-        b.active ?? null
+        b.active ?? null,
+        b.sendToMeta ?? null
       ]
     );
-    await audit(ctx, a.org.id, a.user.id, "integration.updated", id, { secretChanged: b.secret !== void 0 });
+    await audit(ctx, a.org.id, a.user.id, "integration.updated", id, { secretChanged: b.secret !== void 0, ...b.sendToMeta !== void 0 ? { sendToMeta: b.sendToMeta } : {} });
     return { integration: dto(r.rows[0]) };
   });
   app.post("/v1/integrations/:id/rotate-token", async (req) => {
@@ -81313,7 +81321,7 @@ async function ingestWebhook(ctx, input2) {
   const ms = () => Date.now() - started;
   const base = { provider: input2.provider, correlationId, bodySha };
   const ir = await ctx.db.query(
-    "SELECT id, org_id, provider, secret_enc, default_pixel_id, amount_unit, active FROM integrations WHERE token_hash = $1 AND provider = $2",
+    "SELECT id, org_id, provider, secret_enc, default_pixel_id, amount_unit, active, send_to_meta FROM integrations WHERE token_hash = $1 AND provider = $2",
     [sha256Hex(input2.token), input2.provider]
   );
   const integration = ir.rows[0];
@@ -81466,15 +81474,15 @@ async function applyPayment(ctx, c, integration, n, productIds, rb, ms) {
     } else {
       const event = await buildPaymentEvent(c, orgId, n, "Purchase", purchaseEventId(n), amountMinor, currency, at, ctx.now());
       await c.query("UPDATE payments SET purchase_event_id = $2 WHERE id = $1", [payment.id, event.event_id]);
-      queued = await enqueueCapi(c, { orgId, pixelId: effectivePixel.id, event, paymentId: payment.id, correlationId: rb.correlationId }) !== null;
+      if (integration.send_to_meta) queued = await enqueueCapi(c, { orgId, pixelId: effectivePixel.id, event, paymentId: payment.id, correlationId: rb.correlationId }) !== null;
     }
   } else if (isReversal(to) && from === "approved" && effectivePixel?.send_refund_event) {
     const event = await buildPaymentEvent(c, orgId, n, "Refund", refundEventId(n), null, null, at, ctx.now());
-    queued = await enqueueCapi(c, { orgId, pixelId: effectivePixel.id, event, paymentId: payment.id, correlationId: rb.correlationId }) !== null;
+    if (integration.send_to_meta) queued = await enqueueCapi(c, { orgId, pixelId: effectivePixel.id, event, paymentId: payment.id, correlationId: rb.correlationId }) !== null;
   }
   return {
     purchase,
-    response: { processed: true, paymentId: payment.id, status: to, previousStatus: from, queued, eventName: queued ? to === "approved" ? "Purchase" : "Refund" : null }
+    response: { processed: true, paymentId: payment.id, status: to, previousStatus: from, queued, ...integration.send_to_meta ? {} : { shadow: true }, eventName: queued ? to === "approved" ? "Purchase" : "Refund" : null }
   };
 }
 async function buildPaymentEvent(c, orgId, n, eventName, eventId, amountMinor, currency, at, now) {
@@ -81519,9 +81527,9 @@ async function ingestServerEvent(ctx, integration, n, productIds, rb, ms) {
       await receipt(c, { ...rb, outcome: "duplicate", reason: "event_already_received", gatewayEvent: n.eventName, ms: ms() });
       return { httpStatus: 200, body: { success: true, duplicate: true, correlationId: rb.correlationId } };
     }
-    await enqueueCapi(c, { orgId, pixelId: pixel.id, event, trackingEventId: te.rows[0].id, correlationId: rb.correlationId });
+    if (integration.send_to_meta) await enqueueCapi(c, { orgId, pixelId: pixel.id, event, trackingEventId: te.rows[0].id, correlationId: rb.correlationId });
     await receipt(c, { ...rb, outcome: "processed", gatewayEvent: n.eventName, transactionId: n.transactionId, ms: ms() });
-    return { httpStatus: 200, body: { success: true, queued: true, event_name: n.eventName, event_id: eventId, correlationId: rb.correlationId } };
+    return { httpStatus: 200, body: { success: true, queued: integration.send_to_meta, ...integration.send_to_meta ? {} : { shadow: true }, event_name: n.eventName, event_id: eventId, correlationId: rb.correlationId } };
   });
 }
 
