@@ -105,6 +105,8 @@ export function platformTrackingRoutes(app: FastifyInstance, ctx: Ctx) {
     reply.header('Cache-Control', 'private, no-store');
     if (!platformPixelInBrowser(ctx) || req.auth) return { pixel: null, signedIn: !!req.auth };
     const api = ctx.config.PUBLIC_API_URL.replace(/\/$/, '');
-    return { signedIn: false, pixel: { key: ctx.config.PLATFORM_PIXEL_KEY, pixelId: ctx.config.PLATFORM_PIXEL_ID, script: `${api}/pixel.js`, endpoint: `${api}/v1/collect`, currency: 'BRL', country: 'BR' } };
+    // InitiateCheckout no clique em links para o domínio oficial (ex.: "Começar teste grátis" → /criar-conta)
+    const ic = { click: '1', rule: 'contains', value: new URL(ctx.config.APP_URL).host };
+    return { signedIn: false, pixel: { key: ctx.config.PLATFORM_PIXEL_KEY, pixelId: ctx.config.PLATFORM_PIXEL_ID, script: `${api}/pixel.js`, endpoint: `${api}/v1/collect`, currency: 'BRL', country: 'BR', ic } };
   });
 }

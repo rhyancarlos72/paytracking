@@ -7,7 +7,7 @@ import { get } from './api';
  * Nunca roda dentro do painel logado: depois de entrar ou criar a conta a página é recarregada,
  * o que descarta o script da Meta (que leria textos e dados do painel).
  */
-interface Cfg { key: string; pixelId: string; script: string; endpoint: string; currency: string; country: string }
+interface Cfg { key: string; pixelId: string; script: string; endpoint: string; currency: string; country: string; ic?: { click: string; rule: string; value: string } }
 
 let state: 'idle' | 'loading' | 'loaded' | 'off' = 'idle';
 
@@ -22,7 +22,7 @@ function inject(c: Cfg) {
     if (href === origin) l.crossOrigin = 'anonymous';
     document.head.appendChild(l);
   }
-  // mesmo snippet do painel de Pixels, com os eventos automáticos da Meta desligados
+  // mesmo snippet do painel de Pixels (com InitiateCheckout no clique), eventos automáticos da Meta desligados
   const s = document.createElement('script');
   s.async = true;
   s.crossOrigin = 'anonymous';
@@ -32,6 +32,11 @@ function inject(c: Cfg) {
   s.setAttribute('data-endpoint', c.endpoint);
   s.setAttribute('data-currency', c.currency);
   s.setAttribute('data-country', c.country);
+  if (c.ic) {
+    s.setAttribute('data-ic-click', c.ic.click);
+    s.setAttribute('data-ic-rule', c.ic.rule);
+    s.setAttribute('data-ic-value', c.ic.value);
+  }
   s.setAttribute('data-auto-config', '0');
   document.head.appendChild(s);
 }

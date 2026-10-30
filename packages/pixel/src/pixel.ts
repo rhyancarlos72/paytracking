@@ -190,7 +190,10 @@ import {
     }
     const link = target.closest('a[href]');
     const form = target.closest('form[action]');
-    const dest = link ? absolute(link.getAttribute('href') ?? '') : form ? absolute(form.getAttribute('action') ?? '') : '';
+    // âncora na mesma página (#secao) ou javascript: não é ida ao checkout
+    const rawHref = link?.getAttribute('href') ?? '';
+    if (link && /^(#|javascript:)/i.test(rawHref.trim())) return '';
+    const dest = link ? absolute(rawHref) : form ? absolute(form.getAttribute('action') ?? '') : '';
     if (dest && IC_RULE !== 'none' && IC_VALUE) return dest;
     if (dest && IC_URL_RE.test(dest)) return dest;
     const clickable = target.closest('a[href],button,[role="button"],input[type="submit"],input[type="button"]') ?? (IC_SELECTOR ? target.closest(IC_SELECTOR) : null);
