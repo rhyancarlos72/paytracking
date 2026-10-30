@@ -24,7 +24,16 @@ export default function AdminPage() {
   if (!s.user.isPlatformAdmin) return <Navigate to="/" replace />;
   return (
     <>
-      <PageHeader title="Administração da plataforma" description="Organizações, assinaturas e ações administrativas (todas auditadas)." />
+      <PageHeader title="Administração da plataforma" description="Organizações, assinaturas e ações administrativas (todas auditadas)."
+        actions={<Button onClick={async () => {
+          try {
+            const r = await post<{ ok: boolean; channel: string; to?: string; error?: string }>('/v1/admin/test-email');
+            const via = r.channel === 'smtp' ? 'SMTP' : r.channel === 'resend' ? 'Resend' : 'nenhum canal (só log)';
+            if (r.ok && r.channel !== 'log') toast.ok(`E-mail de teste enviado por ${via}`, `Confira a caixa de ${r.to}.`);
+            else if (r.ok) toast.err(new Error('Configure SMTP_HOST (e-mail da hospedagem) ou RESEND_API_KEY no servidor.'), 'Nenhum canal de e-mail configurado');
+            else toast.err(new Error(r.error ?? 'Falha no envio'), `Falha no envio por ${via}`);
+          } catch (e) { toast.err(e); }
+        }}>Testar e-mail</Button>} />
       <div className="mb-6 grid gap-4 sm:grid-cols-3 xl:grid-cols-6">
         {[['Organizações', overview.data?.orgs], ['Ativas', overview.data?.active], ['Em teste', overview.data?.trial], ['Expiradas', overview.data?.expired], ['Isentas', overview.data?.exempt]].map(([l, v]) => (
           <div key={l as string} className="card p-4"><p className="text-[13px] text-muted">{l}</p><p className="num mt-1 text-xl font-semibold">{int(v as number)}</p></div>

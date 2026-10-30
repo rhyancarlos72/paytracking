@@ -3,7 +3,7 @@ import { get, post } from './api';
 
 export type Role = 'owner' | 'admin' | 'analyst' | 'viewer';
 export interface Me {
-  user: { id: string; email: string; name: string | null; isPlatformAdmin: boolean; emailVerified: boolean; hideEmail: boolean };
+  user: { id: string; email: string; name: string | null; isPlatformAdmin: boolean; emailVerified: boolean; hideEmail: boolean; twoFactorEnabled: boolean };
   role: Role;
   org: { id: string; name: string; reportingCurrency: string; timezone: string; goalDailyMinor: string; goalMonthlyMinor: string };
   plan: { status: 'trial' | 'active' | 'expired' | 'exempt'; daysLeft: number | null; blocked: boolean; expiresAt: string | null; priceMinor: number };

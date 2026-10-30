@@ -7,6 +7,21 @@ import { audit } from '../orgs/routes.js';
 
 /** Administração da plataforma (antes: e-mail fixo no código; agora: PLATFORM_ADMIN_EMAILS / users.is_platform_admin). */
 export function adminRoutes(app: FastifyInstance, ctx: Ctx) {
+  /** Canal de e-mail ativo e envio de teste para o próprio admin (confere SMTP/Resend). */
+  app.post('/v1/admin/test-email', async (req) => {
+    const a = requirePlatformAdmin(req);
+    try {
+      await ctx.mailer.send({
+        to: a.user.email,
+        subject: 'Teste de e-mail — PayTracking',
+        text: `Este é um e-mail de teste.\n\nSe chegou, a recuperação de senha, a confirmação de e-mail e os convites estão funcionando.\n\nPainel: ${ctx.config.APP_URL}`,
+      });
+      return { ok: true, channel: ctx.mailer.kind, to: a.user.email };
+    } catch (e) {
+      return { ok: false, channel: ctx.mailer.kind, error: (e as Error).message.slice(0, 300) };
+    }
+  });
+
   app.get('/v1/admin/overview', async (req) => {
     requirePlatformAdmin(req);
     const totals = await ctx.db.query(

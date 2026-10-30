@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { Bell, BellOff, BellRing, Download, Play, Send, Smartphone, Upload, Volume2 } from 'lucide-react';
+import { Bell, BellOff, BellRing, Copy, Download, KeyRound, Play, Send, ShieldCheck, Smartphone, Upload, Volume2 } from 'lucide-react';
+import QRCode from 'qrcode';
 import { useEffect, useRef, useState } from 'react';
 import { PageHeader } from '../components/shell';
 import { useToast } from '../components/toast';
@@ -150,6 +151,7 @@ function Security() {
   });
   return (
     <>
+      <TwoFactorCard />
       <Card title="Alterar senha" description="Mínimo de 10 caracteres com maiúscula, minúscula e número. As outras sessões são encerradas.">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Senha atual" htmlFor="cp"><Input id="cp" type="password" autoComplete="current-password" value={pw.currentPassword} onChange={(e) => setPw({ ...pw, currentPassword: e.target.value })} /></Field>
@@ -171,6 +173,134 @@ function Security() {
   );
 }
 
+const CODE_RE = /^\d{6}$/;
+const onlyDigits = (v: string) => v.replace(/\D/g, '').slice(0, 6);
+
+/** Códigos de recuperação: exibidos uma única vez, com copiar e baixar. */
+function RecoveryCodes({ codes, onClose }: { codes: string[]; onClose: () => void }) {
+  const toast = useToast();
+  const text = `PayTracking — códigos de recuperação\nCada código funciona uma única vez.\n\n${codes.join('\n')}\n`;
+  return (
+    <div className="space-y-4">
+      <Callout tone="warn" title="Guarde estes códigos agora — eles não aparecem de novo">
+        Se perder o celular, cada código permite entrar uma vez. Guarde em um gerenciador de senhas ou impresso.
+      </Callout>
+      <ul className="grid grid-cols-2 gap-2 rounded-xl border border-border bg-surface-2 p-4 font-mono text-[15px] sm:grid-cols-5">
+        {codes.map((c) => <li key={c} className="text-center">{c}</li>)}
+      </ul>
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" onClick={async () => { await navigator.clipboard.writeText(text); toast.ok('Códigos copiados'); }}><Copy className="h-4 w-4" aria-hidden />Copiar</Button>
+        <Button size="sm" onClick={() => {
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+          a.download = 'paytracking-codigos-recuperacao.txt';
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        }}><Download className="h-4 w-4" aria-hidden />Baixar .txt</Button>
+        <Button size="sm" variant="primary" onClick={onClose}>Já guardei</Button>
+      </div>
+    </div>
+  );
+}
+
+function TwoFactorCard() {
+  const toast = useToast();
+  const qc = useQueryClient();
+  const status = useQuery({ queryKey: ['2fa'], queryFn: () => get<{ enabled: boolean; enabledAt: string | null; recoveryCodesLeft: number }>('/v1/auth/2fa') });
+  const [step, setStep] = useState<'idle' | 'scan' | 'codes' | 'disable' | 'regen'>('idle');
+  const [setup, setSetup] = useState<{ secret: string; otpauthUrl: string; qr: string } | null>(null);
+  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [codes, setCodes] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  const reset = () => { setStep('idle'); setCode(''); setPassword(''); setSetup(null); };
+  const refresh = () => { void status.refetch(); void qc.invalidateQueries({ queryKey: ['me'] }); void qc.invalidateQueries({ queryKey: ['sessions'] }); };
+  const run = async (fn: () => Promise<void>) => { setBusy(true); try { await fn(); } catch (e) { toast.err(e); setCode(''); } finally { setBusy(false); } };
+
+  const start = () => run(async () => {
+    const r = await post<{ secret: string; otpauthUrl: string }>('/v1/auth/2fa/setup');
+    // QR gerado aqui no navegador: o segredo não passa por nenhum serviço externo
+    const qr = await QRCode.toDataURL(r.otpauthUrl, { margin: 1, width: 220, errorCorrectionLevel: 'M' });
+    setSetup({ ...r, qr });
+    setStep('scan');
+  });
+  const enable = () => run(async () => {
+    const r = await post<{ recoveryCodes: string[]; revokedSessions: number }>('/v1/auth/2fa/enable', { code });
+    setCodes(r.recoveryCodes); setStep('codes'); setCode(''); setSetup(null);
+    toast.ok('Verificação em duas etapas ativada', r.revokedSessions ? `${r.revokedSessions} outra(s) sessão(ões) encerrada(s).` : undefined);
+    refresh();
+  });
+  const disable = () => run(async () => {
+    await post('/v1/auth/2fa/disable', { password, code });
+    toast.ok('Verificação em duas etapas desativada');
+    reset(); refresh();
+  });
+  const regen = () => run(async () => {
+    const r = await post<{ recoveryCodes: string[] }>('/v1/auth/2fa/recovery-codes', { code });
+    setCodes(r.recoveryCodes); setStep('codes'); setCode('');
+    refresh();
+  });
+
+  const enabled = status.data?.enabled;
+  return (
+    <Card icon={<ShieldCheck className="h-5 w-5" aria-hidden />} title="Verificação em duas etapas"
+      description="Além da senha, pede um código do app autenticador do seu celular (Google Authenticator, Microsoft Authenticator, Authy ou 1Password)."
+      actions={status.data && <Badge tone={enabled ? 'ok' : 'neutral'} dot>{enabled ? 'Ativa' : 'Desativada'}</Badge>}>
+      {step === 'codes' ? <RecoveryCodes codes={codes} onClose={() => { setCodes([]); setStep('idle'); }} /> : step === 'scan' && setup ? (
+        <div className="grid gap-6 sm:grid-cols-[auto_1fr]">
+          <img src={setup.qr} alt="QR code para o app autenticador" width={220} height={220} className="rounded-xl border border-border bg-white p-2" />
+          <div className="space-y-4 text-sm">
+            <ol className="list-decimal space-y-1.5 pl-5 text-muted">
+              <li>No app autenticador, toque em <b className="text-fg">+</b> e escaneie o QR code.</li>
+              <li>Digite abaixo o código de 6 dígitos que aparecer.</li>
+            </ol>
+            <details className="rounded-lg border border-border px-3 py-2">
+              <summary className="cursor-pointer font-medium">Não consegue escanear? Digite a chave</summary>
+              <code className="mt-2 block select-all break-all font-mono text-[13px]">{setup.secret.replace(/(.{4})/g, '$1 ').trim()}</code>
+            </details>
+            <Field label="Código do app" htmlFor="tfa-code">
+              <Input id="tfa-code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="000000" className="max-w-[180px] font-mono text-lg tracking-[0.3em]"
+                value={code} onChange={(e) => setCode(onlyDigits(e.target.value))} onKeyDown={(e) => { if (e.key === 'Enter' && CODE_RE.test(code)) void enable(); }} />
+            </Field>
+            <div className="flex gap-2">
+              <Button variant="primary" loading={busy} disabled={!CODE_RE.test(code)} onClick={enable}>Ativar</Button>
+              <Button variant="ghost" onClick={reset}>Cancelar</Button>
+            </div>
+          </div>
+        </div>
+      ) : step === 'disable' || step === 'regen' ? (
+        <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            {step === 'disable' && <Field label="Sua senha" htmlFor="tfa-pw"><Input id="tfa-pw" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} /></Field>}
+            <Field label={step === 'disable' ? 'Código do app (ou de recuperação)' : 'Código do app'} htmlFor="tfa-c">
+              <Input id="tfa-c" inputMode={step === 'regen' ? 'numeric' : undefined} autoComplete="one-time-code" maxLength={step === 'regen' ? 6 : 12} className="font-mono"
+                value={code} onChange={(e) => setCode(step === 'regen' ? onlyDigits(e.target.value) : e.target.value.trim())} />
+            </Field>
+          </div>
+          <div className="flex gap-2">
+            {step === 'disable'
+              ? <Button variant="danger" loading={busy} disabled={!password || code.length < 6} onClick={disable}>Desativar</Button>
+              : <Button variant="primary" loading={busy} disabled={!CODE_RE.test(code)} onClick={regen}>Gerar novos códigos</Button>}
+            <Button variant="ghost" onClick={reset}>Cancelar</Button>
+          </div>
+        </div>
+      ) : enabled ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+          <p className="text-muted">Ativa desde {status.data?.enabledAt ? dateTime(status.data.enabledAt) : '—'} · {status.data?.recoveryCodesLeft ?? 0} código(s) de recuperação restante(s).</p>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => setStep('regen')}><KeyRound className="h-4 w-4" aria-hidden />Novos códigos de recuperação</Button>
+            <Button size="sm" variant="ghost" onClick={() => setStep('disable')}>Desativar</Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+          <p className="text-muted">Recomendado: mesmo que alguém descubra sua senha, não entra sem o seu celular.</p>
+          <Button variant="primary" loading={busy} onClick={start}><ShieldCheck className="h-4 w-4" aria-hidden />Ativar</Button>
+        </div>
+      )}
+    </Card>
+  );
+}
 
 function Notifications() {
   return (

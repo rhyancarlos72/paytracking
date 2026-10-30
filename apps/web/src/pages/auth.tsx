@@ -96,17 +96,69 @@ function useAfterAuth() {
   };
 }
 
+/** 2º passo do login: código de 6 dígitos do app autenticador (ou um código de recuperação). */
+function TwoFactorStep({ challenge, onDone, onRestart }: { challenge: string; onDone: () => Promise<void>; onRestart: () => void }) {
+  const [mode, setMode] = useState<'code' | 'recovery'>('code');
+  const [value, setValue] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const valid = mode === 'code' ? /^\d{6}$/.test(value) : value.replace(/[^a-z0-9]/gi, '').length === 8;
+  const submit = async () => {
+    if (!valid || busy) return;
+    setBusy(true); setError(null);
+    try {
+      await post('/v1/auth/login/2fa', mode === 'code' ? { challenge, code: value } : { challenge, recoveryCode: value });
+      await onDone();
+    } catch (e) {
+      setError((e as Error).message);
+      setValue('');
+      if (/expirou/.test((e as Error).message)) setTimeout(onRestart, 2500);
+    } finally { setBusy(false); }
+  };
+  return (
+    <AuthLayout title="Verificação em duas etapas" subtitle={mode === 'code' ? 'Abra o app autenticador no celular e digite o código de 6 dígitos.' : 'Digite um dos códigos de recuperação que você guardou.'}>
+      <form className="space-y-4" noValidate onSubmit={(e) => { e.preventDefault(); void submit(); }}>
+        {error && <Callout tone="err" title={error} />}
+        {mode === 'code' ? (
+          <Field label="Código do app" htmlFor="otp">
+            <Input id="otp" inputMode="numeric" autoComplete="one-time-code" autoFocus maxLength={6} placeholder="000000"
+              className="text-center font-mono text-2xl tracking-[0.5em]" value={value}
+              onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 6); setValue(v); }} />
+          </Field>
+        ) : (
+          <Field label="Código de recuperação" htmlFor="rc">
+            <Input id="rc" autoComplete="off" autoFocus maxLength={12} placeholder="xxxx-xxxx" className="text-center font-mono text-lg tracking-widest"
+              value={value} onChange={(e) => setValue(e.target.value)} />
+          </Field>
+        )}
+        <Button type="submit" variant="primary" size="lg" className="w-full" loading={busy} disabled={!valid}>Confirmar e entrar</Button>
+      </form>
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-2 text-sm">
+        <button type="button" className="font-medium text-primary hover:underline" onClick={() => { setMode(mode === 'code' ? 'recovery' : 'code'); setValue(''); setError(null); }}>
+          {mode === 'code' ? 'Usar um código de recuperação' : 'Usar o código do app'}
+        </button>
+        <button type="button" className="text-muted hover:underline" onClick={onRestart}>Voltar</button>
+      </div>
+    </AuthLayout>
+  );
+}
+
 export function LoginPage() {
   const after = useAfterAuth();
   const { data: me } = useMe();
   const [error, setError] = useState<string | null>(null);
+  const [challenge, setChallenge] = useState<string | null>(null);
   const f = useForm({ resolver: zodResolver(z.object({ email: z.string().email('E-mail inválido'), password: z.string().min(1, 'Informe a senha') })) });
   useEffect(() => { if (me) void after(); }, [me]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (challenge) return <TwoFactorStep challenge={challenge} onDone={after} onRestart={() => setChallenge(null)} />;
   return (
     <AuthLayout title="Entrar" subtitle="Acesse o painel da sua operação.">
       <form className="space-y-4" noValidate onSubmit={f.handleSubmit(async (v) => {
         setError(null);
-        try { await post('/v1/auth/login', v); await after(); } catch (e) { setError((e as Error).message); }
+        try {
+          const r = await post<{ ok: boolean; twoFactorRequired?: boolean; challenge?: string }>('/v1/auth/login', v);
+          if (r.twoFactorRequired && r.challenge) setChallenge(r.challenge); else await after();
+        } catch (e) { setError((e as Error).message); }
       })}>
         {error && <Callout tone="err" title={error} />}
         <Field label="E-mail" htmlFor="email" error={f.formState.errors.email?.message as string}>

@@ -8,6 +8,7 @@ import {
   authenticate, consumeToken, createSession, createUserWithOrg, hashPassword, issueToken, planState,
   revokeSessions, validatePassword, verifyPassword,
 } from './service.js';
+import { hasTwoFactor, issueChallenge, securityAlert } from './two-factor.js';
 
 const email = z.string().trim().toLowerCase().email('E-mail inválido').max(190);
 
@@ -44,6 +45,8 @@ export function authRoutes(app: FastifyInstance, ctx: Ctx) {
     const user = await authenticate(ctx, body.email, body.password);
     if (!user) throw unauthorized('E-mail ou senha incorretos.');
     await clear(ctx.db, emailBucket);
+    // senha certa + verificação em duas etapas ativa: ainda sem sessão, pede o código do app
+    if (await hasTwoFactor(ctx, user.id)) return { ok: false, twoFactorRequired: true, challenge: issueChallenge(ctx, user.id) };
     const s = await createSession(ctx, user.id, { ip: clientIp(req), ua: req.headers['user-agent'] });
     setSessionCookie(reply, s.token, s.expires, secure);
     return { ok: true };
@@ -109,6 +112,8 @@ export function authRoutes(app: FastifyInstance, ctx: Ctx) {
     await ctx.db.query('UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2', [await hashPassword(body.password), userId]);
     await revokeSessions(ctx, userId);
     await ctx.db.query(`INSERT INTO audit_log(user_id, action) VALUES ($1, 'auth.password_reset')`, [userId]);
+    const to = await ctx.db.query<{ email: string }>('SELECT email FROM users WHERE id = $1', [userId]);
+    if (to.rows[0]) await securityAlert(ctx, req, to.rows[0].email, 'Sua senha foi redefinida');
     return { ok: true };
   });
 
@@ -138,6 +143,7 @@ export function authRoutes(app: FastifyInstance, ctx: Ctx) {
     await ctx.db.query('UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2', [await hashPassword(body.newPassword), a.user.id]);
     const revoked = await revokeSessions(ctx, a.user.id, a.sessionId);
     await ctx.db.query(`INSERT INTO audit_log(org_id, user_id, action) VALUES ($1, $2, 'auth.password_changed')`, [a.org.id, a.user.id]);
+    await securityAlert(ctx, req, a.user.email, 'Sua senha foi alterada');
     return { ok: true, revokedSessions: revoked };
   });
 
