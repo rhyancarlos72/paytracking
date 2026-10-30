@@ -1,0 +1,16 @@
+{
+  "_origem": "Corpo e assinatura exatos enviados pelo paytrack_dispatch.php (checkout próprio) — dados fictícios; segredo do teste: whsec_fixture",
+  "secret": "whsec_fixture",
+  "requests": [
+    {
+      "event": "sale.pending",
+      "signature": "sha256=561b93185f262244711b20cb19fdd16706000bdc431b51332dfc459539607317",
+      "body": "{\"event\":\"sale.pending\",\"status\":\"pending\",\"payment_status\":null,\"payment_method\":null,\"gateway\":null,\"transaction_id\":\"TX-9001\",\"value\":197,\"currency\":\"BRL\",\"event_source_url\":\"\",\"product_id\":\"9452302\",\"product_name\":\"Curso Completo\",\"customer\":{\"first_name\":\"Maria\",\"last_name\":\"da Silva Souza\",\"email\":\"Maria.Souza@Exemplo.com\",\"phone\":null,\"document\":null,\"city\":null,\"state\":null,\"zip\":null,\"country\":\"BR\",\"gender\":null,\"birthdate\":null,\"external_id\":\"xid-visitante-123\"},\"tracking\":{\"event_id\":\"initiate_checkout_9452302_1793299000_cd34\",\"fbp\":\"fb.1.1793299000000.123456789\",\"fbc\":\"fb.1.1793319386680.IwAR_teste_clique\",\"fbclid\":\"IwAR_teste_clique\",\"external_id\":\"xid-visitante-123\",\"client_ip_address\":\"177.10.20.30\",\"client_user_agent\":\"Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)\",\"utm_source\":\"facebook\",\"utm_medium\":\"paid\",\"utm_campaign\":\"Campanha Black\",\"utm_content\":\"criativo-3\",\"utm_term\":null,\"utm_id\":\"120200000001\"},\"products\":[{\"id\":\"9452302\",\"name\":\"Curso Completo\",\"quantity\":1,\"price\":197}]}"
+    },
+    {
+      "event": "sale.approved",
+      "signature": "sha256=daad4d99c659df643889ce9c5b326a9190d647db7db2fbb333f25ed498130adf",
+      "body": "{\"event\":\"sale.approved\",\"status\":\"paid\",\"payment_status\":\"paid\",\"payment_method\":\"pix\",\"gateway\":\"efi\",\"transaction_id\":\"TX-9001\",\"value\":197,\"currency\":\"BRL\",\"event_source_url\":\"\",\"product_id\":\"9452302\",\"product_name\":\"Curso Completo\",\"customer\":{\"first_name\":\"Maria\",\"last_name\":\"da Silva Souza\",\"email\":\"Maria.Souza@Exemplo.com\",\"phone\":\"(11) 98888-7777\",\"document\":\"123.456.789-09\",\"city\":\"São Paulo\",\"state\":\"SP\",\"zip\":\"01310-100\",\"country\":\"BR\",\"gender\":null,\"birthdate\":null,\"external_id\":\"xid-visitante-123\"},\"tracking\":{\"event_id\":\"purchase_9452302_1793300000_ab12\",\"fbp\":\"fb.1.1793299000000.123456789\",\"fbc\":\"fb.1.1793319386688.IwAR_teste_clique\",\"fbclid\":\"IwAR_teste_clique\",\"external_id\":\"xid-visitante-123\",\"client_ip_address\":\"177.10.20.30\",\"client_user_agent\":\"Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)\",\"utm_source\":\"facebook\",\"utm_medium\":\"paid\",\"utm_campaign\":\"Campanha Black\",\"utm_content\":\"criativo-3\",\"utm_term\":null,\"utm_id\":\"120200000001\"},\"products\":[{\"id\":\"9452302\",\"name\":\"Curso Completo\",\"quantity\":1,\"price\":197},{\"id\":\"7777\",\"name\":\"Bump Bônus\",\"quantity\":1,\"price\":27}]}"
+    }
+  ]
+}
