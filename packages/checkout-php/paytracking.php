@@ -289,6 +289,10 @@ if (!class_exists(__NAMESPACE__ . '\\Checkout', false)) {
             }
 
             $ip = self::first($t, ['device_ip', 'ip', 'client_ip', 'user_ip'], null);
+            // X-Forwarded-For pode trazer "comprador, proxy1, proxy2": o primeiro é o do comprador
+            if (is_string($ip) && strpos($ip, ',') !== false) {
+                $ip = trim(explode(',', $ip)[0]);
+            }
             $ua = self::first($t, ['user_agent', 'client_user_agent'], null);
 
             return [
