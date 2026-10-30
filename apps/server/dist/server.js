@@ -82637,6 +82637,30 @@ function reportRoutes(app, ctx) {
     const q = parse4(periodQuery.extend({ pixelId: uuidOpt, provider: external_exports.string().max(20).optional() }), req.query);
     return jsonSafe(await dashboard(ctx, a.org, { ...q, preset: q.preset }));
   });
+  app.get("/v1/sales/feed", async (req) => {
+    const a = requireRole(req, "viewer");
+    const q = parse4(external_exports.object({
+      after: external_exports.string().datetime({ offset: true }).optional(),
+      /** piso fixo: cursor de quando o painel abriu — a janela de segurança nunca volta antes dele */
+      floor: external_exports.string().datetime({ offset: true }).optional()
+    }), req.query);
+    const now = (await ctx.db.query("SELECT clock_timestamp() AS now")).rows[0].now;
+    if (!q.after) return { cursor: now.toISOString(), sales: [] };
+    const r = await ctx.db.query(
+      `SELECT p.id, p.provider, p.transaction_id, p.amount_minor, p.currency, p.utm_campaign, p.approved_at, px.name AS pixel_name,
+              r.received_at
+         FROM payment_transitions t
+         JOIN payments p ON p.id = t.payment_id
+         JOIN webhook_receipts r ON r.id = t.receipt_id
+         LEFT JOIN pixels px ON px.id = p.pixel_id
+        WHERE p.org_id = $1 AND t.to_status = 'approved' AND p.status = 'approved'
+          AND r.received_at > GREATEST($2::timestamptz - interval '15 seconds', COALESCE($4::timestamptz, '-infinity'))
+          AND r.received_at <= $3
+        ORDER BY r.received_at, t.id LIMIT 50`,
+      [a.org.id, q.after, now, q.floor ?? null]
+    );
+    return jsonSafe({ cursor: now.toISOString(), sales: r.rows });
+  });
   app.get("/v1/payments", async (req) => {
     const a = requireRole(req, "viewer");
     const q = parse4(periodQuery.extend({

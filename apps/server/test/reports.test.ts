@@ -194,3 +194,31 @@ describe('cenários 11/12/13 — Meta OAuth e Marketing API', () => {
     expect((await acc.client.get('/v1/meta/campaigns?preset=today')).status).toBe(429);
   });
 });
+
+describe('aviso de venda (feed para o som/notificação do painel)', () => {
+  it('só avisa vendas aprovadas depois do cursor, uma vez, e só da própria organização', async () => {
+    const acc = await newAccount(env);
+    const other = await newAccount(env);
+    await newPixel(acc.client);
+    const ck = await newIntegration(acc.client, 'checkout');
+    await checkout(ck.token, { event: 'paid', transaction_id: 'ANTIGA', value: 10 });
+
+    const first = (await acc.client.get('/v1/sales/feed')).data;
+    expect(first.sales).toEqual([]); // ao abrir o painel não toca pelo que já existia
+    await new Promise((r) => setTimeout(r, 20));
+    // a hora de pagamento informada pelo gateway pode ser antiga (webhook atrasado): vale a chegada
+    env.now.value = new Date(Date.now() - 3600_000);
+    await checkout(ck.token, { event: 'pix_generated', transaction_id: 'PEND', value: 30 });
+    await checkout(ck.token, { event: 'paid', transaction_id: 'NOVA', value: '197,00', tracking: { utm_campaign: 'Black' } });
+
+    const floor = `&floor=${encodeURIComponent(first.cursor)}`;
+    const feed = (await acc.client.get(`/v1/sales/feed?after=${encodeURIComponent(first.cursor)}${floor}`)).data;
+    expect(feed.sales.map((s: { transaction_id: string }) => s.transaction_id)).toEqual(['NOVA']);
+    expect(feed.sales[0]).toMatchObject({ amount_minor: '19700', currency: 'BRL', utm_campaign: 'Black' });
+    // a janela de segurança devolve de novo a mesma venda; o painel não toca duas vezes (guarda os ids)
+    const again = (await acc.client.get(`/v1/sales/feed?after=${encodeURIComponent(feed.cursor)}${floor}`)).data;
+    expect(again.sales.every((s: { transaction_id: string }) => s.transaction_id === 'NOVA')).toBe(true);
+    const foreign = (await other.client.get(`/v1/sales/feed?after=${encodeURIComponent(first.cursor)}${floor}`)).data;
+    expect(foreign.sales).toEqual([]); // isolamento entre organizações
+  });
+});

@@ -1,10 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import clsx from 'clsx';
+import { Play, Upload, Volume2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { PageHeader } from '../components/shell';
 import { useToast } from '../components/toast';
 import { Badge, Button, Card, ConfirmButton, Field, Input, Select, Switch, Tabs } from '../components/ui';
 import { del, get, patch, post } from '../lib/api';
 import { dateTime, exponent, minorToNumber } from '../lib/format';
+import { customSound, loadSettings, onSoundChange, playSaleSound, PRESETS, removeCustomSound, saveSettings, setCustomSound, unlockAudio, type SoundPreset, type SoundSettings } from '../lib/sale-sound';
 import { useSession, type Role } from '../lib/session';
 
 const ROLE_LABEL: Record<Role, string> = { owner: 'Proprietário', admin: 'Administrador', analyst: 'Analista', viewer: 'Leitura' };
@@ -186,6 +189,8 @@ function Notifications() {
     } catch (e) { toast.err(e); }
   };
   return (
+    <div className="space-y-6">
+    <SaleSoundCard />
     <Card title="Notificações de venda" description="Receba um aviso no celular ou no computador a cada venda aprovada.">
       {!supported ? <p className="text-sm text-muted">Este navegador não suporta notificações push.</p>
         : !cfg.data?.configured ? <p className="text-sm text-muted">Notificações ainda não configuradas no servidor (VAPID).</p>
@@ -196,6 +201,71 @@ function Notifications() {
             <span className="text-sm text-muted">{cfg.data.subscriptions} dispositivo(s) inscrito(s)</span>
           </div>
         )}
+    </Card>
+    </div>
+  );
+}
+
+function SaleSoundCard() {
+  const toast = useToast();
+  const [settings, setSettings] = useState<SoundSettings>(loadSettings);
+  const [custom, setCustom] = useState(customSound);
+  const [busy, setBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  useEffect(() => onSoundChange(() => { setSettings(loadSettings()); setCustom(customSound()); }), []);
+  const update = (patch: Partial<SoundSettings>) => { const next = { ...settings, ...patch }; setSettings(next); saveSettings(next); };
+  const preview = async (preset: SoundPreset) => {
+    await unlockAudio();
+    if (!(await playSaleSound({ preset, volume: settings.volume, enabled: true }))) toast.err(new Error('O navegador não liberou o áudio. Clique na página e tente de novo.'));
+  };
+  const options: Array<{ value: SoundPreset; label: string; description: string }> = [
+    ...PRESETS,
+    ...(custom.dataUrl ? [{ value: 'proprio' as const, label: 'Seu próprio som', description: custom.name ?? 'arquivo enviado' }] : []),
+  ];
+  return (
+    <Card title="Som de venda aprovada" icon={<Volume2 />}
+      description="Toca no painel a cada venda aprovada (em qualquer página). A preferência vale só para este navegador."
+      actions={<Switch checked={settings.enabled} label="Tocar som a cada venda" onChange={(v) => { update({ enabled: v }); if (v) void unlockAudio(); }} />}>
+      <div className={clsx('space-y-5', !settings.enabled && 'pointer-events-none opacity-50')} aria-disabled={!settings.enabled}>
+        <div role="radiogroup" aria-label="Som" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {options.map((o) => (
+            <div key={o.value} className={clsx('flex items-center gap-3 rounded-2xl border p-3.5 transition',
+              settings.preset === o.value ? 'border-primary bg-primary/[0.07] ring-2 ring-primary/20' : 'border-border hover:border-border-strong')}>
+              <button type="button" role="radio" aria-checked={settings.preset === o.value} onClick={() => { update({ preset: o.value }); void preview(o.value); }}
+                className="min-w-0 flex-1 text-left">
+                <span className="block text-sm font-semibold">{o.label}</span>
+                <span className="block truncate text-xs text-muted">{o.description}</span>
+              </button>
+              <Button size="sm" variant="ghost" icon={<Play className="h-3.5 w-3.5" />} aria-label={`Ouvir ${o.label}`} onClick={() => void preview(o.value)}>Ouvir</Button>
+            </div>
+          ))}
+        </div>
+
+        <div className="grid gap-5 lg:grid-cols-2">
+          <div>
+            <label htmlFor="vol" className="label">Volume <span className="num font-normal text-muted">{Math.round(settings.volume * 100)}%</span></label>
+            <input id="vol" type="range" min={0} max={1} step={0.05} value={settings.volume}
+              onChange={(e) => update({ volume: Number(e.target.value) })} onMouseUp={() => void preview(settings.preset)} onKeyUp={(e) => e.key.startsWith('Arrow') && void preview(settings.preset)}
+              className="w-full accent-[rgb(var(--primary))]" />
+          </div>
+          <div>
+            <p className="label">Seu próprio som</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <input ref={fileRef} type="file" accept="audio/*" className="sr-only" id="custom-sound" onChange={async (e) => {
+                const f = e.target.files?.[0];
+                e.target.value = '';
+                if (!f) return;
+                setBusy(true);
+                try { await setCustomSound(f); toast.ok('Som salvo neste navegador', f.name); await preview('proprio'); } catch (err) { toast.err(err); } finally { setBusy(false); }
+              }} />
+              <Button icon={<Upload className="h-4 w-4" />} loading={busy} onClick={() => fileRef.current?.click()}>{custom.dataUrl ? 'Trocar arquivo' : 'Enviar arquivo'}</Button>
+              {custom.dataUrl && <Button variant="ghost" onClick={() => { removeCustomSound(); toast.info('Som próprio removido'); }}>Remover</Button>}
+            </div>
+            <p className="hint">mp3, wav ou ogg de até 1 MB. Fica salvo só neste navegador, não vai para o servidor. Use um som que você tenha o direito de usar.</p>
+          </div>
+        </div>
+        <p className="text-xs text-muted">Os navegadores só tocam sons depois de um clique na página. Se o painel ficou aberto sem uso, clique em qualquer lugar (ou em “Ativar som de vendas” no topo) para liberar.</p>
+      </div>
     </Card>
   );
 }

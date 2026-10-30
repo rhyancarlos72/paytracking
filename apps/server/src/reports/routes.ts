@@ -20,6 +20,38 @@ export function reportRoutes(app: FastifyInstance, ctx: Ctx) {
   });
 
   // ------------------------------------------------------------------ vendas / pagamentos
+  /**
+   * Vendas aprovadas recebidas depois de um cursor — alimenta o aviso/som de venda no painel.
+   * Usa a hora em que o WEBHOOK CHEGOU (relógio do banco), não a hora de pagamento informada
+   * pelo gateway: um webhook atrasado ainda toca. Devolve 15 s de sobreposição (transação que
+   * estava confirmando quando o cursor foi lido); o painel guarda os ids já avisados.
+   * Sem `after`, só devolve o cursor: ao abrir o painel não toca pelo que já existia.
+   */
+  app.get('/v1/sales/feed', async (req) => {
+    const a = requireRole(req, 'viewer');
+    const q = parse(z.object({
+      after: z.string().datetime({ offset: true }).optional(),
+      /** piso fixo: cursor de quando o painel abriu — a janela de segurança nunca volta antes dele */
+      floor: z.string().datetime({ offset: true }).optional(),
+    }), req.query);
+    const now = (await ctx.db.query<{ now: Date }>('SELECT clock_timestamp() AS now')).rows[0]!.now;
+    if (!q.after) return { cursor: now.toISOString(), sales: [] };
+    const r = await ctx.db.query(
+      `SELECT p.id, p.provider, p.transaction_id, p.amount_minor, p.currency, p.utm_campaign, p.approved_at, px.name AS pixel_name,
+              r.received_at
+         FROM payment_transitions t
+         JOIN payments p ON p.id = t.payment_id
+         JOIN webhook_receipts r ON r.id = t.receipt_id
+         LEFT JOIN pixels px ON px.id = p.pixel_id
+        WHERE p.org_id = $1 AND t.to_status = 'approved' AND p.status = 'approved'
+          AND r.received_at > GREATEST($2::timestamptz - interval '15 seconds', COALESCE($4::timestamptz, '-infinity'))
+          AND r.received_at <= $3
+        ORDER BY r.received_at, t.id LIMIT 50`,
+      [a.org.id, q.after, now, q.floor ?? null],
+    );
+    return jsonSafe({ cursor: now.toISOString(), sales: r.rows });
+  });
+
   app.get('/v1/payments', async (req) => {
     const a = requireRole(req, 'viewer');
     const q = parse(periodQuery.extend({

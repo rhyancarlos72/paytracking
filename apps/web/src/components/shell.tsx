@@ -10,6 +10,7 @@ import { get, post } from '../lib/api';
 import { maskEmail } from '../lib/format';
 import { useLogout, useSession } from '../lib/session';
 import { CommandPalette, SHORTCUT, type Command } from './command';
+import { SoundUnlockButton, useSaleNotifier } from './sale-notifier';
 import { Avatar, Button, Callout } from './ui';
 
 interface NavItem { to: string; label: string; icon: ReactNode; admin?: boolean; keywords?: string }
@@ -176,6 +177,7 @@ export function AppShell() {
   const loc = useLocation();
   const nav = useNavigate();
   const logout = useLogout();
+  useSaleNotifier();
   useEffect(() => setOpen(false), [loc.pathname]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -220,6 +222,7 @@ export function AppShell() {
           </button>
         </div>
         <div className="flex items-center gap-2">
+          <SoundUnlockButton />
           <StatusPill />
           <button onClick={() => setPalette(true)} className="rounded-lg p-2 text-muted hover:bg-surface-2 hover:text-fg lg:hidden" aria-label="Buscar"><Search className="h-[18px] w-[18px]" /></button>
           <button onClick={toggle} className="rounded-lg p-2 text-muted transition hover:bg-surface-2 hover:text-fg" aria-label={dark ? 'Usar tema claro' : 'Usar tema escuro'}>
