@@ -9,6 +9,7 @@ import { Badge, Button, Card, CodeBlock, ConfirmButton, EmptyState, ErrorState, 
 import { get, post, qs } from '../lib/api';
 import { dateTime, int, STATUS_LABEL } from '../lib/format';
 import { useSession } from '../lib/session';
+import { Name } from '../lib/privacy';
 
 export default function EventsPage() {
   const s = useSession();
@@ -72,7 +73,7 @@ export default function EventsPage() {
                           <td><button aria-expanded={open === e.id} aria-label="Ver detalhes" onClick={() => setOpen(open === e.id ? null : e.id)} className="rounded p-1 text-muted hover:bg-surface-2">{open === e.id ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}</button></td>
                           <td className="font-medium">{e.event_name}</td>
                           <td className="max-w-[220px] truncate font-mono text-xs text-muted" title={e.event_id}>{e.event_id}</td>
-                          <td className="max-w-[160px] truncate">{e.pixel_name}</td>
+                          <td className="max-w-[160px] truncate"><Name kind="pixel" value={e.pixel_name} /></td>
                           <td><Badge tone={STATUS_TONE[e.status]} dot>{STATUS_LABEL[e.status]}</Badge></td>
                           <td className="num text-right">{int(e.attempts)}</td>
                           <td className="max-w-[280px] truncate text-xs text-muted" title={e.last_error ?? ''}>{e.status === 'sent' ? `events_received ${e.events_received}` : e.last_error ?? (e.status === 'pending' ? `próxima tentativa ${dateTime(e.next_attempt_at, s.org.timezone)}` : '—')}</td>

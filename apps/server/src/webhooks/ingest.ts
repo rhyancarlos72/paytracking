@@ -192,13 +192,11 @@ export async function ingestWebhook(ctx: Ctx, input: IngestInput): Promise<Inges
     if (out.purchase) {
       const p = out.purchase;
       const paymentId = (out.response as { paymentId?: string }).paymentId;
-      sendPushToOrg(ctx, integration.org_id, {
-        kind: 'sale',
-        title: 'Venda aprovada! 🔥',
-        body: `${p.amount} • ${p.pixelName ?? ADAPTERS[input.provider].label}`,
-        url: paymentId ? `/vendas/${paymentId}` : '/vendas',
-        tag: `sale-${normalized.transactionId}`,
-      }).catch((e) => ctx.log.warn({ err: String(e) }, 'push falhou'));
+      const sale = { kind: 'sale' as const, title: 'Venda aprovada! 🔥', url: paymentId ? `/vendas/${paymentId}` : '/vendas', tag: `sale-${normalized.transactionId}` };
+      sendPushToOrg(ctx, integration.org_id,
+        { ...sale, body: `${p.amount} • ${p.pixelName ?? ADAPTERS[input.provider].label}` },
+        { ...sale, body: `${p.amount} • ${ADAPTERS[input.provider].label}` }, // modo privado: sem o nome do pixel
+      ).catch((e) => ctx.log.warn({ err: String(e) }, 'push falhou'));
     }
     return { httpStatus: 200, body: { success: true, correlationId, ...out.response } };
   } catch (e) {

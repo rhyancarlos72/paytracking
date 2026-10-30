@@ -6,12 +6,14 @@ import { Badge, Card, CodeBlock, ErrorState, Skeleton, STATUS_TONE } from '../co
 import { get } from '../lib/api';
 import { dateTime, money, PROVIDER_LABEL, STATUS_LABEL } from '../lib/format';
 import { useSession } from '../lib/session';
+import { alias, Name, useNamesHidden } from '../lib/privacy';
 
 export default function SaleDetailPage() {
   const { id } = useParams();
   const s = useSession();
   const q = useQuery({ queryKey: ['payment', id], queryFn: () => get(`/v1/payments/${id}`) });
   const tz = s.org.timezone;
+  const hideNames = useNamesHidden();
   return (
     <>
       <Link to="/vendas" className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted hover:text-fg"><ArrowLeft className="h-4 w-4" />Vendas</Link>
@@ -19,7 +21,7 @@ export default function SaleDetailPage() {
         const p = q.data.payment;
         return (
           <>
-            <PageHeader title={`Transação ${p.transaction_id}`} description={`${PROVIDER_LABEL[p.provider] ?? p.provider} · pixel ${p.pixel_name ?? 'não associado'}`}
+            <PageHeader title={`Transação ${p.transaction_id}`} description={`${PROVIDER_LABEL[p.provider] ?? p.provider} · ${p.pixel_name ? (hideNames ? alias('pixel', p.pixel_name) : `pixel ${p.pixel_name}`) : 'pixel não associado'}`}
               actions={<Badge tone={STATUS_TONE[p.status]} dot>{STATUS_LABEL[p.status]}</Badge>} />
             <div className="grid gap-6 lg:grid-cols-3">
               <Card title="Pagamento" className="lg:col-span-1">
@@ -30,9 +32,9 @@ export default function SaleDetailPage() {
                     ['Pendente desde', dateTime(p.pending_at, tz)],
                     ['Aprovado em', dateTime(p.approved_at, tz)],
                     ['Revertido em', dateTime(p.reversed_at, tz)],
-                    ['utm_source', p.utm_source ?? '—'], ['utm_campaign', p.utm_campaign ?? '—'], ['utm_content', p.utm_content ?? '—'],
+                    ['utm_source', p.utm_source ?? '—'], ['utm_campaign', <Name kind="campanha" value={p.utm_campaign} />], ['utm_content', <Name kind="anuncio" value={p.utm_content} />],
                     ['event_id do Purchase', p.purchase_event_id ?? '—'],
-                  ].map(([k, v]) => <div key={k} className="flex justify-between gap-4"><dt className="text-muted">{k}</dt><dd className="num truncate text-right font-medium">{v}</dd></div>)}
+                  ].map(([k, v]) => <div key={String(k)} className="flex justify-between gap-4"><dt className="text-muted">{k}</dt><dd className="num truncate text-right font-medium">{v}</dd></div>)}
                 </dl>
               </Card>
               <Card title="Linha do tempo" description="Transições de status e webhooks recebidos" className="lg:col-span-2">

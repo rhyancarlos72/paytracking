@@ -20,7 +20,7 @@ export interface OrgSummary {
 
 export interface AuthContext {
   sessionId: string;
-  user: { id: string; email: string; name: string | null; isPlatformAdmin: boolean; emailVerified: boolean; hideEmail: boolean; twoFactorEnabled: boolean };
+  user: { id: string; email: string; name: string | null; isPlatformAdmin: boolean; emailVerified: boolean; hideEmail: boolean; hideNames: boolean; twoFactorEnabled: boolean };
   org: OrgSummary;
   role: Role;
 }
@@ -127,7 +127,7 @@ export async function resolveSession(ctx: Ctx, token: string): Promise<AuthConte
   const id = sha256Hex(token);
   const r = await ctx.db.query(
     `SELECT s.id AS session_id, s.active_org_id, s.expires_at, s.last_seen_at,
-            u.id AS user_id, u.email, u.name, u.is_platform_admin, u.email_verified_at, u.hide_email, u.totp_enabled_at
+            u.id AS user_id, u.email, u.name, u.is_platform_admin, u.email_verified_at, u.hide_email, u.hide_names, u.totp_enabled_at
        FROM sessions s JOIN users u ON u.id = s.user_id
       WHERE s.id = $1 AND s.revoked_at IS NULL AND s.expires_at > now()`,
     [id],
@@ -154,7 +154,7 @@ export async function resolveSession(ctx: Ctx, token: string): Promise<AuthConte
     sessionId: s.session_id,
     user: {
       id: s.user_id, email: s.email, name: s.name, isPlatformAdmin: s.is_platform_admin,
-      emailVerified: !!s.email_verified_at, hideEmail: s.hide_email, twoFactorEnabled: !!s.totp_enabled_at,
+      emailVerified: !!s.email_verified_at, hideEmail: s.hide_email, hideNames: s.hide_names, twoFactorEnabled: !!s.totp_enabled_at,
     },
     role: org.role,
     org: {

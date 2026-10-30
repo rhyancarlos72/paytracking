@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { AlertTriangle, ArrowDownRight, ArrowRight, ArrowUpRight, BarChart3, CheckCircle2, Clock3, Info, Radio, Target, TrendingUp, Zap } from 'lucide-react';
+import { AlertTriangle, ArrowDownRight, ArrowRight, ArrowUpRight, BarChart3, CheckCircle2, Clock3, Info, Megaphone, Radio, Target, TrendingUp, Trophy, Zap } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { RevenueChart, Sparkline } from '../components/charts';
@@ -10,6 +10,7 @@ import { Avatar, Badge, Button, Callout, Card, ErrorState, ProgressRing, Select,
 import { get, qs } from '../lib/api';
 import { delta, int, minorToNumber, money, pct, PROVIDER_LABEL, ratio, relative, STATUS_LABEL } from '../lib/format';
 import { useSession } from '../lib/session';
+import { mask, Name, useNamesHidden } from '../lib/privacy';
 
 interface Kpis {
   sales: number; revenueMinor: string; refunds: { count: number; amountMinor: string };
@@ -54,14 +55,23 @@ function Help({ text }: { text: string }) {
   return <span title={text} className="cursor-help text-subtle transition hover:text-muted"><Info className="h-3.5 w-3.5" aria-label={text} /></span>;
 }
 
-function Kpi({ label, value, help, deltaEl, sub, trend, icon }: { label: string; value: ReactNode; help?: string; deltaEl?: ReactNode; sub?: ReactNode; trend?: number[]; icon: ReactNode }) {
+const KPI_TONE = {
+  ok: { tile: 'bg-ok/10 text-ok ring-ok/20', line: 'from-ok/70' },
+  warn: { tile: 'bg-warn/10 text-warn ring-warn/20', line: 'from-warn/70' },
+  info: { tile: 'bg-info/10 text-info ring-info/20', line: 'from-info/70' },
+  err: { tile: 'bg-err/10 text-err ring-err/20', line: 'from-err/70' },
+};
+
+function Kpi({ label, value, help, deltaEl, sub, trend, icon, tone = 'info' }: { label: string; value: ReactNode; help?: string; deltaEl?: ReactNode; sub?: ReactNode; trend?: number[]; icon: ReactNode; tone?: keyof typeof KPI_TONE }) {
+  const t = KPI_TONE[tone];
   return (
-    <div className="card card-interactive overflow-hidden p-5">
+    <div className="card card-interactive relative overflow-hidden p-5">
+      <span className={clsx('absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r to-transparent', t.line)} aria-hidden />
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 text-[13px] font-medium text-muted">{label}{help && <Help text={help} />}</div>
-        <span className="icon-tile h-8 w-8 [&>svg]:h-4 [&>svg]:w-4" aria-hidden>{icon}</span>
+        <span className={clsx('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset [&>svg]:h-[18px] [&>svg]:w-[18px]', t.tile)} aria-hidden>{icon}</span>
       </div>
-      <div className="num mt-3 text-[26px] font-semibold leading-none tracking-tight">{value}</div>
+      <div className="num mt-3 font-display text-[28px] font-bold leading-none tracking-tight">{value}</div>
       <div className="mt-2.5 flex min-h-[22px] flex-wrap items-center gap-x-2 gap-y-1">{deltaEl}{sub && <span className="text-xs text-muted">{sub}</span>}</div>
       {trend && trend.length > 1 && <Sparkline values={trend} height={36} className="-mx-5 -mb-5 mt-3 w-[calc(100%+2.5rem)]" />}
     </div>
@@ -69,6 +79,7 @@ function Kpi({ label, value, help, deltaEl, sub, trend, icon }: { label: string;
 }
 
 export default function DashboardPage() {
+  useNamesHidden(); // redesenha os nomes ao ligar/desligar o olho
   const s = useSession();
   const period = usePeriod('today');
   const filters = new URLSearchParams(location.search);
@@ -95,7 +106,7 @@ export default function DashboardPage() {
           </Select>
           <Select aria-label="Pixel" value={pixelId} onChange={(e) => period.set({ pixel: e.target.value })} className="w-[180px]">
             <option value="">Todos os pixels</option>
-            {(pixels.data?.pixels ?? []).map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            {(pixels.data?.pixels ?? []).map((p: any) => <option key={p.id} value={p.id}>{mask('pixel', p.name)}</option>)}
           </Select>
         </>} />
 
@@ -128,7 +139,7 @@ export default function DashboardPage() {
                     <p id="rev-title" className="flex items-center gap-1.5 text-sm font-medium text-muted">
                       Receita confirmada <Help text="Soma das vendas aprovadas no período (status atual = aprovado), convertida pela cotação do dia da aprovação." />
                     </p>
-                    <p className="mt-2 text-[40px] font-semibold leading-none tracking-tight sm:text-[52px]">
+                    <p className="mt-2 font-display text-[40px] font-extrabold leading-none tracking-[-0.03em] sm:text-[54px]">
                       <AnimatedMoney minor={c.revenueMinor} currency={cur} className="text-gradient" />
                     </p>
                     <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted">
@@ -155,17 +166,22 @@ export default function DashboardPage() {
 
             {/* Indicadores */}
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <Kpi label="Vendas confirmadas" value={int(c.sales)} icon={<TrendingUp />} help="Pagamentos aprovados pelo gateway. PIX/boleto gerado não conta."
+              <Kpi label="Vendas confirmadas" tone="ok" value={int(c.sales)} icon={<TrendingUp />} help="Pagamentos aprovados pelo gateway. PIX/boleto gerado não conta."
                 deltaEl={<Delta cur={c.sales} prev={p.sales} />} trend={salesTrend} />
-              <Kpi label="Pagamentos pendentes" value={int(c.pending.count)} icon={<Clock3 />} help="Criados no período e ainda aguardando pagamento."
+              <Kpi label="Pagamentos pendentes" tone="warn" value={int(c.pending.count)} icon={<Clock3 />} help="Criados no período e ainda aguardando pagamento."
                 sub={c.pending.amountMinor && c.pending.currency ? money(c.pending.amountMinor, c.pending.currency) : undefined} />
-              <Kpi label="Taxa de aprovação" value={pct(c.approvalRate)} icon={<CheckCircle2 />} help="Aprovados (incluindo depois reembolsados) ÷ pagamentos criados no período."
+              <Kpi label="Taxa de aprovação" tone="info" value={pct(c.approvalRate)} icon={<CheckCircle2 />} help="Aprovados (incluindo depois reembolsados) ÷ pagamentos criados no período."
                 sub={`${int(c.paymentsCreated)} criados`} />
-              <Kpi label="Reembolsos e chargebacks" value={int(c.refunds.count)} icon={<ArrowDownRight />} help="Revertidos no período; já abatidos da receita."
+              <Kpi label="Reembolsos e chargebacks" tone="err" value={int(c.refunds.count)} icon={<ArrowDownRight />} help="Revertidos no período; já abatidos da receita."
                 sub={money(c.refunds.amountMinor, cur)} trend={revTrend.length > 1 ? c.series.map((x) => minorToNumber(x.refundsMinor, cur)) : undefined} />
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-2 2xl:grid-cols-3">
+            <div className="grid gap-6 lg:grid-cols-[1.25fr_1fr]">
+              <TopCampaigns query={period.query} currency={cur} />
+              <RecentSales />
+            </div>
+
+            <div className="grid gap-6 lg:grid-cols-2">
               <Card title="Metas de faturamento" description="Hoje e mês corrente, independentemente do filtro" icon={<Target />}>
                 <div className="grid grid-cols-2 gap-4">
                   <Goal label="Meta diária" goal={d.goals.daily.goalMinor} achieved={d.goals.daily.achievedMinor} currency={cur} />
@@ -175,7 +191,6 @@ export default function DashboardPage() {
               <Card title="Funil de conversão" description="Cliques e visualizações vêm da Meta; PageView e InitiateCheckout, do pixel" icon={<Zap />}>
                 <Funnel f={c.funnel} />
               </Card>
-              <RecentSales className="lg:col-span-2 2xl:col-span-1" />
             </div>
 
             <DeliveryCard d={d} c={c} cur={cur} metaOn={metaOn} />
@@ -303,7 +318,7 @@ function RecentSales({ className }: { className?: string }) {
                 <Link to={`/vendas/${p.id}`} className="flex items-center gap-3 px-5 py-3 transition hover:bg-surface-2/60">
                   <Avatar name={PROVIDER_LABEL[p.provider] ?? p.provider} className="rounded-xl" />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{p.utm_campaign ?? PROVIDER_LABEL[p.provider] ?? p.provider}</p>
+                    <p className="truncate text-sm font-medium"><Name kind="campanha" value={p.utm_campaign} fallback={PROVIDER_LABEL[p.provider] ?? p.provider} /></p>
                     <p className="truncate text-xs text-muted">{PROVIDER_LABEL[p.provider] ?? p.provider} · {relative(p.approved_at ?? p.created_at)}</p>
                   </div>
                   <div className="text-right">
@@ -314,6 +329,65 @@ function RecentSales({ className }: { className?: string }) {
               </li>
             ))}
           </ul>
+        )}
+    </Card>
+  );
+}
+
+interface AttrRow { source: string; key: string; pageViews: number; initiateCheckouts: number; sales: number; revenueMinor: string }
+
+/** Ranking das campanhas (utm_campaign) por receita confirmada no período. */
+function TopCampaigns({ query, currency }: { query: Record<string, string | undefined>; currency: string }) {
+  useNamesHidden();
+  const q = useQuery<{ rows: AttrRow[] }>({
+    queryKey: ['top-campaigns', query],
+    queryFn: ({ signal }) => get(`/v1/reports/attribution${qs({ ...query, dimension: 'utm_campaign' })}`, signal),
+    refetchInterval: 60_000,
+  });
+  const byKey = new Map<string, { key: string; sales: number; revenue: number; pageViews: number }>();
+  for (const r of q.data?.rows ?? []) {
+    if (r.key === '—') continue;
+    const x = byKey.get(r.key) ?? { key: r.key, sales: 0, revenue: 0, pageViews: 0 };
+    x.sales += r.sales; x.revenue += Number(r.revenueMinor); x.pageViews += r.pageViews;
+    byKey.set(r.key, x);
+  }
+  const list = [...byKey.values()].filter((x) => x.sales > 0).sort((a, b) => b.revenue - a.revenue || b.sales - a.sales);
+  const top = list.slice(0, 5);
+  const totalRev = list.reduce((t, x) => t + x.revenue, 0);
+  const max = Math.max(1, ...top.map((x) => x.revenue));
+  const medal = ['bg-gradient-to-br from-amber-300 to-amber-500 text-amber-950', 'bg-gradient-to-br from-slate-200 to-slate-400 text-slate-800', 'bg-gradient-to-br from-orange-300 to-orange-500 text-orange-950'];
+  return (
+    <Card title="Campanhas que mais venderam" description="Receita confirmada por utm_campaign no período" icon={<Trophy />}
+      actions={<Link to="/campanhas" className="text-xs font-semibold text-primary hover:underline">Campanhas →</Link>}>
+      {!q.data ? <div className="space-y-4">{Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-10" />)}</div>
+        : top.length === 0 ? (
+          <div className="flex flex-col items-center py-8 text-center">
+            <span className="icon-tile h-11 w-11 [&>svg]:h-5 [&>svg]:w-5" aria-hidden><Megaphone /></span>
+            <p className="mt-3 text-sm font-semibold">Nenhuma venda com campanha no período</p>
+            <p className="mt-1 max-w-sm text-xs text-muted">Use <code className="font-mono">utm_campaign={'{{campaign.name}}'}</code> nos links dos anúncios para ver o ranking aqui.</p>
+          </div>
+        ) : (
+          <ol className="space-y-4">
+            {top.map((x, i) => (
+              <li key={x.key} className="flex items-center gap-3">
+                <span className={clsx('flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold', medal[i] ?? 'bg-surface-3 text-muted')}>{i + 1}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <p className="min-w-0 truncate text-sm font-semibold"><Name kind="campanha" value={x.key} /></p>
+                    <p className="num shrink-0 text-sm font-bold">{money(String(x.revenue), currency)}</p>
+                  </div>
+                  <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-surface-3">
+                    <div className="h-full rounded-full bg-gradient-to-r from-[#8b70ff] to-[#c084fc] transition-[width] duration-700" style={{ width: `${Math.max(3, (x.revenue / max) * 100)}%` }} />
+                  </div>
+                  <p className="mt-1 flex justify-between text-[11px] text-muted">
+                    <span>{int(x.sales)} venda{x.sales === 1 ? '' : 's'}{x.pageViews > 0 && <> · conversão {pct(x.sales / x.pageViews)}</>}</span>
+                    <span className="num">{pct(totalRev > 0 ? x.revenue / totalRev : 0)} da receita</span>
+                  </p>
+                </div>
+              </li>
+            ))}
+            {list.length > top.length && <li className="text-xs text-muted">+{list.length - top.length} outra(s) campanha(s) com vendas</li>}
+          </ol>
         )}
     </Card>
   );

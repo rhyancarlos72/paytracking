@@ -10,6 +10,7 @@ import { del, get, patch, post } from '../lib/api';
 import { buildPaytrackingPhp, checkoutEndpoint, downloadText } from '../lib/dispatch-php';
 import { int, relative } from '../lib/format';
 import { useSession } from '../lib/session';
+import { mask, Name, useNamesHidden } from '../lib/privacy';
 
 interface Integration {
   id: string; provider: string; providerLabel: string; authMethod: string; requiresSecret: boolean; configurableAmountUnit: boolean;
@@ -48,6 +49,7 @@ function ProviderMark({ provider, className }: { provider: string; className?: s
 }
 
 export default function IntegrationsPage() {
+  useNamesHidden(); // redesenha ao ligar/desligar o olho (selects e títulos)
   const s = useSession();
   const qc = useQueryClient();
   const toast = useToast();
@@ -109,7 +111,7 @@ export default function IntegrationsPage() {
                   <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-[13px]">
                     <dt className="text-muted">Token</dt><dd className="font-mono">{i.tokenHint}</dd>
                     <dt className="text-muted">Segredo</dt><dd>{i.secretConfigured ? <span className="inline-flex items-center gap-1 text-ok"><ShieldCheck className="h-3.5 w-3.5" aria-hidden />configurado</span> : i.requiresSecret ? <span className="text-err">obrigatório</span> : 'opcional'}</dd>
-                    <dt className="text-muted">Pixel padrão</dt><dd className="truncate">{pixelName(i.defaultPixelId) ?? 'por produto'}</dd>
+                    <dt className="text-muted">Pixel padrão</dt><dd className="truncate"><Name kind="pixel" value={pixelName(i.defaultPixelId)} fallback="por produto" /></dd>
                     {i.configurableAmountUnit && <><dt className="text-muted">Unidade do valor</dt><dd>{i.amountUnit === 'minor' ? 'centavos' : 'reais'}</dd></>}
                   </dl>
                   <div className={clsx('mt-4 flex items-center justify-between gap-3 rounded-xl border px-3.5 py-3', i.sendToMeta ? 'border-border bg-surface-2/40' : 'border-info/30 bg-info/[0.06]')}>
@@ -132,7 +134,7 @@ export default function IntegrationsPage() {
                       <Button size="sm" icon={<KeyRound className="h-4 w-4" />} onClick={() => setSecretFor(i)}>{i.secretConfigured ? 'Trocar segredo' : 'Definir segredo'}</Button>
                       <Select aria-label="Pixel padrão" className="h-8 w-[180px] rounded-lg text-base sm:text-[13px]" value={i.defaultPixelId ?? ''} onChange={(e) => update.mutate({ id: i.id, body: { defaultPixelId: e.target.value || null } })}>
                         <option value="">Pixel: por produto</option>
-                        {(pixels.data?.pixels ?? []).map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                        {(pixels.data?.pixels ?? []).map((p: any) => <option key={p.id} value={p.id}>{mask('pixel', p.name)}</option>)}
                       </Select>
                       {i.configurableAmountUnit && (
                         <Select aria-label="Unidade do valor" className="h-8 w-[150px] rounded-lg text-base sm:text-[13px]" value={i.amountUnit} onChange={(e) => update.mutate({ id: i.id, body: { amountUnit: e.target.value } })}>
@@ -307,7 +309,7 @@ function CreateModal({ initial, pixels, onClose, onCreated }: { initial: string;
           <Field label="Pixel padrão" htmlFor="px" hint="Usado quando o produto da venda não estiver em nenhum pixel.">
             <Select id="px" value={pixel} onChange={(e) => setPixel(e.target.value)}>
               <option value="">Somente por produto</option>
-              {pixels.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              {pixels.map((p) => <option key={p.id} value={p.id}>{mask('pixel', p.name)}</option>)}
             </Select>
           </Field>
           {meta?.configurableAmountUnit && (

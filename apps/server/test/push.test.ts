@@ -69,6 +69,27 @@ describe('Web Push (notificações no celular)', () => {
     expect(msg.body.replace(/\s/g, ' ')).toContain('R$ 197,00');
   });
 
+  it('modo privado ("olho"): o push da venda não mostra o nome do pixel', async () => {
+    const acc = await newAccount(env);
+    const px = await newPixel(acc.client, { name: 'Pixel Segredo Lançamento' });
+    const dev = fakeDevice('iphone');
+    await acc.client.post('/v1/push/subscriptions', dev.sub);
+    const ck = await newIntegration(acc.client, 'checkout', { defaultPixelId: px.id });
+    pushService();
+    const sell = async (id: string) => {
+      captured.length = 0;
+      await env.app.inject({ method: 'POST', url: '/v1/webhooks/checkout', payload: JSON.stringify({ event: 'paid', transaction_id: id, value: '97,00' }), headers: { 'content-type': 'application/json', authorization: `Bearer ${ck.token}` } });
+      await waitFor(() => captured.length > 0);
+      return dev.decrypt(captured.find((c) => c.url === dev.sub.endpoint)!.body);
+    };
+    expect((await sell('PRIV-1')).body).toContain('Pixel Segredo Lançamento');
+    expect((await acc.client.patch('/v1/auth/preferences', { hideNames: true })).status).toBe(200);
+    expect((await acc.client.get('/v1/auth/me')).data.user.hideNames).toBe(true);
+    const hidden = await sell('PRIV-2');
+    expect(hidden.body).not.toContain('Pixel Segredo');
+    expect(hidden.body.replace(/\s/g, ' ')).toContain('R$ 97,00');
+  });
+
   it('inscrição expirada (410) é removida', async () => {
     const acc = await newAccount(env);
     const dev = fakeDevice('velho');

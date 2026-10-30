@@ -164,10 +164,10 @@ export function authRoutes(app: FastifyInstance, ctx: Ctx) {
 
   app.patch('/v1/auth/preferences', async (req) => {
     const a = auth(req);
-    const body = parse(z.object({ hideEmail: z.boolean().optional(), name: z.string().trim().max(120).optional() }), req.body);
+    const body = parse(z.object({ hideEmail: z.boolean().optional(), hideNames: z.boolean().optional(), name: z.string().trim().max(120).optional() }), req.body);
     await ctx.db.query(
-      'UPDATE users SET hide_email = COALESCE($2, hide_email), name = COALESCE($3, name), updated_at = now() WHERE id = $1',
-      [a.user.id, body.hideEmail ?? null, body.name ?? null],
+      'UPDATE users SET hide_email = COALESCE($2, hide_email), name = COALESCE($3, name), hide_names = COALESCE($4, hide_names), updated_at = now() WHERE id = $1',
+      [a.user.id, body.hideEmail ?? null, body.name ?? null, body.hideNames ?? null],
     );
     return { ok: true };
   });

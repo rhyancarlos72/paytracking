@@ -47,9 +47,18 @@ async function deliver(ctx: Ctx, subs: Array<{ id: string; endpoint: string; p25
 }
 
 /** Venda aprovada: todos os dispositivos inscritos da organização. */
-export async function sendPushToOrg(ctx: Ctx, orgId: string, payload: PushPayload): Promise<PushResult> {
-  const subs = await ctx.db.query('SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE org_id = $1', [orgId]);
-  return deliver(ctx, subs.rows, payload);
+/**
+ * Envia para todos os aparelhos da organização. Quem ativou o modo privado ("olho") recebe a versão
+ * sem nomes de campanha/pixel (privatePayload), já que a notificação aparece na tela bloqueada.
+ */
+export async function sendPushToOrg(ctx: Ctx, orgId: string, payload: PushPayload, privatePayload?: PushPayload): Promise<PushResult> {
+  const subs = await ctx.db.query<{ id: string; endpoint: string; p256dh: string; auth: string; hide_names: boolean }>(
+    `SELECT ps.id, ps.endpoint, ps.p256dh, ps.auth, COALESCE(u.hide_names, false) AS hide_names
+       FROM push_subscriptions ps LEFT JOIN users u ON u.id = ps.user_id WHERE ps.org_id = $1`, [orgId]);
+  if (!privatePayload) return deliver(ctx, subs.rows, payload);
+  const [open, hidden] = [subs.rows.filter((s) => !s.hide_names), subs.rows.filter((s) => s.hide_names)];
+  const [a, b] = await Promise.all([deliver(ctx, open, payload), deliver(ctx, hidden, privatePayload)]);
+  return { sent: a.sent + b.sent, removed: a.removed + b.removed, failed: a.failed + b.failed, configured: a.configured && b.configured };
 }
 
 /** Teste: só os dispositivos de quem pediu (não incomoda o resto da equipe). */

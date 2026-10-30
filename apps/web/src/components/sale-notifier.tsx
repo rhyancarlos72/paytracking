@@ -6,6 +6,7 @@ import { money, PROVIDER_LABEL } from '../lib/format';
 import { armAutoUnlock, audioUnlocked, loadSettings, onSoundChange, playSaleSound, syncAccountSound, unlockAudio } from '../lib/sale-sound';
 import { useSession } from '../lib/session';
 import { useToast } from './toast';
+import { mask } from '../lib/privacy';
 
 interface FeedSale { id: string; provider: string; transaction_id: string; amount_minor: string | null; currency: string | null; utm_campaign: string | null; pixel_name: string | null }
 
@@ -57,7 +58,7 @@ export function useSaleNotifier() {
       if (document.visibilityState === 'visible') void playSaleSound();
       for (const x of mine.slice(0, 3)) {
         const value = x.amount_minor && x.currency ? money(x.amount_minor, x.currency) : 'valor não informado';
-        toastRef.current.ok(`Venda aprovada! ${value}`, [x.utm_campaign, PROVIDER_LABEL[x.provider] ?? x.provider, x.pixel_name].filter(Boolean).join(' · '));
+        toastRef.current.ok(`Venda aprovada! ${value}`, [mask('campanha', x.utm_campaign), PROVIDER_LABEL[x.provider] ?? x.provider, mask('pixel', x.pixel_name)].filter(Boolean).join(' · '));
       }
       if (mine.length > 3) toastRef.current.ok(`+${mine.length - 3} venda(s) aprovada(s)`);
       // título da aba pisca a venda por alguns segundos

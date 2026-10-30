@@ -8,8 +8,10 @@ import { Badge, Card, EmptyState, ErrorState, Input, Pager, Select, Skeleton, ST
 import { get, qs } from '../lib/api';
 import { dateTime, money, PROVIDER_LABEL, STATUS_LABEL } from '../lib/format';
 import { useSession } from '../lib/session';
+import { mask, Name, useNamesHidden } from '../lib/privacy';
 
 export default function SalesPage() {
+  useNamesHidden(); // redesenha ao ligar/desligar o olho (selects e títulos)
   const s = useSession();
   const period = usePeriod('last_7d');
   const [sp] = useSearchParams();
@@ -55,8 +57,8 @@ export default function SalesPage() {
                         <td><Badge tone={STATUS_TONE[p.status]} dot>{STATUS_LABEL[p.status] ?? p.status}</Badge></td>
                         <td className="num text-right">{p.amount_minor !== null && p.currency ? money(p.amount_minor, p.currency.trim()) : '—'}</td>
                         <td>{PROVIDER_LABEL[p.provider] ?? p.provider}</td>
-                        <td className="max-w-[160px] truncate text-muted">{p.pixel_name ?? '—'}</td>
-                        <td className="max-w-[200px] truncate text-muted" title={p.utm_campaign ?? ''}>{p.utm_campaign ?? '—'}</td>
+                        <td className="max-w-[160px] truncate text-muted"><Name kind="pixel" value={p.pixel_name} /></td>
+                        <td className="max-w-[200px] truncate text-muted" title={mask('campanha', p.utm_campaign) ?? ''}><Name kind="campanha" value={p.utm_campaign} /></td>
                         <td>{p.purchase_capi_status ? <Badge tone={STATUS_TONE[p.purchase_capi_status]}>{STATUS_LABEL[p.purchase_capi_status]}</Badge> : <span className="text-muted">—</span>}</td>
                         <td className="whitespace-nowrap text-muted">{dateTime(p.created_at, s.org.timezone)}</td>
                       </tr>

@@ -92036,7 +92036,7 @@ async function resolveSession(ctx, token) {
   const id = sha256Hex(token);
   const r = await ctx.db.query(
     `SELECT s.id AS session_id, s.active_org_id, s.expires_at, s.last_seen_at,
-            u.id AS user_id, u.email, u.name, u.is_platform_admin, u.email_verified_at, u.hide_email, u.totp_enabled_at
+            u.id AS user_id, u.email, u.name, u.is_platform_admin, u.email_verified_at, u.hide_email, u.hide_names, u.totp_enabled_at
        FROM sessions s JOIN users u ON u.id = s.user_id
       WHERE s.id = $1 AND s.revoked_at IS NULL AND s.expires_at > now()`,
     [id]
@@ -92068,6 +92068,7 @@ async function resolveSession(ctx, token) {
       isPlatformAdmin: s.is_platform_admin,
       emailVerified: !!s.email_verified_at,
       hideEmail: s.hide_email,
+      hideNames: s.hide_names,
       twoFactorEnabled: !!s.totp_enabled_at
     },
     role: org.role,
@@ -92229,9 +92230,16 @@ async function deliver(ctx, subs, payload) {
   }));
   return { sent, failed, removed, configured: true };
 }
-async function sendPushToOrg(ctx, orgId, payload) {
-  const subs = await ctx.db.query("SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE org_id = $1", [orgId]);
-  return deliver(ctx, subs.rows, payload);
+async function sendPushToOrg(ctx, orgId, payload, privatePayload) {
+  const subs = await ctx.db.query(
+    `SELECT ps.id, ps.endpoint, ps.p256dh, ps.auth, COALESCE(u.hide_names, false) AS hide_names
+       FROM push_subscriptions ps LEFT JOIN users u ON u.id = ps.user_id WHERE ps.org_id = $1`,
+    [orgId]
+  );
+  if (!privatePayload) return deliver(ctx, subs.rows, payload);
+  const [open2, hidden] = [subs.rows.filter((s) => !s.hide_names), subs.rows.filter((s) => s.hide_names)];
+  const [a, b] = await Promise.all([deliver(ctx, open2, payload), deliver(ctx, hidden, privatePayload)]);
+  return { sent: a.sent + b.sent, removed: a.removed + b.removed, failed: a.failed + b.failed, configured: a.configured && b.configured };
 }
 async function sendPushToUser(ctx, userId, orgId, payload) {
   const subs = await ctx.db.query("SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = $1 AND org_id = $2", [userId, orgId]);
@@ -92686,10 +92694,10 @@ O link vale por 1 hora e funciona uma \xFAnica vez. Se n\xE3o foi voc\xEA, ignor
   });
   app.patch("/v1/auth/preferences", async (req) => {
     const a = auth(req);
-    const body = parse5(external_exports.object({ hideEmail: external_exports.boolean().optional(), name: external_exports.string().trim().max(120).optional() }), req.body);
+    const body = parse5(external_exports.object({ hideEmail: external_exports.boolean().optional(), hideNames: external_exports.boolean().optional(), name: external_exports.string().trim().max(120).optional() }), req.body);
     await ctx.db.query(
-      "UPDATE users SET hide_email = COALESCE($2, hide_email), name = COALESCE($3, name), updated_at = now() WHERE id = $1",
-      [a.user.id, body.hideEmail ?? null, body.name ?? null]
+      "UPDATE users SET hide_email = COALESCE($2, hide_email), name = COALESCE($3, name), hide_names = COALESCE($4, hide_names), updated_at = now() WHERE id = $1",
+      [a.user.id, body.hideEmail ?? null, body.name ?? null, body.hideNames ?? null]
     );
     return { ok: true };
   });
@@ -94894,13 +94902,14 @@ async function ingestWebhook(ctx, input2) {
     if (out.purchase) {
       const p = out.purchase;
       const paymentId = out.response.paymentId;
-      sendPushToOrg(ctx, integration.org_id, {
-        kind: "sale",
-        title: "Venda aprovada! \u{1F525}",
-        body: `${p.amount} \u2022 ${p.pixelName ?? ADAPTERS[input2.provider].label}`,
-        url: paymentId ? `/vendas/${paymentId}` : "/vendas",
-        tag: `sale-${normalized2.transactionId}`
-      }).catch((e) => ctx.log.warn({ err: String(e) }, "push falhou"));
+      const sale = { kind: "sale", title: "Venda aprovada! \u{1F525}", url: paymentId ? `/vendas/${paymentId}` : "/vendas", tag: `sale-${normalized2.transactionId}` };
+      sendPushToOrg(
+        ctx,
+        integration.org_id,
+        { ...sale, body: `${p.amount} \u2022 ${p.pixelName ?? ADAPTERS[input2.provider].label}` },
+        { ...sale, body: `${p.amount} \u2022 ${ADAPTERS[input2.provider].label}` }
+        // modo privado: sem o nome do pixel
+      ).catch((e) => ctx.log.warn({ err: String(e) }, "push falhou"));
     }
     return { httpStatus: 200, body: { success: true, correlationId, ...out.response } };
   } catch (e) {

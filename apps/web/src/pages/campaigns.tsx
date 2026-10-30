@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { ArrowDown, ArrowUp, Copy, Pause, Pencil, Play, RefreshCw } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { ArrowDown, ArrowUp, CircleDollarSign, Copy, Flame, Megaphone, MousePointerClick, Pause, Pencil, Play, RefreshCw, Search, ShoppingBag, Target, TrendingDown, TrendingUp, Trophy, Wallet, X } from 'lucide-react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { PeriodPicker, usePeriod } from '../components/period';
 import { PageHeader } from '../components/shell';
@@ -9,6 +9,7 @@ import { useToast } from '../components/toast';
 import { Badge, Button, Callout, Card, EmptyState, ErrorState, Field, Input, Modal, Segmented, Skeleton } from '../components/ui';
 import { get, post, qs } from '../lib/api';
 import { exponent, int, minorToNumber, money, pct, ratio } from '../lib/format';
+import { alias, Name, useNamesHidden } from '../lib/privacy';
 import { useSession } from '../lib/session';
 
 interface Row {
@@ -22,18 +23,40 @@ interface Resp { connected: boolean; accountCurrency: string; reportingCurrency:
 type Source = 'tracked' | 'meta';
 type SortKey = 'name' | 'spend' | 'sales' | 'revenue' | 'roas' | 'cpa' | 'ctr';
 
+/** Faixa de ROAS: prejuízo (< 1), no limite (1–2), lucrativo (2–3), excelente (≥ 3). */
+function roasTier(roas: number | null) {
+  if (roas === null) return { label: 'sem gasto', cls: 'bg-surface-3 text-muted ring-border', bar: 'bg-subtle' };
+  if (roas < 1) return { label: 'prejuízo', cls: 'bg-err/10 text-err ring-err/25', bar: 'bg-err' };
+  if (roas < 2) return { label: 'no limite', cls: 'bg-warn/10 text-warn ring-warn/25', bar: 'bg-warn' };
+  if (roas < 3) return { label: 'lucrativo', cls: 'bg-ok/10 text-ok ring-ok/25', bar: 'bg-ok' };
+  return { label: 'excelente', cls: 'bg-ok/15 text-ok ring-ok/35', bar: 'bg-ok' };
+}
+
+function RoasPill({ roas }: { roas: number | null }) {
+  const t = roasTier(roas);
+  return (
+    <span className={clsx('inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset', t.cls)} title={t.label}>
+      <span className="num">{ratio(roas)}</span><span className="hidden font-medium opacity-80 xl:inline">{t.label}</span>
+    </span>
+  );
+}
+
 export default function CampaignsPage() {
   const s = useSession();
   const toast = useToast();
   const qc = useQueryClient();
   const period = usePeriod('today');
   const [sp, setSp] = useSearchParams();
+  const hideNames = useNamesHidden();
   const level = (sp.get('nivel') as 'campaign' | 'adset') || 'campaign';
   const campaignIds = sp.get('campanhas') ?? '';
   const [source, setSource] = useState<Source>('tracked');
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'spend', dir: -1 });
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [budgetRow, setBudgetRow] = useState<Row | null>(null);
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState<'all' | 'active' | 'paused'>('all');
+  const kind = level === 'campaign' ? 'campanha' : 'conjunto';
 
   const key = ['campaigns', period.query, level, campaignIds];
   const q = useQuery<Resp>({
@@ -49,57 +72,72 @@ export default function CampaignsPage() {
   });
 
   const cur = s.currency;
-  const rows = useMemo(() => {
-    const list = (q.data?.rows ?? []).map((r) => {
-      const sales = source === 'tracked' ? r.tracked.sales : r.meta.purchases;
-      const revenue = Number(source === 'tracked' ? r.tracked.revenueMinor : r.meta.revenueMinor);
-      const spend = Number(r.spendMinor);
-      return { r, sales, revenue, spend, roas: spend > 0 ? revenue / spend : null, cpa: sales > 0 ? spend / sales : null };
-    });
-    const val = (x: (typeof list)[number]) => ({ name: x.r.name.toLowerCase(), spend: x.spend, sales: x.sales, revenue: x.revenue, roas: x.roas ?? -1, cpa: x.cpa ?? Infinity, ctr: x.r.ctr })[sort.key];
-    return list.sort((a, b) => (val(a) > val(b) ? 1 : val(a) < val(b) ? -1 : 0) * sort.dir);
-  }, [q.data, source, sort]);
+  const all = useMemo(() => (q.data?.rows ?? []).map((r) => {
+    const sales = source === 'tracked' ? r.tracked.sales : r.meta.purchases;
+    const revenue = Number(source === 'tracked' ? r.tracked.revenueMinor : r.meta.revenueMinor);
+    const spend = Number(r.spendMinor);
+    return { r, sales, revenue, spend, roas: spend > 0 ? revenue / spend : null, cpa: sales > 0 ? spend / sales : null, active: r.status === 'ACTIVE' };
+  }), [q.data, source]);
 
-  const tot = rows.reduce((t, x) => ({ spend: t.spend + x.spend, revenue: t.revenue + x.revenue, sales: t.sales + x.sales }), { spend: 0, revenue: 0, sales: 0 });
+  const rows = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    const list = all.filter((x) => (status === 'all' || (status === 'active') === x.active) && (!term || x.r.name.toLowerCase().includes(term) || (x.r.campaignName ?? '').toLowerCase().includes(term)));
+    const val = (x: (typeof list)[number]) => ({ name: x.r.name.toLowerCase(), spend: x.spend, sales: x.sales, revenue: x.revenue, roas: x.roas ?? -1, cpa: x.cpa ?? Infinity, ctr: x.r.ctr })[sort.key];
+    return [...list].sort((a, b) => (val(a) > val(b) ? 1 : val(a) < val(b) ? -1 : 0) * sort.dir);
+  }, [all, sort, search, status]);
+
+  const tot = rows.reduce((t, x) => ({ spend: t.spend + x.spend, revenue: t.revenue + x.revenue, sales: t.sales + x.sales, clicks: t.clicks + x.r.linkClicks, lpv: t.lpv + x.r.landingPageViews }), { spend: 0, revenue: 0, sales: 0, clicks: 0, lpv: 0 });
+  const totRoas = tot.spend > 0 ? tot.revenue / tot.spend : null;
+  const profit = tot.revenue - tot.spend;
+  const maxSpend = Math.max(1, ...rows.map((x) => x.spend));
+  const counts = { active: all.filter((x) => x.active).length, paused: all.filter((x) => !x.active).length };
+
+  // destaques do período (sobre todas as linhas, não só as filtradas)
+  const withSpend = all.filter((x) => x.spend > 0);
+  const best = [...withSpend].filter((x) => x.sales > 0).sort((a, b) => (b.roas ?? 0) - (a.roas ?? 0))[0];
+  const most = [...all].filter((x) => x.sales > 0).sort((a, b) => b.sales - a.sales || b.revenue - a.revenue)[0];
+  const burning = [...withSpend].filter((x) => x.sales === 0).sort((a, b) => b.spend - a.spend);
+
   const header = (k: SortKey, label: string, right = true) => (
-    <th scope="col" className={right ? 'text-right' : undefined}>
-      <button className="inline-flex items-center gap-1 uppercase hover:text-fg" onClick={() => setSort((p) => ({ key: k, dir: p.key === k ? (-p.dir as 1 | -1) : -1 }))}>
+    <th scope="col" className={right ? 'text-right' : undefined} aria-sort={sort.key === k ? (sort.dir === 1 ? 'ascending' : 'descending') : undefined}>
+      <button className={clsx('inline-flex items-center gap-1 uppercase transition hover:text-fg', sort.key === k && 'text-fg')} onClick={() => setSort((p) => ({ key: k, dir: p.key === k ? (-p.dir as 1 | -1) : -1 }))}>
         {label}{sort.key === k && (sort.dir === -1 ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />)}
       </button>
     </th>
   );
+  const drill = (id: string) => { const n = new URLSearchParams(sp); n.set('nivel', 'adset'); n.set('campanhas', id); setSp(n); };
+  const actions = (r: Row, active: boolean) => (
+    <div className="inline-flex gap-1">
+      <Button size="sm" variant="ghost" aria-label={active ? 'Pausar' : 'Ativar'} title={active ? 'Pausar' : 'Ativar'} disabled={!s.can('admin') || act.isPending}
+        onClick={() => act.mutate({ id: r.id, path: 'status', body: { status: active ? 'PAUSED' : 'ACTIVE' } })}>
+        {active ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+      </Button>
+      <Button size="sm" variant="ghost" aria-label="Duplicar" title="Duplicar (cópia pausada)" disabled={!s.can('admin') || act.isPending}
+        onClick={() => act.mutate({ id: r.id, path: 'duplicate', body: { type: level } })}><Copy className="h-4 w-4" /></Button>
+    </div>
+  );
+  const budget = (r: Row) => r.budget ? (
+    <button className="group inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 transition hover:bg-surface-2" onClick={() => setBudgetRow(r)} disabled={!s.can('admin')}>
+      <span className="num">{money(r.budget.amountMinor, r.budget.currency)}</span>
+      <span className="text-xs text-muted">{r.budget.type === 'daily' ? '/dia' : 'total'}</span>
+      {s.can('admin') && <Pencil className="h-3 w-3 text-muted opacity-0 transition group-hover:opacity-100" aria-hidden />}
+    </button>
+  ) : <span className="text-muted">—</span>;
 
   return (
     <>
-      <PageHeader title="Campanhas" description="Métricas da Meta lado a lado com as vendas confirmadas e casadas por UTM."
+      <PageHeader title="Campanhas" eyebrow="Meta Ads" description="Gasto da Meta lado a lado com as vendas confirmadas, casadas por UTM."
         actions={<>
           <PeriodPicker period={period} />
-          <Button icon={<RefreshCw className="h-4 w-4" />} onClick={() => q.refetch()} loading={q.isFetching}>Atualizar</Button>
+          <Button icon={<RefreshCw className={clsx('h-4 w-4', q.isFetching && 'animate-spin')} />} onClick={() => q.refetch()} disabled={q.isFetching}>Atualizar</Button>
         </>} />
 
       {q.isError ? <Card><ErrorState error={q.error} onRetry={() => q.refetch()} /></Card>
         : q.data && !q.data.connected ? (
-          <Card><EmptyState title="Conecte sua conta de anúncios" description="Autorize o acesso ao Facebook Ads e selecione a conta para ver campanhas, gasto e retorno."
+          <Card><EmptyState icon={<Megaphone />} title="Conecte sua conta de anúncios" description="Autorize o acesso ao Facebook Ads e selecione a conta para ver campanhas, gasto e retorno."
             action={<Link to="/integracoes/meta"><Button variant="primary">Conectar Meta Ads</Button></Link>} /></Card>
         ) : (
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <Segmented label="Nível" value={level} onChange={(v) => { const n = new URLSearchParams(sp); n.set('nivel', v); if (v === 'campaign') n.delete('campanhas'); setSp(n, { replace: true }); setSelected(new Set()); }}
-                  options={[{ value: 'campaign', label: 'Campanhas' }, { value: 'adset', label: 'Conjuntos' }]} />
-                {level === 'campaign' && selected.size > 0 && (
-                  <Button size="sm" variant="primary" onClick={() => { const n = new URLSearchParams(sp); n.set('nivel', 'adset'); n.set('campanhas', [...selected].join(',')); setSp(n); setSelected(new Set()); }}>
-                    Ver conjuntos de {selected.size} campanha(s)
-                  </Button>
-                )}
-                {campaignIds && <Badge tone="primary">Filtrado por {campaignIds.split(',').length} campanha(s)</Badge>}
-              </div>
-              <div className="flex items-center gap-2 text-[13px] text-muted">
-                Vendas e receita:
-                <Segmented label="Fonte de vendas" value={source} onChange={setSource} options={[{ value: 'tracked', label: 'Rastreadas' }, { value: 'meta', label: 'Atribuídas pela Meta' }]} />
-              </div>
-            </div>
-
+          <div className="space-y-5">
             {q.data && q.data.accountCurrency !== q.data.reportingCurrency && (
               <Callout tone={q.data.fx.converted ? 'info' : 'warn'} title={q.data.fx.converted ? `Conta em ${q.data.accountCurrency}: valores convertidos para ${cur}` : `Sem cotação ${q.data.accountCurrency}→${cur} para ${q.data.fx.date}`}>
                 {q.data.fx.converted
@@ -108,96 +146,219 @@ export default function CampaignsPage() {
               </Callout>
             )}
 
-            <div className="grid gap-4 sm:grid-cols-4">
-              {[
-                ['Investimento', money(tot.spend, cur)],
-                ['Receita', money(tot.revenue, cur)],
-                ['Vendas', int(tot.sales)],
-                ['ROAS', ratio(tot.spend > 0 ? tot.revenue / tot.spend : null)],
-              ].map(([l, v]) => <div key={l} className="card p-4"><p className="text-[13px] text-muted">{l}</p><p className="num mt-1 text-xl font-semibold">{v}</p></div>)}
+            {/* Resumo do período */}
+            <section className="card relative overflow-hidden" aria-label="Resumo do período">
+              <div className="pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full bg-primary/15 blur-3xl" aria-hidden />
+              <div className="relative grid grid-cols-2 divide-border md:grid-cols-3 xl:grid-cols-6 xl:divide-x">
+                {[
+                  { l: 'Investimento', v: money(tot.spend, cur), icon: <Wallet />, sub: `${int(counts.active)} ativa(s) · ${int(counts.paused)} pausada(s)` },
+                  { l: 'Receita', v: money(tot.revenue, cur), icon: <CircleDollarSign />, sub: source === 'tracked' ? 'vendas rastreadas' : 'atribuída pela Meta' },
+                  { l: 'Resultado', v: money(profit, cur), icon: profit >= 0 ? <TrendingUp /> : <TrendingDown />, tone: tot.spend > 0 ? (profit >= 0 ? 'text-ok' : 'text-err') : undefined, sub: 'receita − investimento' },
+                  { l: 'ROAS', v: ratio(totRoas), icon: <Target />, tone: totRoas === null ? undefined : totRoas >= 1 ? 'text-ok' : 'text-err', sub: roasTier(totRoas).label },
+                  { l: 'Vendas', v: int(tot.sales), icon: <ShoppingBag />, sub: tot.sales > 0 ? `CPA ${money(Math.round(tot.spend / tot.sales), cur)}` : 'sem vendas no período' },
+                  { l: 'Connect rate', v: tot.clicks > 0 ? pct(tot.lpv / tot.clicks) : '—', icon: <MousePointerClick />, sub: `${int(tot.clicks)} cliques no link` },
+                ].map((k) => (
+                  <div key={k.l} className="p-4 sm:p-5">
+                    <p className="flex items-center gap-2 text-[13px] font-medium text-muted"><span className="text-primary [&>svg]:h-4 [&>svg]:w-4" aria-hidden>{k.icon}</span>{k.l}</p>
+                    {!q.data ? <Skeleton className="mt-2 h-7 w-24" /> : <p className={clsx('num mt-1.5 font-display text-[22px] font-bold leading-tight tracking-tight sm:text-2xl', k.tone)}>{k.v}</p>}
+                    <p className="mt-1 truncate text-xs text-muted">{k.sub}</p>
+                  </div>
+                ))}
+              </div>
+              {tot.spend > 0 && (
+                <div className="relative border-t border-border px-5 py-3">
+                  <div className="flex items-center justify-between text-xs text-muted"><span>Investimento × receita</span><span className="num">{totRoas !== null ? `cada ${money(10 ** exponent(cur), cur)} investido voltou ${money(Math.round(totRoas * 10 ** exponent(cur)), cur)}` : ''}</span></div>
+                  <div className="mt-2 flex h-2.5 overflow-hidden rounded-full bg-surface-3" aria-hidden>
+                    <div className="h-full bg-primary/50" style={{ width: `${(tot.spend / Math.max(tot.spend, tot.revenue)) * 100}%` }} />
+                  </div>
+                  <div className="mt-1.5 flex h-2.5 overflow-hidden rounded-full bg-surface-3" aria-hidden>
+                    <div className={clsx('h-full', profit >= 0 ? 'bg-ok' : 'bg-err')} style={{ width: `${(tot.revenue / Math.max(tot.spend, tot.revenue)) * 100}%` }} />
+                  </div>
+                  <div className="mt-1.5 flex gap-4 text-[11px] text-muted"><span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-primary/50" />Investimento</span><span className="flex items-center gap-1.5"><span className={clsx('h-2 w-2 rounded-full', profit >= 0 ? 'bg-ok' : 'bg-err')} />Receita</span></div>
+                </div>
+              )}
+            </section>
+
+            {/* Destaques */}
+            {q.data && all.length > 0 && (
+              <div className="grid gap-4 md:grid-cols-3">
+                <Highlight icon={<Trophy />} tone="ok" label="Melhor ROAS" empty="Nenhuma venda com gasto no período"
+                  item={best && { name: best.r.name, kind, value: ratio(best.roas), detail: `${int(best.sales)} venda(s) · ${money(best.revenue, cur)}` }} />
+                <Highlight icon={<ShoppingBag />} tone="primary" label="Mais vendas" empty="Sem vendas no período"
+                  item={most && { name: most.r.name, kind, value: `${int(most.sales)} venda(s)`, detail: `${money(most.revenue, cur)} de receita` }} />
+                <Highlight icon={<Flame />} tone="err" label="Gasto sem venda" empty="Tudo que gastou vendeu"
+                  item={burning[0] && { name: burning[0].r.name, kind, value: money(burning[0].spend, cur), detail: burning.length > 1 ? `+${burning.length - 1} outra(s) sem venda` : 'nenhuma venda no período' }} />
+              </div>
+            )}
+
+            {/* Barra de ferramentas */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Segmented label="Nível" value={level} onChange={(v) => { const n = new URLSearchParams(sp); n.set('nivel', v); if (v === 'campaign') n.delete('campanhas'); setSp(n, { replace: true }); setSelected(new Set()); }}
+                  options={[{ value: 'campaign', label: 'Campanhas' }, { value: 'adset', label: 'Conjuntos' }]} />
+                <Segmented label="Status" value={status} onChange={setStatus}
+                  options={[{ value: 'all', label: `Todas (${all.length})` }, { value: 'active', label: `Ativas (${counts.active})` }, { value: 'paused', label: `Pausadas (${counts.paused})` }]} />
+                {campaignIds && (
+                  <button className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary ring-1 ring-inset ring-primary/25 hover:bg-primary/15"
+                    onClick={() => { const n = new URLSearchParams(sp); n.delete('campanhas'); n.set('nivel', 'campaign'); setSp(n); }}>
+                    Filtrado por {campaignIds.split(',').length} campanha(s) <X className="h-3.5 w-3.5" aria-label="Limpar filtro" />
+                  </button>
+                )}
+                {level === 'campaign' && selected.size > 0 && (
+                  <Button size="sm" variant="primary" onClick={() => { const n = new URLSearchParams(sp); n.set('nivel', 'adset'); n.set('campanhas', [...selected].join(',')); setSp(n); setSelected(new Set()); }}>
+                    Ver conjuntos de {selected.size} campanha(s)
+                  </Button>
+                )}
+              </div>
+              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+                <div className="relative min-w-0 flex-1 sm:w-56 sm:flex-none">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle" aria-hidden />
+                  <Input aria-label={`Buscar ${kind}`} placeholder={`Buscar ${kind}…`} className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+                </div>
+                <Segmented label="Fonte de vendas" value={source} onChange={setSource} options={[{ value: 'tracked', label: 'Rastreadas' }, { value: 'meta', label: 'Meta' }]} />
+              </div>
             </div>
 
+            {/* Lista */}
             <div className="card overflow-hidden">
-              {!q.data ? <div className="space-y-2 p-4">{Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
-                : rows.length === 0 ? <EmptyState title="Nenhum resultado no período" description="Não há campanhas com dados para o filtro selecionado." />
+              {!q.data ? <div className="space-y-2 p-4">{Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
+                : rows.length === 0 ? <EmptyState icon={<Megaphone />} title={all.length ? 'Nada encontrado' : 'Nenhum resultado no período'} description={all.length ? 'Ajuste a busca ou o filtro de status.' : 'Não há campanhas com dados para o período selecionado.'} />
                 : (
-                  <div className="overflow-x-auto">
-                    <table className="table-base min-w-[1100px]">
-                      <thead><tr>
-                        {level === 'campaign' && <th className="w-10"><span className="sr-only">Selecionar</span></th>}
-                        {header('name', level === 'campaign' ? 'Campanha' : 'Conjunto', false)}
-                        <th>Orçamento</th>
-                        {header('spend', 'Gasto')}{header('sales', 'Vendas')}{header('revenue', 'Receita')}{header('roas', 'ROAS')}{header('cpa', 'CPA')}
-                        {header('ctr', 'CTR')}<th className="text-right">Connect</th><th className="text-right">Ações</th>
-                      </tr></thead>
-                      <tbody>
-                        {rows.map(({ r, sales, revenue, spend, roas, cpa }) => {
-                          const active = r.status === 'ACTIVE';
-                          return (
-                            <tr key={r.id} className={clsx(spend > 0 && sales === 0 && 'bg-warn/[0.04]')}>
+                  <>
+                    {/* celular: cartões */}
+                    <ul className="divide-y divide-border md:hidden">
+                      {rows.map(({ r, sales, revenue, spend, roas, cpa, active }) => (
+                        <li key={r.id} className={clsx('p-4', spend > 0 && sales === 0 && 'bg-err/[0.03]')}>
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="flex items-center gap-2 font-semibold">
+                                <span className={clsx('h-2 w-2 shrink-0 rounded-full', active ? 'bg-ok' : 'bg-subtle')} aria-label={active ? 'Ativa' : 'Pausada'} />
+                                {level === 'campaign' ? <button className="min-w-0 truncate text-left hover:text-primary" onClick={() => drill(r.id)}><Name kind={kind} value={r.name} /></button> : <Name kind={kind} value={r.name} className="min-w-0 truncate" />}
+                              </p>
+                              {r.campaignName && <p className="ml-4 truncate text-xs text-muted"><Name kind="campanha" value={r.campaignName} /></p>}
+                            </div>
+                            <RoasPill roas={roas} />
+                          </div>
+                          <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
+                            {[['Gasto', money(spend, cur)], ['Vendas', int(sales)], ['Receita', money(revenue, cur)]].map(([l, v]) => (
+                              <div key={l} className="rounded-xl bg-surface-2/60 px-2 py-2"><dt className="text-[11px] text-muted">{l}</dt><dd className="num mt-0.5 text-sm font-semibold">{v}</dd></div>
+                            ))}
+                          </dl>
+                          <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted">
+                            <span>CPA {cpa !== null ? money(Math.round(cpa), cur) : '—'} · CTR {pct(r.ctr / 100, 2)}</span>
+                            <span className="flex items-center gap-1">{budget(r)}{actions(r, active)}</span>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+
+                    {/* computador: tabela */}
+                    <div className="hidden overflow-x-auto md:block">
+                      <table className="table-base min-w-[960px]">
+                        <thead><tr>
+                          {level === 'campaign' && <th className="w-10"><span className="sr-only">Selecionar</span></th>}
+                          {header('name', level === 'campaign' ? 'Campanha' : 'Conjunto', false)}
+                          <th>Orçamento</th>
+                          {header('spend', 'Gasto')}{header('sales', 'Vendas')}{header('revenue', 'Receita')}{header('roas', 'ROAS')}{header('cpa', 'CPA')}
+                          {header('ctr', 'CTR')}<th className="text-right">Connect</th><th className="text-right"><span className="sr-only">Ações</span></th>
+                        </tr></thead>
+                        <tbody>
+                          {rows.map(({ r, sales, revenue, spend, roas, cpa, active }) => (
+                            <tr key={r.id} className={clsx('group', spend > 0 && sales === 0 && 'bg-err/[0.03]')}>
                               {level === 'campaign' && (
-                                <td><input type="checkbox" aria-label={`Selecionar ${r.name}`} className="h-4 w-4 accent-[rgb(var(--primary))]" checked={selected.has(r.id)}
+                                <td><input type="checkbox" aria-label={`Selecionar ${hideNames ? alias(kind, r.name) : r.name}`} className="h-4 w-4 accent-[rgb(var(--primary))]" checked={selected.has(r.id)}
                                   onChange={(e) => setSelected((p) => { const n = new Set(p); e.target.checked ? n.add(r.id) : n.delete(r.id); return n; })} /></td>
                               )}
-                              <td className="max-w-[360px]">
-                                <div className="flex items-center gap-2">
-                                  <span className={clsx('h-2 w-2 shrink-0 rounded-full', active ? 'bg-ok' : 'bg-subtle')} aria-label={active ? 'Ativa' : 'Pausada'} />
-                                  {level === 'campaign'
-                                    ? <button className="truncate text-left font-medium hover:text-primary" title={r.name} onClick={() => { const n = new URLSearchParams(sp); n.set('nivel', 'adset'); n.set('campanhas', r.id); setSp(n); }}>{r.name}</button>
-                                    : <span className="truncate font-medium" title={r.name}>{r.name}</span>}
+                              <td className="max-w-[280px] 2xl:max-w-[380px]">
+                                <div className="flex items-center gap-2.5">
+                                  <span className={clsx('h-8 w-1 shrink-0 rounded-full', roasTier(roas).bar)} aria-hidden />
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      {level === 'campaign'
+                                        ? <button className="min-w-0 truncate text-left font-semibold transition hover:text-primary" title={hideNames ? alias(kind, r.name) : r.name} onClick={() => drill(r.id)}><Name kind={kind} value={r.name} /></button>
+                                        : <span className="min-w-0 truncate font-semibold" title={hideNames ? alias(kind, r.name) : r.name}><Name kind={kind} value={r.name} /></span>}
+                                    </div>
+                                    <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-muted">
+                                      <span className={clsx('inline-flex items-center gap-1', active ? 'text-ok' : '')}><span className={clsx('h-1.5 w-1.5 rounded-full', active ? 'bg-ok' : 'bg-subtle')} />{active ? 'Ativa' : 'Pausada'}</span>
+                                      {r.campaignName && <>· <Name kind="campanha" value={r.campaignName} /></>}
+                                    </p>
+                                  </div>
                                 </div>
-                                {r.campaignName && <p className="ml-4 truncate text-xs text-muted">{r.campaignName}</p>}
                               </td>
-                              <td className="whitespace-nowrap">
-                                {r.budget ? (
-                                  <button className="group inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 hover:bg-surface-2" onClick={() => setBudgetRow(r)} disabled={!s.can('admin')}>
-                                    <span className="num">{money(r.budget.amountMinor, r.budget.currency)}</span>
-                                    <span className="text-xs text-muted">{r.budget.type === 'daily' ? '/dia' : 'total'}</span>
-                                    {s.can('admin') && <Pencil className="h-3 w-3 text-muted opacity-0 group-hover:opacity-100" aria-hidden />}
-                                  </button>
-                                ) : <span className="text-muted">—</span>}
+                              <td className="whitespace-nowrap">{budget(r)}</td>
+                              <td className="text-right">
+                                <p className="num">{money(spend, cur)}</p>
+                                <div className="ml-auto mt-1 h-1 w-20 overflow-hidden rounded-full bg-surface-3" title={`${pct(tot.spend > 0 ? spend / tot.spend : 0)} do gasto`}>
+                                  <div className="h-full rounded-full bg-primary/60" style={{ width: `${(spend / maxSpend) * 100}%` }} />
+                                </div>
                               </td>
-                              <td className="num text-right">{money(spend, cur)}</td>
-                              <td className="num text-right font-medium">{int(sales)}</td>
+                              <td className="num text-right font-semibold">{int(sales)}</td>
                               <td className="num text-right">{money(revenue, cur)}</td>
-                              <td className={clsx('num text-right font-medium', roas !== null && (roas >= 1 ? 'text-ok' : 'text-err'))}>{ratio(roas)}</td>
+                              <td className="text-right"><RoasPill roas={roas} /></td>
                               <td className="num text-right">{cpa !== null ? money(Math.round(cpa), cur) : '—'}</td>
                               <td className="num text-right">{pct(r.ctr / 100, 2)}</td>
                               <td className="num text-right">{r.linkClicks > 0 ? pct(r.landingPageViews / r.linkClicks) : '—'}</td>
-                              <td className="text-right">
-                                <div className="inline-flex gap-1">
-                                  <Button size="sm" variant="ghost" aria-label={active ? 'Pausar' : 'Ativar'} title={active ? 'Pausar' : 'Ativar'} disabled={!s.can('admin') || act.isPending}
-                                    onClick={() => act.mutate({ id: r.id, path: 'status', body: { status: active ? 'PAUSED' : 'ACTIVE' } })}>
-                                    {active ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                                  </Button>
-                                  <Button size="sm" variant="ghost" aria-label="Duplicar" title="Duplicar (cópia pausada)" disabled={!s.can('admin') || act.isPending}
-                                    onClick={() => act.mutate({ id: r.id, path: 'duplicate', body: { type: level } })}><Copy className="h-4 w-4" /></Button>
-                                </div>
-                              </td>
+                              <td className="text-right opacity-70 transition group-hover:opacity-100">{actions(r, active)}</td>
                             </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="bg-surface-2/60 font-semibold">
+                            {level === 'campaign' && <td className="border-t border-border px-4 py-3" />}
+                            <td className="border-t border-border px-4 py-3">Total ({int(rows.length)})</td>
+                            <td className="border-t border-border px-4 py-3" />
+                            <td className="num border-t border-border px-4 py-3 text-right">{money(tot.spend, cur)}</td>
+                            <td className="num border-t border-border px-4 py-3 text-right">{int(tot.sales)}</td>
+                            <td className="num border-t border-border px-4 py-3 text-right">{money(tot.revenue, cur)}</td>
+                            <td className="border-t border-border px-4 py-3 text-right"><RoasPill roas={totRoas} /></td>
+                            <td className="num border-t border-border px-4 py-3 text-right">{tot.sales > 0 ? money(Math.round(tot.spend / tot.sales), cur) : '—'}</td>
+                            <td className="border-t border-border px-4 py-3" />
+                            <td className="num border-t border-border px-4 py-3 text-right">{tot.clicks > 0 ? pct(tot.lpv / tot.clicks) : '—'}</td>
+                            <td className="border-t border-border px-4 py-3" />
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </>
                 )}
             </div>
-            <p className="text-xs text-muted">Linhas destacadas têm gasto sem vendas {source === 'tracked' ? 'rastreadas' : 'atribuídas'}. Vendas rastreadas são casadas quando utm_campaign/content/term/medium/id contém o nome ou o ID da {level === 'campaign' ? 'campanha' : 'conjunto'}.</p>
+            <p className="text-xs text-muted">Faixa vermelha: gasto sem vendas {source === 'tracked' ? 'rastreadas' : 'atribuídas'}. Vendas rastreadas são casadas quando utm_campaign/content/term/medium/id contém o nome ou o ID da {level === 'campaign' ? 'campanha' : 'conjunto'}. ROAS: <span className="text-err">abaixo de 1 = prejuízo</span>, 1–2 no limite, 2 ou mais lucrativo.</p>
           </div>
         )}
-      <BudgetModal row={budgetRow} onClose={() => setBudgetRow(null)} onSave={(amount) => act.mutateAsync({ id: budgetRow!.id, path: 'budget', body: { type: budgetRow!.budget!.type, amount } })} />
+      <BudgetModal row={budgetRow} hideNames={hideNames} onClose={() => setBudgetRow(null)} onSave={(amount) => act.mutateAsync({ id: budgetRow!.id, path: 'budget', body: { type: budgetRow!.budget!.type, amount } })} />
     </>
   );
 }
 
-function BudgetModal({ row, onClose, onSave }: { row: Row | null; onClose: () => void; onSave: (amount: string) => Promise<unknown> }) {
+function Highlight({ icon, tone, label, item, empty }: {
+  icon: ReactNode; tone: 'ok' | 'primary' | 'err'; label: string; empty: string;
+  item: { name: string; kind: 'campanha' | 'conjunto'; value: string; detail: string } | undefined | false;
+}) {
+  const toneCls = { ok: 'bg-ok/10 text-ok', primary: 'bg-primary/10 text-primary', err: 'bg-err/10 text-err' }[tone];
+  return (
+    <div className="card card-interactive flex items-start gap-3.5 p-4">
+      <span className={clsx('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl [&>svg]:h-5 [&>svg]:w-5', toneCls)} aria-hidden>{icon}</span>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted">{label}</p>
+        {item ? (
+          <>
+            <p className="mt-1 truncate font-semibold"><Name kind={item.kind} value={item.name} /></p>
+            <p className="mt-0.5 flex flex-wrap items-baseline gap-x-2 text-sm"><span className={clsx('num font-display text-lg font-bold', tone === 'err' ? 'text-err' : tone === 'ok' ? 'text-ok' : 'text-fg')}>{item.value}</span><span className="text-xs text-muted">{item.detail}</span></p>
+          </>
+        ) : <p className="mt-1 text-sm text-muted">{empty}</p>}
+      </div>
+    </div>
+  );
+}
+
+function BudgetModal({ row, hideNames, onClose, onSave }: { row: Row | null; hideNames: boolean; onClose: () => void; onSave: (amount: string) => Promise<unknown> }) {
   const [value, setValue] = useState('');
   const [busy, setBusy] = useState(false);
   const cur = row?.budget?.currency ?? 'BRL';
   const open = !!row;
   const initial = row?.budget ? minorToNumber(row.budget.amountMinor, cur).toFixed(exponent(cur)).replace('.', ',') : '';
   return (
-    <Modal open={open} onClose={onClose} title="Editar orçamento" description={row?.name}
+    <Modal open={open} onClose={onClose} title="Editar orçamento" description={row && (hideNames ? alias('campanha', row.name) : row.name)}
       footer={<>
         <Button variant="ghost" onClick={onClose}>Cancelar</Button>
         <Button variant="primary" loading={busy} onClick={async () => { setBusy(true); try { await onSave(value || initial); onClose(); } catch { /* toast já exibido */ } finally { setBusy(false); } }}>Salvar na Meta</Button>

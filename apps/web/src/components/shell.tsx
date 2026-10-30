@@ -1,7 +1,7 @@
 import clsx from 'clsx';
 import { Logo as BrandLogo, LogoMark } from './logo';
 import {
-  Activity, BarChart3, BellRing, BookOpen, ChevronsUpDown, CreditCard, GitBranch, LayoutDashboard, LogOut, Megaphone, Menu, Moon,
+  Activity, BarChart3, BellRing, BookOpen, ChevronsUpDown, CreditCard, Eye, EyeOff, GitBranch, LayoutDashboard, LogOut, Megaphone, Menu, Moon,
   Plug, Plus, Receipt, Search, Settings, Shield, Sparkles, Stethoscope, Sun, Target, X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
@@ -9,6 +9,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-do
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { get, post } from '../lib/api';
 import { maskEmail } from '../lib/format';
+import { namesHidden as namesHiddenNow, setNamesHidden, useNamesHidden, useSyncHideNames } from '../lib/privacy';
 import { useLogout, useSession } from '../lib/session';
 import { CommandPalette, SHORTCUT, type Command } from './command';
 import { SoundUnlockButton, useSaleNotifier } from './sale-notifier';
@@ -48,6 +49,20 @@ export function useTheme() {
     try { localStorage.setItem('pt_theme', next ? 'dark' : 'light'); } catch { /* */ }
   };
   return { dark, toggle };
+}
+
+/** Olho: esconde/mostra nomes de campanhas e pixels em todo o painel. */
+function PrivacyToggle() {
+  const hidden = useNamesHidden();
+  return (
+    <button onClick={() => void setNamesHidden(!hidden)} aria-pressed={hidden}
+      title={hidden ? 'Mostrar nomes de campanhas e pixels' : 'Esconder nomes de campanhas e pixels (para prints e telas compartilhadas)'}
+      aria-label={hidden ? 'Mostrar nomes de campanhas e pixels' : 'Esconder nomes de campanhas e pixels'}
+      className={clsx('inline-flex items-center gap-1.5 rounded-lg p-2 transition', hidden ? 'bg-primary/10 text-primary ring-1 ring-inset ring-primary/25 hover:bg-primary/15' : 'text-muted hover:bg-surface-2 hover:text-fg')}>
+      {hidden ? <EyeOff className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
+      {hidden && <span className="hidden pr-0.5 text-xs font-semibold sm:inline">Nomes ocultos</span>}
+    </button>
+  );
 }
 
 function Logo({ compact }: { compact?: boolean }) {
@@ -167,6 +182,7 @@ export function AppShell() {
   const [palette, setPalette] = useState(false);
   const { dark, toggle } = useTheme();
   const s = useSession();
+  useSyncHideNames(s.user.hideNames); // o "olho" segue a conta em qualquer aparelho
   const loc = useLocation();
   const nav = useNavigate();
   const logout = useLogout();
@@ -189,6 +205,7 @@ export function AppShell() {
       { id: 'act:integ', label: 'Nova integração', group: 'Ações', icon: <Plug />, keywords: 'gateway checkout webhook', run: () => nav('/integracoes?nova=1') },
     ] : []),
     { id: 'act:notif', label: 'Notificações no celular e som de venda', group: 'Ações', icon: <BellRing />, keywords: 'push celular som alerta aviso', run: () => nav('/configuracoes?aba=notificacoes') },
+    { id: 'act:hide', label: 'Esconder/mostrar nomes de campanhas e pixels', group: 'Ações', icon: <EyeOff />, keywords: 'olho ocultar privado print gravar compartilhar tela nomes', run: () => void setNamesHidden(!namesHiddenNow()) },
     { id: 'act:2fa', label: 'Segurança da conta', group: 'Ações', icon: <Shield />, keywords: 'senha sessões duas etapas 2fa', run: () => nav('/configuracoes?aba=seguranca') },
     { id: 'act:theme', label: dark ? 'Usar tema claro' : 'Usar tema escuro', group: 'Ações', icon: dark ? <Sun /> : <Moon />, keywords: 'tema escuro claro dark light', run: toggle },
     { id: 'act:logout', label: 'Sair', group: 'Ações', icon: <LogOut />, keywords: 'logout encerrar', run: logout },
@@ -220,6 +237,7 @@ export function AppShell() {
           <SoundUnlockButton />
           <StatusPill />
           <button onClick={() => setPalette(true)} className="rounded-lg p-2 text-muted hover:bg-surface-2 hover:text-fg lg:hidden" aria-label="Buscar"><Search className="h-[18px] w-[18px]" /></button>
+          <PrivacyToggle />
           <button onClick={toggle} className="rounded-lg p-2 text-muted transition hover:bg-surface-2 hover:text-fg" aria-label={dark ? 'Usar tema claro' : 'Usar tema escuro'}>
             {dark ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
           </button>

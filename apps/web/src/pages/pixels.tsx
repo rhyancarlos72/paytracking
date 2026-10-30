@@ -10,6 +10,7 @@ import { useToast } from '../components/toast';
 import { Badge, Button, Card, CodeBlock, ConfirmButton, EmptyState, ErrorState, Field, Input, Modal, Segmented, Select, Skeleton, Switch } from '../components/ui';
 import { del, get, post, put } from '../lib/api';
 import { useSession } from '../lib/session';
+import { mask, Name, useNamesHidden } from '../lib/privacy';
 
 const CURRENCIES = ['BRL', 'EUR', 'USD', 'GBP', 'CHF', 'CAD', 'AUD', 'MXN', 'ARS', 'CLP', 'COP', 'PEN', 'PYG', 'UYU', 'JPY', 'SEK', 'NOK', 'DKK', 'PLN', 'CZK', 'RON', 'TRY', 'ZAR', 'AED', 'INR'];
 const COUNTRIES = ['BR', 'PT', 'ES', 'IT', 'FR', 'DE', 'NL', 'BE', 'IE', 'AT', 'CH', 'GB', 'US', 'CA', 'MX', 'AR', 'CL', 'CO', 'PE', 'PY', 'UY', 'AU', 'JP', 'PL', 'SE', 'NO', 'DK', 'FI', 'TR', 'ZA', 'AE', 'IN'];
@@ -35,6 +36,7 @@ const schema = z.object({
 type Form = z.infer<typeof schema>;
 
 export default function PixelsPage() {
+  useNamesHidden(); // redesenha ao ligar/desligar o olho (selects e títulos)
   const s = useSession();
   const toast = useToast();
   const qc = useQueryClient();
@@ -69,13 +71,13 @@ export default function PixelsPage() {
                   <div className="flex min-w-0 items-center gap-3">
                     <span className={p.active ? 'icon-tile-primary h-11 w-11' : 'icon-tile h-11 w-11'} aria-hidden><Target className="h-5 w-5" /></span>
                     <div className="min-w-0">
-                    <p className="truncate font-semibold">{p.name}</p>
+                    <p className="truncate font-semibold"><Name kind="pixel" value={p.name} /></p>
                     <p className="mt-0.5 font-mono text-xs text-muted">Pixel {p.metaPixelId}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge tone={p.active ? 'ok' : 'neutral'} dot>{p.active ? 'Ativo' : 'Inativo'}</Badge>
-                    {admin && <Switch checked={p.active} label={`${p.active ? 'Desativar' : 'Ativar'} ${p.name}`} onChange={() => toggle.mutate(p.id)} />}
+                    {admin && <Switch checked={p.active} label={`${p.active ? 'Desativar' : 'Ativar'} ${mask('pixel', p.name)}`} onChange={() => toggle.mutate(p.id)} />}
                   </div>
                 </div>
                 <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-[13px]">
@@ -89,7 +91,7 @@ export default function PixelsPage() {
                   <Button size="sm" variant="primary" icon={<Code2 className="h-4 w-4" />} onClick={() => setInstall(p)}>Instalação</Button>
                   {admin && <Button size="sm" onClick={() => setEditing(p)}>Editar</Button>}
                   {admin && <Button size="sm" icon={<CheckCircle2 className="h-4 w-4" />} loading={verify.isPending && verify.variables === p.id} onClick={() => verify.mutate(p.id)}>Testar token</Button>}
-                  {admin && <ConfirmButton size="sm" variant="ghost" danger title={`Excluir o pixel "${p.name}"?`} confirmLabel="Excluir"
+                  {admin && <ConfirmButton size="sm" variant="ghost" danger title={`Excluir o pixel "${mask('pixel', p.name)}"?`} confirmLabel="Excluir"
                     description="Eventos na fila deste pixel serão descartados. O histórico de vendas é preservado."
                     onConfirm={async () => { await del(`/v1/pixels/${p.id}`); toast.ok('Pixel excluído'); await refresh(); }}>Excluir</ConfirmButton>}
                 </div>

@@ -6,10 +6,12 @@ import { Card, EmptyState, ErrorState, Segmented, Skeleton } from '../components
 import { get, qs } from '../lib/api';
 import { int, money, pct } from '../lib/format';
 import { useSession } from '../lib/session';
+import { mask, Name, useNamesHidden, UTM_KIND } from '../lib/privacy';
 
 type Dim = 'utm_campaign' | 'utm_source' | 'utm_medium' | 'utm_content' | 'utm_term';
 
 export default function AttributionPage() {
+  useNamesHidden(); // redesenha ao ligar/desligar o olho (selects e títulos)
   const s = useSession();
   const period = usePeriod('last_7d');
   const [sp] = useSearchParams();
@@ -43,7 +45,7 @@ export default function AttributionPage() {
                   {rows.map((r: any, i: number) => (
                     <tr key={i}>
                       <td className="font-medium">{r.source}</td>
-                      <td className="max-w-[320px] truncate" title={r.key}>{r.key}</td>
+                      <td className="max-w-[320px] truncate" title={UTM_KIND[dimension] ? (mask(UTM_KIND[dimension]!, r.key) ?? '') : r.key}>{UTM_KIND[dimension] ? <Name kind={UTM_KIND[dimension]!} value={r.key} /> : r.key}</td>
                       <td className="num text-right">{int(r.pageViews)}</td>
                       <td className="num text-right">{int(r.initiateCheckouts)}</td>
                       <td className="num text-right font-medium">{int(r.sales)}</td>

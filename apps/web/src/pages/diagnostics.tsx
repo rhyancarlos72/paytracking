@@ -8,6 +8,7 @@ import { Badge, Button, Callout, Card, EmptyState, ErrorState, Skeleton, STATUS_
 import { get, post, qs } from '../lib/api';
 import { dateTime, int, pct, PROVIDER_LABEL, relative, STATUS_LABEL } from '../lib/format';
 import { useSession } from '../lib/session';
+import { Name } from '../lib/privacy';
 
 const KEY_LABEL: Record<string, string> = {
   em: 'E-mail', ph: 'Telefone', fn: 'Nome', ln: 'Sobrenome', ct: 'Cidade', st: 'Estado', zp: 'CEP', country: 'País', ge: 'Gênero',
@@ -88,7 +89,7 @@ function Capi({ query }: { query: object }) {
             <table className="table-base min-w-[640px]">
               <thead><tr><th>Pixel</th><th>Evento</th><th className="text-right">Total</th><th className="text-right">Enviados</th><th className="text-right">Na fila</th><th className="text-right">Falhas</th><th className="text-right">Sucesso</th></tr></thead>
               <tbody>{q.data.byPixel.map((r: any, i: number) => (
-                <tr key={i}><td>{r.pixel_name}<span className="ml-2 font-mono text-xs text-muted">{r.meta_pixel_id}</span></td><td className="font-medium">{r.event_name}</td>
+                <tr key={i}><td><Name kind="pixel" value={r.pixel_name} /><span className="ml-2 font-mono text-xs text-muted">{r.meta_pixel_id}</span></td><td className="font-medium">{r.event_name}</td>
                   <td className="num text-right">{int(r.total)}</td><td className="num text-right">{int(r.sent)}</td><td className="num text-right">{int(r.pending)}</td>
                   <td className="num text-right">{r.dead > 0 ? <span className="text-err">{int(r.dead)}</span> : 0}</td><td className="num text-right">{pct(r.total ? r.sent / r.total : null)}</td></tr>
               ))}</tbody>
@@ -100,7 +101,7 @@ function Capi({ query }: { query: object }) {
         {q.data.failures.length === 0 ? <EmptyState title="Nenhuma falha recente" icon={<CheckCircle2 className="h-5 w-5 text-ok" />} /> : (
           <ul className="divide-y divide-border">{q.data.failures.map((f: any) => (
             <li key={f.id} className="flex flex-wrap items-start justify-between gap-2 px-5 py-3 text-sm">
-              <div className="min-w-0"><p className="font-medium">{f.event_name} · {f.pixel_name}</p><p className="break-words text-muted">{f.last_error}</p></div>
+              <div className="min-w-0"><p className="font-medium">{f.event_name} · <Name kind="pixel" value={f.pixel_name} /></p><p className="break-words text-muted">{f.last_error}</p></div>
               <div className="flex items-center gap-2"><Badge tone={STATUS_TONE[f.status]}>{STATUS_LABEL[f.status]}</Badge><span className="text-xs text-muted">{dateTime(f.created_at, s.org.timezone)}</span></div>
             </li>
           ))}</ul>
