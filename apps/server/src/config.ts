@@ -32,6 +32,9 @@ const schema = z.object({
   }),
   PLATFORM_ADMIN_EMAILS: z.string().default(''),
 
+  /** Login com Google (Google Cloud → Credenciais → ID do cliente OAuth, tipo "Aplicativo da Web") */
+  GOOGLE_CLIENT_ID: z.string().default(''),
+  GOOGLE_CLIENT_SECRET: z.string().default(''),
   META_APP_ID: z.string().default(''),
   META_APP_SECRET: z.string().default(''),
   META_LOGIN_CONFIG_ID: z.string().default(''),

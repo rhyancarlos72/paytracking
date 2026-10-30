@@ -1,12 +1,13 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, ShieldCheck, Zap, LineChart } from 'lucide-react';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import clsx from 'clsx';
+import { ArrowLeft, Check, CheckCircle2, Eye, EyeOff, KeyRound, LineChart, Lock, Mail, ShieldCheck, Zap } from 'lucide-react';
+import { forwardRef, useEffect, useState, type InputHTMLAttributes, type ReactNode } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { Button, Callout, Field, Input, Spinner } from '../components/ui';
-import { post } from '../lib/api';
+import { get, post } from '../lib/api';
 import { useMe } from '../lib/session';
 
 const password = z.string().min(10, 'Mínimo de 10 caracteres').max(200)
@@ -143,16 +144,125 @@ function TwoFactorStep({ challenge, onDone, onRestart }: { challenge: string; on
   );
 }
 
+/* ---------- peças compartilhadas das telas de acesso ---------- */
+
+const GOOGLE_ERRORS: Record<string, string> = {
+  google_cancelado: 'Login com Google cancelado.',
+  google_expirou: 'O login com Google demorou demais ou foi aberto em outra aba. Tente de novo.',
+  google_falhou: 'Não foi possível entrar com o Google agora. Tente de novo.',
+  google_email_nao_verificado: 'Esse e-mail ainda não foi verificado pelo Google.',
+  google_outra_conta: 'Este e-mail já está ligado a outra conta Google. Entre com e-mail e senha.',
+  google_desativado: 'O login com Google não está disponível.',
+};
+
+function useProviders() {
+  return useQuery({ queryKey: ['auth-providers'], queryFn: () => get<{ google: boolean }>('/v1/auth/providers'), staleTime: 300_000, retry: false });
+}
+
+function GoogleButton({ label }: { label: string }) {
+  const [sp] = useSearchParams();
+  const providers = useProviders();
+  const [busy, setBusy] = useState(false);
+  if (!providers.data?.google) return null;
+  const back = sp.get('voltar');
+  const href = `/v1/auth/google/start${back && back.startsWith('/') && !back.startsWith('//') ? `?voltar=${encodeURIComponent(back)}` : ''}`;
+  return (
+    <>
+      <a href={href} onClick={() => setBusy(true)} aria-busy={busy}
+        className="group flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-border bg-surface text-[15px] font-semibold shadow-sm transition hover:-translate-y-px hover:border-border-strong hover:shadow-md active:translate-y-0">
+        {busy ? <Spinner /> : (
+          <svg viewBox="0 0 48 48" className="h-5 w-5" aria-hidden>
+            <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z" />
+            <path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" />
+            <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z" />
+            <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z" />
+          </svg>
+        )}
+        {label}
+      </a>
+      <div className="my-6 flex items-center gap-3 text-xs font-medium uppercase tracking-wider text-subtle" aria-hidden>
+        <span className="h-px flex-1 bg-border" />ou com e-mail<span className="h-px flex-1 bg-border" />
+      </div>
+    </>
+  );
+}
+
+/** Campo de senha com botão de mostrar/ocultar. */
+const PasswordInput = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function PasswordInput(props, ref) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <Input ref={ref} {...props} type={show ? 'text' : 'password'} className="pr-11" />
+      <button type="button" onClick={() => setShow((v) => !v)} aria-label={show ? 'Ocultar senha' : 'Mostrar senha'} aria-pressed={show}
+        className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-xl text-muted transition hover:text-fg">
+        {show ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
+      </button>
+    </div>
+  );
+});
+
+const RULES: Array<[string, (v: string) => boolean]> = [
+  ['10+ caracteres', (v) => v.length >= 10],
+  ['Letra maiúscula', (v) => /[A-Z]/.test(v)],
+  ['Letra minúscula', (v) => /[a-z]/.test(v)],
+  ['Número', (v) => /\d/.test(v)],
+];
+
+/** Força da senha ao vivo: barra + checklist (as mesmas regras do servidor). */
+function PasswordStrength({ value }: { value: string }) {
+  const passed = RULES.filter(([, ok]) => ok(value)).length;
+  const bonus = value.length >= 14 && /[^A-Za-z0-9]/.test(value) ? 1 : 0;
+  const score = value ? Math.min(5, passed + bonus) : 0;
+  const label = ['', 'Muito fraca', 'Fraca', 'Razoável', 'Boa', 'Excelente'][score];
+  const color = score <= 2 ? 'bg-err' : score === 3 ? 'bg-warn' : 'bg-ok';
+  return (
+    <div className="mt-2.5" aria-live="polite">
+      <div className="flex gap-1.5" aria-hidden>
+        {[0, 1, 2, 3, 4].map((i) => <span key={i} className={clsx('h-1.5 flex-1 rounded-full transition-colors duration-300', i < score ? color : 'bg-surface-3')} />)}
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+        {RULES.map(([name, ok]) => (
+          <span key={name} className={clsx('inline-flex items-center gap-1 transition-colors', ok(value) ? 'text-ok' : 'text-subtle')}>
+            {ok(value) ? <Check className="h-3.5 w-3.5" aria-hidden /> : <span className="inline-block h-1.5 w-1.5 rounded-full bg-current" aria-hidden />}{name}
+          </span>
+        ))}
+        {label && <span className="ml-auto font-semibold text-muted">{label}</span>}
+      </div>
+    </div>
+  );
+}
+
+function IconBadge({ children, tone = 'primary' }: { children: ReactNode; tone?: 'primary' | 'ok' }) {
+  return (
+    <div className="relative mb-6 inline-flex">
+      <span className={clsx('absolute inset-0 rounded-2xl blur-xl', tone === 'ok' ? 'bg-ok/30' : 'bg-primary/30')} aria-hidden />
+      <span className={clsx('relative flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-lg',
+        tone === 'ok' ? 'bg-gradient-to-br from-emerald-400 to-emerald-600' : 'bg-gradient-to-br from-[#8b70ff] to-[#5b3df5]')}>
+        {children}
+      </span>
+    </div>
+  );
+}
+
+/* ---------- telas ---------- */
+
 export function LoginPage() {
   const after = useAfterAuth();
   const { data: me } = useMe();
-  const [error, setError] = useState<string | null>(null);
-  const [challenge, setChallenge] = useState<string | null>(null);
+  const [sp] = useSearchParams();
+  const [error, setError] = useState<string | null>(() => GOOGLE_ERRORS[sp.get('erro') ?? ''] ?? null);
+  // 2FA vindo do login com Google: o desafio chega no fragmento (#desafio=...)
+  const [challenge, setChallenge] = useState<string | null>(() => {
+    const m = /(?:^#|&)desafio=([^&]+)/.exec(window.location.hash);
+    if (m) history.replaceState(null, '', window.location.pathname + window.location.search);
+    return m ? decodeURIComponent(m[1]!) : null;
+  });
   const f = useForm({ resolver: zodResolver(z.object({ email: z.string().email('E-mail inválido'), password: z.string().min(1, 'Informe a senha') })) });
   useEffect(() => { if (me) void after(); }, [me]); // eslint-disable-line react-hooks/exhaustive-deps
   if (challenge) return <TwoFactorStep challenge={challenge} onDone={after} onRestart={() => setChallenge(null)} />;
   return (
-    <AuthLayout title="Entrar" subtitle="Acesse o painel da sua operação.">
+    <AuthLayout title="Bem-vindo de volta" subtitle="Acesse o painel da sua operação.">
+      <GoogleButton label="Entrar com Google" />
       <form className="space-y-4" noValidate onSubmit={f.handleSubmit(async (v) => {
         setError(null);
         try {
@@ -162,15 +272,19 @@ export function LoginPage() {
       })}>
         {error && <Callout tone="err" title={error} />}
         <Field label="E-mail" htmlFor="email" error={f.formState.errors.email?.message as string}>
-          <Input id="email" type="email" autoComplete="email" autoFocus {...f.register('email')} />
+          <Input id="email" type="email" autoComplete="email" autoFocus placeholder="voce@empresa.com" {...f.register('email')} />
         </Field>
-        <Field label="Senha" htmlFor="password" error={f.formState.errors.password?.message as string}>
-          <Input id="password" type="password" autoComplete="current-password" {...f.register('password')} />
-        </Field>
-        <div className="flex justify-end"><Link to="/esqueci-senha" className="text-sm font-medium text-primary hover:underline">Esqueci a senha</Link></div>
+        <div>
+          <div className="flex items-baseline justify-between">
+            <label className="label" htmlFor="password">Senha</label>
+            <Link to="/esqueci-senha" className="text-sm font-medium text-primary hover:underline">Esqueci a senha</Link>
+          </div>
+          <PasswordInput id="password" autoComplete="current-password" {...f.register('password')} />
+          {f.formState.errors.password && <p className="mt-1.5 text-xs font-medium text-err" role="alert">{String(f.formState.errors.password.message)}</p>}
+        </div>
         <Button type="submit" variant="primary" size="lg" className="w-full" loading={f.formState.isSubmitting}>Entrar</Button>
       </form>
-      <p className="mt-6 text-center text-sm text-muted">Ainda não tem conta? <Link to="/criar-conta" className="font-medium text-primary hover:underline">Comece o teste grátis</Link></p>
+      <p className="mt-8 text-center text-sm text-muted">Ainda não tem conta? <Link to="/criar-conta" className="font-semibold text-primary hover:underline">Comece o teste grátis</Link></p>
     </AuthLayout>
   );
 }
@@ -178,6 +292,7 @@ export function LoginPage() {
 export function SignupPage() {
   const after = useAfterAuth();
   const [error, setError] = useState<string | null>(null);
+  const [withOrg, setWithOrg] = useState(false);
   const schema = z.object({
     name: z.string().trim().min(2, 'Informe seu nome').max(120),
     orgName: z.string().trim().max(120).optional(),
@@ -187,41 +302,97 @@ export function SignupPage() {
   }).refine((v) => v.password === v.confirm, { path: ['confirm'], message: 'As senhas não coincidem' });
   const f = useForm<z.infer<typeof schema>>({ resolver: zodResolver(schema) });
   const err = f.formState.errors;
+  const pw = f.watch('password') ?? '';
   return (
-    <AuthLayout title="Criar conta" subtitle="7 dias grátis, sem cartão. Depois, R$ 47/mês.">
+    <AuthLayout title="Crie sua conta" subtitle="Comece a medir suas vendas reais em minutos.">
+      <ul className="-mt-2 mb-7 flex flex-wrap gap-2 text-xs font-medium">
+        {['7 dias grátis', 'Sem cartão de crédito', 'Cancele quando quiser'].map((t) => (
+          <li key={t} className="inline-flex items-center gap-1.5 rounded-full bg-primary/[0.08] px-3 py-1 text-primary ring-1 ring-inset ring-primary/20">
+            <Check className="h-3.5 w-3.5" aria-hidden />{t}
+          </li>
+        ))}
+      </ul>
+      <GoogleButton label="Criar conta com Google" />
       <form className="space-y-4" noValidate onSubmit={f.handleSubmit(async ({ confirm: _c, ...v }) => {
         setError(null);
         try { await post('/v1/auth/signup', v); await after(); } catch (e) { setError((e as Error).message); }
       })}>
         {error && <Callout tone="err" title={error} />}
-        <Field label="Seu nome" htmlFor="name" error={err.name?.message}><Input id="name" autoComplete="name" {...f.register('name')} /></Field>
-        <Field label="Empresa (opcional)" htmlFor="org" hint="Nome da organização no painel."><Input id="org" autoComplete="organization" {...f.register('orgName')} /></Field>
-        <Field label="E-mail" htmlFor="email" error={err.email?.message}><Input id="email" type="email" autoComplete="email" {...f.register('email')} /></Field>
-        <Field label="Senha" htmlFor="pw" error={err.password?.message} hint="Mínimo de 10 caracteres, com maiúscula, minúscula e número.">
-          <Input id="pw" type="password" autoComplete="new-password" {...f.register('password')} />
-        </Field>
-        <Field label="Confirmar senha" htmlFor="pw2" error={err.confirm?.message}><Input id="pw2" type="password" autoComplete="new-password" {...f.register('confirm')} /></Field>
-        <Button type="submit" variant="primary" size="lg" className="w-full" loading={f.formState.isSubmitting}>Criar conta</Button>
+        <Field label="Seu nome" htmlFor="name" error={err.name?.message}><Input id="name" autoComplete="name" placeholder="Como devemos te chamar" {...f.register('name')} /></Field>
+        <Field label="E-mail" htmlFor="email" error={err.email?.message}><Input id="email" type="email" autoComplete="email" placeholder="voce@empresa.com" {...f.register('email')} /></Field>
+        {withOrg ? (
+          <Field label="Empresa" htmlFor="org" hint="Nome da organização no painel."><Input id="org" autoComplete="organization" autoFocus {...f.register('orgName')} /></Field>
+        ) : (
+          <button type="button" onClick={() => setWithOrg(true)} className="text-sm font-medium text-primary hover:underline">+ Adicionar nome da empresa</button>
+        )}
+        <div>
+          <label className="label" htmlFor="pw">Senha</label>
+          <PasswordInput id="pw" autoComplete="new-password" {...f.register('password')} />
+          <PasswordStrength value={pw} />
+          {err.password && <p className="mt-1.5 text-xs font-medium text-err" role="alert">{err.password.message}</p>}
+        </div>
+        <Field label="Confirmar senha" htmlFor="pw2" error={err.confirm?.message}><PasswordInput id="pw2" autoComplete="new-password" {...f.register('confirm')} /></Field>
+        <Button type="submit" variant="primary" size="lg" className="w-full" loading={f.formState.isSubmitting}>Criar minha conta</Button>
+        <p className="text-center text-xs text-subtle"><Lock className="mr-1 inline h-3 w-3" aria-hidden />Seus dados ficam criptografados. Nunca compartilhamos seu e-mail.</p>
       </form>
-      <p className="mt-6 text-center text-sm text-muted">Já tem conta? <Link to="/entrar" className="font-medium text-primary hover:underline">Entrar</Link></p>
+      <p className="mt-8 text-center text-sm text-muted">Já tem conta? <Link to="/entrar" className="font-semibold text-primary hover:underline">Entrar</Link></p>
     </AuthLayout>
   );
 }
 
+const WEBMAIL: Array<[RegExp, string, string]> = [
+  [/@(gmail|googlemail)\./i, 'Abrir o Gmail', 'https://mail.google.com/mail/u/0/#search/PayTracking'],
+  [/@(outlook|hotmail|live|msn)\./i, 'Abrir o Outlook', 'https://outlook.live.com/mail/0/'],
+  [/@(yahoo|ymail)\./i, 'Abrir o Yahoo Mail', 'https://mail.yahoo.com/'],
+  [/@(icloud|me|mac)\./i, 'Abrir o iCloud Mail', 'https://www.icloud.com/mail'],
+];
+
 export function ForgotPage() {
-  const [sent, setSent] = useState(false);
+  const [sentTo, setSentTo] = useState<string | null>(null);
+  const [cooldown, setCooldown] = useState(0);
   const f = useForm({ resolver: zodResolver(z.object({ email: z.string().email('E-mail inválido') })) });
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
+  const request = async (email: string) => {
+    await post('/v1/auth/forgot-password', { email }).catch(() => undefined);
+    setSentTo(email);
+    setCooldown(60);
+  };
+  if (sentTo) {
+    const webmail = WEBMAIL.find(([re]) => re.test(sentTo));
+    return (
+      <AuthLayout title="Confira seu e-mail" subtitle={<>Se existir uma conta com <b className="text-fg">{sentTo}</b>, o link para criar uma nova senha chega em instantes.</>}>
+        <div className="-mt-2 space-y-5">
+          <ol className="space-y-3 rounded-2xl border border-border bg-surface p-5 text-sm">
+            {['Abra o e-mail “Redefinição de senha — PayTracking”.', 'Toque em “Abrir no PayTracking”.', 'Crie a nova senha. O link vale por 1 hora.'].map((t, i) => (
+              <li key={t} className="flex gap-3"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{i + 1}</span><span className="pt-0.5">{t}</span></li>
+            ))}
+          </ol>
+          {webmail && <a href={webmail[2]} target="_blank" rel="noreferrer noopener" className="block"><Button variant="primary" size="lg" className="w-full"><Mail className="h-4 w-4" aria-hidden />{webmail[1]}</Button></a>}
+          <p className="text-center text-sm text-muted">
+            Não chegou? Veja a caixa de spam ou{' '}
+            {cooldown > 0
+              ? <span>reenvie em {cooldown}s</span>
+              : <button type="button" className="font-semibold text-primary hover:underline" onClick={() => void request(sentTo)}>reenvie o link</button>}.
+          </p>
+          <p className="text-center text-sm"><button type="button" className="text-muted hover:underline" onClick={() => setSentTo(null)}>Usar outro e-mail</button></p>
+        </div>
+      </AuthLayout>
+    );
+  }
   return (
-    <AuthLayout title="Recuperar acesso" subtitle="Enviaremos um link para criar uma nova senha.">
-      {sent ? (
-        <Callout tone="ok" title="Verifique seu e-mail">Se houver uma conta com esse endereço, você receberá o link em instantes. Ele expira em 1 hora.</Callout>
-      ) : (
-        <form className="space-y-4" noValidate onSubmit={f.handleSubmit(async (v) => { await post('/v1/auth/forgot-password', v).catch(() => undefined); setSent(true); })}>
-          <Field label="E-mail" htmlFor="email" error={f.formState.errors.email?.message as string}><Input id="email" type="email" autoFocus {...f.register('email')} /></Field>
-          <Button type="submit" variant="primary" size="lg" className="w-full" loading={f.formState.isSubmitting}>Enviar link</Button>
-        </form>
-      )}
-      <p className="mt-6 text-center text-sm"><Link to="/entrar" className="font-medium text-primary hover:underline">Voltar para o login</Link></p>
+    <AuthLayout title="Esqueceu a senha?" subtitle="Sem problema. Digite seu e-mail e enviaremos um link seguro para criar uma nova.">
+      <IconBadge><KeyRound className="h-6 w-6" aria-hidden /></IconBadge>
+      <form className="space-y-4" noValidate onSubmit={f.handleSubmit((v) => request(String(v.email).trim()))}>
+        <Field label="E-mail da conta" htmlFor="email" error={f.formState.errors.email?.message as string}>
+          <Input id="email" type="email" autoComplete="email" autoFocus placeholder="voce@empresa.com" {...f.register('email')} />
+        </Field>
+        <Button type="submit" variant="primary" size="lg" className="w-full" loading={f.formState.isSubmitting}>Enviar link de recuperação</Button>
+      </form>
+      <p className="mt-8 text-center text-sm"><Link to="/entrar" className="inline-flex items-center gap-1.5 font-medium text-muted hover:text-fg"><ArrowLeft className="h-4 w-4" aria-hidden />Voltar para o login</Link></p>
     </AuthLayout>
   );
 }
@@ -230,18 +401,48 @@ export function ResetPage() {
   const [sp] = useSearchParams();
   const nav = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+  const token = sp.get('token');
   const schema = z.object({ password, confirm: z.string() }).refine((v) => v.password === v.confirm, { path: ['confirm'], message: 'As senhas não coincidem' });
   const f = useForm<z.infer<typeof schema>>({ resolver: zodResolver(schema) });
+  const pw = f.watch('password') ?? '';
+  useEffect(() => {
+    if (!done) return;
+    const t = setTimeout(() => nav('/entrar', { replace: true }), 4000);
+    return () => clearTimeout(t);
+  }, [done, nav]);
+  if (!token) {
+    return (
+      <AuthLayout title="Link incompleto" subtitle="Abra o link direto do e-mail, sem cortar o endereço.">
+        <Link to="/esqueci-senha"><Button variant="primary" size="lg" className="w-full">Pedir um novo link</Button></Link>
+      </AuthLayout>
+    );
+  }
+  if (done) {
+    return (
+      <AuthLayout title="Senha atualizada!" subtitle="Tudo certo. Por segurança, encerramos as sessões que estavam abertas.">
+        <IconBadge tone="ok"><Check className="h-7 w-7" aria-hidden /></IconBadge>
+        <Link to="/entrar" replace><Button variant="primary" size="lg" className="w-full">Entrar com a nova senha</Button></Link>
+        <p className="mt-4 text-center text-xs text-subtle">Redirecionando em instantes…</p>
+      </AuthLayout>
+    );
+  }
+  const expired = !!error && /inválido|expirado/i.test(error);
   return (
-    <AuthLayout title="Nova senha" subtitle="Por segurança, todas as sessões abertas serão encerradas.">
+    <AuthLayout title="Crie uma nova senha" subtitle="Escolha uma senha forte que você não use em outros sites.">
+      <IconBadge><ShieldCheck className="h-6 w-6" aria-hidden /></IconBadge>
       <form className="space-y-4" noValidate onSubmit={f.handleSubmit(async (v) => {
         setError(null);
-        try { await post('/v1/auth/reset-password', { token: sp.get('token'), password: v.password }); nav('/entrar', { replace: true }); }
+        try { await post('/v1/auth/reset-password', { token, password: v.password }); setDone(true); }
         catch (e) { setError((e as Error).message); }
       })}>
-        {error && <Callout tone="err" title={error} />}
-        <Field label="Nova senha" htmlFor="pw" error={f.formState.errors.password?.message}><Input id="pw" type="password" autoComplete="new-password" {...f.register('password')} /></Field>
-        <Field label="Confirmar" htmlFor="pw2" error={f.formState.errors.confirm?.message}><Input id="pw2" type="password" autoComplete="new-password" {...f.register('confirm')} /></Field>
+        {error && <Callout tone="err" title={error} action={expired ? <Link to="/esqueci-senha" className="text-sm font-semibold underline">Pedir novo link</Link> : undefined} />}
+        <div>
+          <label className="label" htmlFor="pw">Nova senha</label>
+          <PasswordInput id="pw" autoComplete="new-password" autoFocus {...f.register('password')} />
+          <PasswordStrength value={pw} />
+        </div>
+        <Field label="Confirmar nova senha" htmlFor="pw2" error={f.formState.errors.confirm?.message}><PasswordInput id="pw2" autoComplete="new-password" {...f.register('confirm')} /></Field>
         <Button type="submit" variant="primary" size="lg" className="w-full" loading={f.formState.isSubmitting}>Salvar nova senha</Button>
       </form>
     </AuthLayout>

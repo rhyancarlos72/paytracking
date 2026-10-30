@@ -1229,7 +1229,7 @@ var require_utils_webcrypto = __commonJS({
     var nodeCrypto = __require("crypto");
     module.exports = {
       postgresMd5PasswordHash,
-      randomBytes: randomBytes4,
+      randomBytes: randomBytes5,
       deriveKey,
       sha256: sha2562,
       hmacSha256,
@@ -1238,7 +1238,7 @@ var require_utils_webcrypto = __commonJS({
     var webCrypto = nodeCrypto.webcrypto || globalThis.crypto;
     var subtleCrypto = webCrypto.subtle;
     var textEncoder = new TextEncoder();
-    function randomBytes4(length) {
+    function randomBytes5(length) {
       return webCrypto.getRandomValues(Buffer.alloc(length));
     }
     async function md5(string4) {
@@ -78748,6 +78748,9 @@ var schema = external_exports.object({
     return external_exports.NEVER;
   }),
   PLATFORM_ADMIN_EMAILS: external_exports.string().default(""),
+  /** Login com Google (Google Cloud → Credenciais → ID do cliente OAuth, tipo "Aplicativo da Web") */
+  GOOGLE_CLIENT_ID: external_exports.string().default(""),
+  GOOGLE_CLIENT_SECRET: external_exports.string().default(""),
   META_APP_ID: external_exports.string().default(""),
   META_APP_SECRET: external_exports.string().default(""),
   META_LOGIN_CONFIG_ID: external_exports.string().default(""),
@@ -91252,21 +91255,53 @@ var nodemailer_default = nodemailer;
 // src/lib/mailer.ts
 var esc2 = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 function renderHtml(mail) {
-  const lines = mail.text.split("\n").map((l) => {
-    const m = /^(.*?)(https?:\/\/\S+)\s*$/.exec(l);
-    if (m) {
-      const label = m[1].replace(/[:\s]+$/, "").trim();
-      return `${label ? `<p style="margin:0 0 12px">${esc2(label)}:</p>` : ""}<p style="margin:0 0 20px"><a href="${esc2(m[2])}" style="display:inline-block;background:#6d4aff;color:#ffffff;text-decoration:none;font-weight:600;padding:12px 22px;border-radius:10px">Abrir no PayTracking</a></p><p style="margin:0 0 16px;font-size:12px;color:#5d6378;word-break:break-all">Ou copie: ${esc2(m[2])}</p>`;
+  const title = mail.subject.replace(/\s+—\s+PayTracking$/, "");
+  const alert = /^Alerta de segurança/i.test(title);
+  const accent = alert ? "#e5484d" : "#6d4aff";
+  const lines = mail.text.split("\n");
+  const preheader = esc2((lines.find((l) => l.trim() && !/https?:\/\//.test(l)) ?? "").slice(0, 140));
+  const facts = [];
+  const flushFacts = () => {
+    if (!facts.length) return "";
+    const rows = facts.splice(0).join("");
+    return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:4px 0 20px;background:#f6f5fb;border-radius:12px">${rows}</table>`;
+  };
+  let body = "";
+  for (const l of lines) {
+    const link = /^(.*?)(https?:\/\/\S+)\s*$/.exec(l);
+    const fact = /^([A-Za-zÀ-ú ]{2,20}):\s+(.+)$/.exec(l.trim());
+    if (fact && !link) {
+      facts.push(`<tr><td style="padding:10px 16px;font-size:13px;color:#5d6378;white-space:nowrap;vertical-align:top">${esc2(fact[1])}</td><td style="padding:10px 16px;font-size:14px;color:#0b0d1a;font-weight:600">${esc2(fact[2])}</td></tr>`);
+      continue;
     }
-    return l.trim() ? `<p style="margin:0 0 12px">${esc2(l)}</p>` : "";
-  }).join("");
-  return `<!doctype html><html lang="pt-BR"><body style="margin:0;background:#f7f7fb;font-family:Inter,Segoe UI,Arial,sans-serif;color:#0b0d1a">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border:1px solid #e4e4ee;border-radius:16px">
-<tr><td style="padding:28px 28px 8px"><span style="display:inline-block;background:#6d4aff;color:#fff;font-weight:700;border-radius:8px;padding:4px 10px">PayTracking</span></td></tr>
-<tr><td style="padding:16px 28px 28px;font-size:15px;line-height:1.55">${lines}</td></tr>
-</table><p style="font-size:12px;color:#5d6378;margin:16px 0 0">Voc\xEA recebeu este e-mail porque tem uma conta no PayTracking.</p>
-</td></tr></table></body></html>`;
+    body += flushFacts();
+    if (link) {
+      const label = link[1].replace(/[:\s]+$/, "").trim();
+      const url2 = esc2(link[2]);
+      body += `${label ? `<p style="margin:0 0 16px">${esc2(label)}:</p>` : ""}<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 24px"><tr><td style="border-radius:12px;background:${accent}"><a href="${url2}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:12px">Abrir no PayTracking &rarr;</a></td></tr></table><p style="margin:0 0 20px;font-size:12px;line-height:1.5;color:#8a8fa3;word-break:break-all">Se o bot\xE3o n\xE3o funcionar, copie e cole no navegador:<br><a href="${url2}" style="color:${accent}">${url2}</a></p>`;
+    } else if (l.trim()) {
+      body += `<p style="margin:0 0 14px">${esc2(l)}</p>`;
+    }
+  }
+  body += flushFacts();
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>${esc2(title)}</title></head>
+<body style="margin:0;padding:0;background:#f1f0f7;font-family:Inter,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0b0d1a;-webkit-font-smoothing:antialiased">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0">${preheader}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f0f7"><tr><td align="center" style="padding:36px 16px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px">
+<tr><td style="padding:0 4px 18px"><table role="presentation" cellpadding="0" cellspacing="0"><tr>
+<td style="width:34px;height:34px;border-radius:10px;background:#6d4aff;color:#ffffff;font-weight:800;font-size:17px;text-align:center;vertical-align:middle">P</td>
+<td style="padding-left:10px;font-size:17px;font-weight:700;color:#0b0d1a">PayTracking</td></tr></table></td></tr>
+<tr><td style="background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 1px 3px rgba(16,12,40,.06)">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="height:6px;background:${alert ? "#e5484d" : "linear-gradient(90deg,#8b70ff,#5b3df5 50%,#22d3ee)"};background-color:${accent}"></td></tr>
+<tr><td style="padding:36px 36px 12px">
+<h1 style="margin:0 0 20px;font-size:24px;line-height:1.25;font-weight:700;letter-spacing:-.01em;color:#0b0d1a">${alert ? "&#128737;&#65039; " : ""}${esc2(title)}</h1>
+<div style="font-size:15px;line-height:1.6;color:#2b2f40">${body}</div>
+</td></tr>
+<tr><td style="padding:0 36px 32px"><p style="margin:0;padding-top:20px;border-top:1px solid #eceaf3;font-size:12px;line-height:1.55;color:#8a8fa3">Este \xE9 um e-mail autom\xE1tico de seguran\xE7a da sua conta. A equipe PayTracking nunca pede sua senha ou c\xF3digos por e-mail, WhatsApp ou telefone.</p></td></tr>
+</table></td></tr>
+<tr><td align="center" style="padding:20px 8px 0;font-size:12px;line-height:1.5;color:#8a8fa3">Voc\xEA recebeu este e-mail porque tem uma conta no PayTracking.<br>&copy; PayTracking &middot; rastreamento de vendas e convers\xF5es</td></tr>
+</table></td></tr></table></body></html>`;
 }
 function createMailer(config2, log2) {
   if (config2.SMTP_HOST) {
@@ -91354,7 +91389,8 @@ function wakeDispatcher() {
 }
 
 // src/app.ts
-import { randomUUID as randomUUID3 } from "node:crypto";
+import { createHash as createHash4, randomUUID as randomUUID3 } from "node:crypto";
+import { brotliCompressSync, constants as zlibConstants, gzipSync } from "node:zlib";
 
 // src/auth/service.ts
 var import_bcryptjs = __toESM(require_bcryptjs(), 1);
@@ -91403,17 +91439,19 @@ function planState(org, now) {
   return { status: expired ? "expired" : org.plan_status, daysLeft, blocked: expired };
 }
 async function createUserWithOrg(ctx, input2) {
-  validatePassword(input2.password);
+  if (input2.password === void 0 && !input2.googleSub) throw badRequest("Informe uma senha.");
+  if (input2.password !== void 0) validatePassword(input2.password);
   const email4 = input2.email.trim().toLowerCase();
-  const hash2 = await hashPassword(input2.password);
+  const hash2 = await hashPassword(input2.password ?? randomToken(32));
   const trialEnd = new Date(ctx.now().getTime() + ctx.config.PLAN_TRIAL_DAYS * 864e5);
   return tx(ctx.db, async (c) => {
     const exists = await c.query("SELECT 1 FROM users WHERE email = $1", [email4]);
     if (exists.rowCount) throw conflict("J\xE1 existe uma conta com este e-mail. Fa\xE7a login.");
     const isAdmin = ctx.config.platformAdmins.has(email4);
     const u = await c.query(
-      "INSERT INTO users(email, password_hash, name, is_platform_admin) VALUES ($1, $2, $3, $4) RETURNING id",
-      [email4, hash2, input2.name?.trim() || null, isAdmin]
+      `INSERT INTO users(email, password_hash, name, is_platform_admin, google_sub, email_verified_at)
+       VALUES ($1, $2, $3, $4, $5, CASE WHEN $5::text IS NULL THEN NULL ELSE now() END) RETURNING id`,
+      [email4, hash2, input2.name?.trim() || null, isAdmin, input2.googleSub ?? null]
     );
     const userId = u.rows[0].id;
     const o = await c.query(
@@ -91581,6 +91619,155 @@ function jsonSafe(v) {
 // src/auth/two-factor.ts
 import { randomBytes as randomBytes3 } from "node:crypto";
 
+// src/notifications/push.ts
+var import_web_push2 = __toESM(require_src2(), 1);
+
+// src/notifications/vapid.ts
+var import_web_push = __toESM(require_src2(), 1);
+var cached2 = null;
+async function getVapidKeys(ctx) {
+  const subject = ctx.config.VAPID_SUBJECT;
+  if (ctx.config.VAPID_PUBLIC_KEY && ctx.config.VAPID_PRIVATE_KEY) {
+    return { publicKey: ctx.config.VAPID_PUBLIC_KEY, privateKey: ctx.config.VAPID_PRIVATE_KEY, subject, source: "env" };
+  }
+  if (cached2 && cached2.db === ctx.db) return cached2.keys;
+  const read = async () => {
+    const r = await ctx.db.query(`SELECT key, value FROM app_settings WHERE key IN ('vapid_public', 'vapid_private_enc')`);
+    const m = new Map(r.rows.map((x) => [x.key, x.value]));
+    const pub = m.get("vapid_public");
+    const priv = m.get("vapid_private_enc");
+    return pub && priv ? { publicKey: pub, privateKey: ctx.box.decrypt(priv) } : null;
+  };
+  let found = await read();
+  if (!found) {
+    const k = import_web_push.default.generateVAPIDKeys();
+    await ctx.db.query(
+      `INSERT INTO app_settings(key, value) VALUES ('vapid_public', $1), ('vapid_private_enc', $2) ON CONFLICT (key) DO NOTHING`,
+      [k.publicKey, ctx.box.encrypt(k.privateKey)]
+    );
+    found = await read();
+    if (!found) throw new Error("N\xE3o foi poss\xEDvel guardar as chaves do Web Push");
+    ctx.log.info({}, "chaves VAPID do Web Push geradas e guardadas no banco");
+  }
+  const keys = { ...found, subject, source: "database" };
+  cached2 = { db: ctx.db, keys };
+  return keys;
+}
+
+// src/notifications/push.ts
+async function deliver(ctx, subs, payload) {
+  const vapid = await getVapidKeys(ctx);
+  const body = JSON.stringify({ type: payload.kind ?? "sale", title: payload.title, body: payload.body, url: payload.url ?? "/", tag: payload.tag, ts: Date.now() });
+  let sent = 0, failed = 0, removed = 0;
+  await Promise.all(subs.map(async (s) => {
+    try {
+      const req = import_web_push2.default.generateRequestDetails(
+        { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+        body,
+        // urgência alta: o Android entrega na hora mesmo com a tela apagada (economia de bateria)
+        { TTL: 6 * 3600, urgency: "high", topic: void 0, vapidDetails: { subject: vapid.subject, publicKey: vapid.publicKey, privateKey: vapid.privateKey } }
+      );
+      const res = await ctx.fetch(req.endpoint, {
+        method: req.method,
+        headers: req.headers,
+        body: req.body,
+        signal: AbortSignal.timeout(1e4)
+      });
+      if (res.status === 404 || res.status === 410) {
+        await ctx.db.query("DELETE FROM push_subscriptions WHERE id = $1", [s.id]);
+        removed++;
+      } else if (res.ok) {
+        sent++;
+        await ctx.db.query("UPDATE push_subscriptions SET last_success_at = now() WHERE id = $1", [s.id]).catch(() => void 0);
+      } else {
+        failed++;
+        ctx.log.warn({ status: res.status, host: new URL(s.endpoint).host }, "push recusado pelo servi\xE7o de notifica\xE7\xF5es");
+      }
+    } catch (e) {
+      failed++;
+      ctx.log.warn({ err: String(e) }, "push falhou");
+    }
+  }));
+  return { sent, failed, removed, configured: true };
+}
+async function sendPushToOrg(ctx, orgId, payload) {
+  const subs = await ctx.db.query("SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE org_id = $1", [orgId]);
+  return deliver(ctx, subs.rows, payload);
+}
+async function sendPushToUser(ctx, userId, orgId, payload) {
+  const subs = await ctx.db.query("SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = $1 AND org_id = $2", [userId, orgId]);
+  return deliver(ctx, subs.rows, payload);
+}
+
+// src/notifications/routes.ts
+function deviceName(ua) {
+  const os3 = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) ? "iPad" : /Android/.test(ua) ? "Android" : /Windows/.test(ua) ? "Windows" : /Mac OS X|Macintosh/.test(ua) ? "Mac" : /Linux/.test(ua) ? "Linux" : "Dispositivo";
+  const browser = /EdgA?\//.test(ua) ? "Edge" : /SamsungBrowser/.test(ua) ? "Samsung Internet" : /OPR\//.test(ua) ? "Opera" : /Firefox|FxiOS/.test(ua) ? "Firefox" : /CriOS|Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : "navegador";
+  return `${os3} \xB7 ${browser}`;
+}
+function pushRoutes(app, ctx) {
+  app.get("/v1/push/config", async (req) => {
+    const a = auth(req);
+    const keys = await getVapidKeys(ctx);
+    const n = await ctx.db.query("SELECT count(*)::int AS n FROM push_subscriptions WHERE user_id = $1 AND org_id = $2", [a.user.id, a.org.id]);
+    return { vapidPublicKey: keys.publicKey, configured: true, subscriptions: n.rows[0]?.n ?? 0 };
+  });
+  app.get("/v1/push/devices", async (req) => {
+    const a = auth(req);
+    const r = await ctx.db.query(
+      `SELECT id, endpoint, user_agent, created_at, last_success_at FROM push_subscriptions
+        WHERE user_id = $1 AND org_id = $2 ORDER BY created_at DESC`,
+      [a.user.id, a.org.id]
+    );
+    return {
+      devices: r.rows.map((d) => ({
+        id: d.id,
+        name: deviceName(String(d.user_agent ?? "")),
+        createdAt: d.created_at,
+        lastSuccessAt: d.last_success_at,
+        // o painel compara com a inscrição deste navegador para mostrar "este dispositivo"
+        endpointHash: Buffer.from(String(d.endpoint)).toString("base64url").slice(-24)
+      }))
+    };
+  });
+  app.post("/v1/push/subscriptions", async (req) => {
+    const a = requireRole(req, "viewer");
+    const b = parse5(external_exports.object({
+      endpoint: external_exports.string().url().max(800).refine((u) => u.startsWith("https://"), "endpoint de push precisa ser https"),
+      keys: external_exports.object({ p256dh: external_exports.string().min(10).max(255), auth: external_exports.string().min(8).max(255) })
+    }), req.body);
+    await ctx.db.query(
+      `INSERT INTO push_subscriptions(user_id, org_id, endpoint, p256dh, auth, user_agent) VALUES ($1,$2,$3,$4,$5,$6)
+       ON CONFLICT (endpoint) DO UPDATE SET user_id = EXCLUDED.user_id, org_id = EXCLUDED.org_id, p256dh = EXCLUDED.p256dh,
+         auth = EXCLUDED.auth, user_agent = EXCLUDED.user_agent`,
+      [a.user.id, a.org.id, b.endpoint, b.keys.p256dh, b.keys.auth, String(req.headers["user-agent"] ?? "").slice(0, 255)]
+    );
+    return { ok: true };
+  });
+  app.post("/v1/push/unsubscribe", async (req) => {
+    const a = auth(req);
+    const { endpoint } = parse5(external_exports.object({ endpoint: external_exports.string().url().max(800) }), req.body);
+    await ctx.db.query("DELETE FROM push_subscriptions WHERE endpoint = $1 AND user_id = $2", [endpoint, a.user.id]);
+    return { ok: true };
+  });
+  app.delete("/v1/push/devices/:id", async (req) => {
+    const a = auth(req);
+    const { id } = parse5(external_exports.object({ id: external_exports.string().uuid() }), req.params);
+    const r = await ctx.db.query("DELETE FROM push_subscriptions WHERE id = $1 AND user_id = $2", [id, a.user.id]);
+    return { ok: (r.rowCount ?? 0) > 0 };
+  });
+  app.post("/v1/push/test", async (req) => {
+    const a = requireRole(req, "viewer");
+    return sendPushToUser(ctx, a.user.id, a.org.id, {
+      kind: "test",
+      title: "Venda aprovada! \u{1F525} (teste)",
+      body: "R$ 197,00 \xB7 as notifica\xE7\xF5es deste dispositivo est\xE3o funcionando.",
+      url: "/",
+      tag: `test-${Date.now()}`
+    });
+  });
+}
+
 // src/auth/totp.ts
 import { createHmac, randomBytes as randomBytes2, timingSafeEqual } from "node:crypto";
 var ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
@@ -91698,7 +91885,7 @@ async function hasTwoFactor(ctx, userId) {
 }
 async function securityAlert(ctx, req, to, what) {
   const when = ctx.now().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
-  const device = String(req.headers["user-agent"] ?? "desconhecido").slice(0, 120);
+  const device = deviceName(String(req.headers["user-agent"] ?? ""));
   await ctx.mailer.send({
     to,
     subject: `Alerta de seguran\xE7a: ${what} \u2014 PayTracking`,
@@ -91815,10 +92002,12 @@ function authRoutes(app, ctx) {
     const token = await issueToken(ctx, userId, "email_verify", 60 * 24 * 3);
     await ctx.mailer.send({
       to,
-      subject: "Confirme seu e-mail \u2014 PayTracking",
-      text: `Confirme seu e-mail acessando: ${ctx.config.APP_URL}/verificar-email?token=${token}
+      subject: "Bem-vindo! Confirme seu e-mail \u2014 PayTracking",
+      text: `Sua conta foi criada e o teste gr\xE1tis de ${ctx.config.PLAN_TRIAL_DAYS} dias j\xE1 come\xE7ou.
 
-O link expira em 3 dias.`
+Falta s\xF3 confirmar que este e-mail \xE9 seu: ${ctx.config.APP_URL}/verificar-email?token=${token}
+
+O link expira em 3 dias. Com o e-mail confirmado, voc\xEA consegue recuperar o acesso se esquecer a senha.`
     });
   }
   app.post("/v1/auth/signup", async (req, reply) => {
@@ -91894,9 +92083,11 @@ O link expira em 3 dias.`
       await ctx.mailer.send({
         to: body.email,
         subject: "Redefini\xE7\xE3o de senha \u2014 PayTracking",
-        text: `Para criar uma nova senha acesse: ${ctx.config.APP_URL}/redefinir-senha?token=${token}
+        text: `Recebemos um pedido para criar uma nova senha na sua conta.
 
-O link expira em 1 hora. Se voc\xEA n\xE3o pediu, ignore este e-mail.`
+Para escolher a nova senha: ${ctx.config.APP_URL}/redefinir-senha?token=${token}
+
+O link vale por 1 hora e funciona uma \xFAnica vez. Se n\xE3o foi voc\xEA, ignore este e-mail: sua senha atual continua valendo.`
       });
     }
     return { ok: true };
@@ -91962,6 +92153,135 @@ O link expira em 1 hora. Se voc\xEA n\xE3o pediu, ignore este e-mail.`
       [a.user.id, body.hideEmail ?? null, body.name ?? null]
     );
     return { ok: true };
+  });
+}
+
+// src/auth/google.ts
+import { createHash as createHash2, randomBytes as randomBytes4 } from "node:crypto";
+var AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
+var TOKEN_URL = "https://oauth2.googleapis.com/token";
+var COOKIE = "pt_google";
+var COOKIE_PATH = "/v1/auth/google";
+var TTL_MS = 10 * 6e4;
+var b64url = (b) => b.toString("base64url");
+var safeBack = (v) => typeof v === "string" && v.startsWith("/") && !v.startsWith("//") && !v.startsWith("/\\") ? v.slice(0, 300) : "/";
+function decodeJwtPayload(jwt2) {
+  const part = jwt2.split(".")[1];
+  if (!part) return null;
+  try {
+    return JSON.parse(Buffer.from(part, "base64url").toString("utf8"));
+  } catch {
+    return null;
+  }
+}
+var googleEnabled = (ctx) => !!(ctx.config.GOOGLE_CLIENT_ID && ctx.config.GOOGLE_CLIENT_SECRET);
+function googleRoutes(app, ctx) {
+  const secure = ctx.config.isProd;
+  const redirectUri = `${ctx.config.PUBLIC_API_URL.replace(/\/$/, "")}/v1/auth/google/callback`;
+  const appUrl = ctx.config.APP_URL.replace(/\/$/, "");
+  const fail = (reply, code2) => {
+    reply.clearCookie(COOKIE, { path: COOKIE_PATH });
+    return reply.redirect(`${appUrl}/entrar?erro=${encodeURIComponent(code2)}`, 302);
+  };
+  app.get("/v1/auth/providers", async () => ({ google: googleEnabled(ctx) }));
+  app.get("/v1/auth/google/start", async (req, reply) => {
+    if (!googleEnabled(ctx)) return fail(reply, "google_desativado");
+    await hit(ctx.db, `google:ip:${clientIp(req)}`, 30, 900);
+    const flow = {
+      state: b64url(randomBytes4(24)),
+      nonce: b64url(randomBytes4(24)),
+      verifier: b64url(randomBytes4(48)),
+      back: safeBack(req.query.voltar),
+      exp: ctx.now().getTime() + TTL_MS
+    };
+    reply.setCookie(COOKIE, ctx.box.encrypt(JSON.stringify(flow)), {
+      path: COOKIE_PATH,
+      httpOnly: true,
+      secure,
+      sameSite: "lax",
+      maxAge: TTL_MS / 1e3
+    });
+    const q = new URLSearchParams({
+      client_id: ctx.config.GOOGLE_CLIENT_ID,
+      redirect_uri: redirectUri,
+      response_type: "code",
+      scope: "openid email profile",
+      state: flow.state,
+      nonce: flow.nonce,
+      code_challenge: b64url(createHash2("sha256").update(flow.verifier).digest()),
+      code_challenge_method: "S256",
+      prompt: "select_account"
+    });
+    return reply.redirect(`${AUTH_URL}?${q}`, 302);
+  });
+  app.get("/v1/auth/google/callback", async (req, reply) => {
+    if (!googleEnabled(ctx)) return fail(reply, "google_desativado");
+    const q = req.query;
+    if (q.error) return fail(reply, q.error === "access_denied" ? "google_cancelado" : "google_falhou");
+    let flow;
+    try {
+      flow = JSON.parse(ctx.box.decrypt(String(req.cookies[COOKIE] ?? "")));
+    } catch {
+      return fail(reply, "google_expirou");
+    }
+    if (!q.state || q.state !== flow.state || flow.exp < ctx.now().getTime() || !q.code) return fail(reply, "google_expirou");
+    reply.clearCookie(COOKIE, { path: COOKIE_PATH });
+    let token = null;
+    try {
+      const r = await ctx.fetch(TOKEN_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          code: q.code,
+          client_id: ctx.config.GOOGLE_CLIENT_ID,
+          client_secret: ctx.config.GOOGLE_CLIENT_SECRET,
+          redirect_uri: redirectUri,
+          grant_type: "authorization_code",
+          code_verifier: flow.verifier
+        }).toString(),
+        signal: AbortSignal.timeout(1e4)
+      });
+      const body = await r.json().catch(() => null);
+      if (!r.ok || !body?.id_token) {
+        ctx.log.warn({ status: r.status }, "google: troca do c\xF3digo falhou");
+        return fail(reply, "google_falhou");
+      }
+      token = decodeJwtPayload(body.id_token);
+    } catch (e) {
+      ctx.log.warn({ err: String(e) }, "google: sem resposta");
+      return fail(reply, "google_falhou");
+    }
+    const nowSec = ctx.now().getTime() / 1e3;
+    if (!token || !["accounts.google.com", "https://accounts.google.com"].includes(String(token.iss)) || token.aud !== ctx.config.GOOGLE_CLIENT_ID || !token.exp || token.exp < nowSec || token.nonce !== flow.nonce || !token.sub || !token.email) return fail(reply, "google_falhou");
+    if (token.email_verified !== true && token.email_verified !== "true") return fail(reply, "google_email_nao_verificado");
+    const email4 = token.email.trim().toLowerCase();
+    const sub = String(token.sub);
+    let userId;
+    let created = false;
+    const bySub = await ctx.db.query("SELECT id FROM users WHERE google_sub = $1", [sub]);
+    if (bySub.rows[0]) userId = bySub.rows[0].id;
+    else {
+      const byEmail = await ctx.db.query("SELECT id, google_sub FROM users WHERE email = $1", [email4]);
+      const existing = byEmail.rows[0];
+      if (existing) {
+        if (existing.google_sub && existing.google_sub !== sub) return fail(reply, "google_outra_conta");
+        await ctx.db.query("UPDATE users SET google_sub = $2, email_verified_at = COALESCE(email_verified_at, now()), updated_at = now() WHERE id = $1", [existing.id, sub]);
+        userId = existing.id;
+        await ctx.db.query(`INSERT INTO audit_log(user_id, action, ip) VALUES ($1, 'auth.google_linked', $2)`, [userId, clientIp(req) || null]);
+        await securityAlert(ctx, req, email4, "O login com Google foi conectado");
+      } else {
+        await hit(ctx.db, `signup:ip:${clientIp(req)}`, 10, 3600);
+        const r = await createUserWithOrg(ctx, { email: email4, name: token.name?.slice(0, 120) ?? null, googleSub: sub });
+        userId = r.userId;
+        created = true;
+      }
+    }
+    if (await hasTwoFactor(ctx, userId)) {
+      return reply.redirect(`${appUrl}/entrar?voltar=${encodeURIComponent(flow.back)}#desafio=${encodeURIComponent(issueChallenge(ctx, userId))}`, 302);
+    }
+    const s = await createSession(ctx, userId, { ip: clientIp(req), ua: req.headers["user-agent"] });
+    setSessionCookie(reply, s.token, s.expires, secure);
+    return reply.redirect(`${appUrl}${created ? "/?bem-vindo=1" : flow.back}`, 302);
   });
 }
 
@@ -92361,8 +92681,8 @@ function isReversal(to) {
 }
 
 // ../../packages/domain/src/meta-normalize.ts
-import { createHash as createHash2 } from "node:crypto";
-var sha256 = (v) => createHash2("sha256").update(v, "utf8").digest("hex");
+import { createHash as createHash3 } from "node:crypto";
+var sha256 = (v) => createHash3("sha256").update(v, "utf8").digest("hex");
 var isHash = (v) => /^[a-f0-9]{64}$/i.test(v);
 var ACCENTS = {
   \u00E1: "a",
@@ -92865,7 +93185,8 @@ function snippets(api, p) {
     };
     return Object.entries(all).map(([k, v]) => `s.setAttribute(${JSON.stringify(k)},${JSON.stringify(v)});`).join("");
   };
-  const wrap2 = (a) => `<script>!function(){var s=document.createElement("script");s.async=true;s.src=${JSON.stringify(`${api}/pixel.js`)};${a}document.head.appendChild(s)}();</script>`;
+  const hints = `<link rel="preconnect" href=${JSON.stringify(api)} crossorigin><link rel="preconnect" href="https://connect.facebook.net">`;
+  const wrap2 = (a) => `${hints}<script>!function(){var s=document.createElement("script");s.async=true;s.crossOrigin="anonymous";s.src=${JSON.stringify(`${api}/pixel.js`)};${a}document.head.appendChild(s)}();</script>`;
   const click = { "data-ic-click": "1" };
   if (p.ic_rule_type !== "none" && p.ic_rule_value) {
     click["data-ic-rule"] = p.ic_rule_type;
@@ -92875,7 +93196,7 @@ function snippets(api, p) {
     salesPage: wrap2(attrs({})),
     salesPageWithClickIc: wrap2(attrs(click)),
     checkoutPage: wrap2(attrs({ "data-ic-onload": "1" })),
-    globalCheckoutLoader: `<script src=${JSON.stringify(`${api}/checkout-loader.js`)} data-key=${JSON.stringify(p.public_key)} defer></script>`
+    globalCheckoutLoader: `${hints}<script src=${JSON.stringify(`${api}/checkout-loader.js`)} data-key=${JSON.stringify(p.public_key)} crossorigin="anonymous" defer></script>`
   };
 }
 async function loadPixel(ctx, orgId, id) {
@@ -93839,86 +94160,6 @@ async function resolveAlert(c, orgId, dedupKey) {
   await c.query("UPDATE alerts SET resolved_at = now() WHERE org_id = $1 AND dedup_key = $2 AND resolved_at IS NULL", [orgId, dedupKey]);
 }
 
-// src/notifications/push.ts
-var import_web_push2 = __toESM(require_src2(), 1);
-
-// src/notifications/vapid.ts
-var import_web_push = __toESM(require_src2(), 1);
-var cached2 = null;
-async function getVapidKeys(ctx) {
-  const subject = ctx.config.VAPID_SUBJECT;
-  if (ctx.config.VAPID_PUBLIC_KEY && ctx.config.VAPID_PRIVATE_KEY) {
-    return { publicKey: ctx.config.VAPID_PUBLIC_KEY, privateKey: ctx.config.VAPID_PRIVATE_KEY, subject, source: "env" };
-  }
-  if (cached2 && cached2.db === ctx.db) return cached2.keys;
-  const read = async () => {
-    const r = await ctx.db.query(`SELECT key, value FROM app_settings WHERE key IN ('vapid_public', 'vapid_private_enc')`);
-    const m = new Map(r.rows.map((x) => [x.key, x.value]));
-    const pub = m.get("vapid_public");
-    const priv = m.get("vapid_private_enc");
-    return pub && priv ? { publicKey: pub, privateKey: ctx.box.decrypt(priv) } : null;
-  };
-  let found = await read();
-  if (!found) {
-    const k = import_web_push.default.generateVAPIDKeys();
-    await ctx.db.query(
-      `INSERT INTO app_settings(key, value) VALUES ('vapid_public', $1), ('vapid_private_enc', $2) ON CONFLICT (key) DO NOTHING`,
-      [k.publicKey, ctx.box.encrypt(k.privateKey)]
-    );
-    found = await read();
-    if (!found) throw new Error("N\xE3o foi poss\xEDvel guardar as chaves do Web Push");
-    ctx.log.info({}, "chaves VAPID do Web Push geradas e guardadas no banco");
-  }
-  const keys = { ...found, subject, source: "database" };
-  cached2 = { db: ctx.db, keys };
-  return keys;
-}
-
-// src/notifications/push.ts
-async function deliver(ctx, subs, payload) {
-  const vapid = await getVapidKeys(ctx);
-  const body = JSON.stringify({ type: payload.kind ?? "sale", title: payload.title, body: payload.body, url: payload.url ?? "/", tag: payload.tag, ts: Date.now() });
-  let sent = 0, failed = 0, removed = 0;
-  await Promise.all(subs.map(async (s) => {
-    try {
-      const req = import_web_push2.default.generateRequestDetails(
-        { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-        body,
-        // urgência alta: o Android entrega na hora mesmo com a tela apagada (economia de bateria)
-        { TTL: 6 * 3600, urgency: "high", topic: void 0, vapidDetails: { subject: vapid.subject, publicKey: vapid.publicKey, privateKey: vapid.privateKey } }
-      );
-      const res = await ctx.fetch(req.endpoint, {
-        method: req.method,
-        headers: req.headers,
-        body: req.body,
-        signal: AbortSignal.timeout(1e4)
-      });
-      if (res.status === 404 || res.status === 410) {
-        await ctx.db.query("DELETE FROM push_subscriptions WHERE id = $1", [s.id]);
-        removed++;
-      } else if (res.ok) {
-        sent++;
-        await ctx.db.query("UPDATE push_subscriptions SET last_success_at = now() WHERE id = $1", [s.id]).catch(() => void 0);
-      } else {
-        failed++;
-        ctx.log.warn({ status: res.status, host: new URL(s.endpoint).host }, "push recusado pelo servi\xE7o de notifica\xE7\xF5es");
-      }
-    } catch (e) {
-      failed++;
-      ctx.log.warn({ err: String(e) }, "push falhou");
-    }
-  }));
-  return { sent, failed, removed, configured: true };
-}
-async function sendPushToOrg(ctx, orgId, payload) {
-  const subs = await ctx.db.query("SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE org_id = $1", [orgId]);
-  return deliver(ctx, subs.rows, payload);
-}
-async function sendPushToUser(ctx, userId, orgId, payload) {
-  const subs = await ctx.db.query("SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = $1 AND org_id = $2", [userId, orgId]);
-  return deliver(ctx, subs.rows, payload);
-}
-
 // src/tracking/identity.ts
 var emailLookupHash = (email4) => {
   const e = (email4 ?? "").trim().toLowerCase();
@@ -94479,7 +94720,8 @@ function collectRoutes(app, ctx) {
   }
   async function pixelConfig(req, reply) {
     cors(req, reply);
-    reply.header("Cache-Control", "no-store");
+    reply.header("Cache-Control", "public, max-age=300");
+    reply.header("Timing-Allow-Origin", "*");
     const q = req.query ?? {};
     const productId = String(q.produto_id ?? q.product_id ?? q.offer_id ?? q.product_sku ?? q.produtoId ?? q.productId ?? "").replace(/\s+/g, "");
     if (!productId) return reply.code(400).send({ success: false, error: "Missing produto_id" });
@@ -95824,75 +96066,6 @@ Painel: ${ctx.config.APP_URL}`
   });
 }
 
-// src/notifications/routes.ts
-function deviceName(ua) {
-  const os3 = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) ? "iPad" : /Android/.test(ua) ? "Android" : /Windows/.test(ua) ? "Windows" : /Mac OS X|Macintosh/.test(ua) ? "Mac" : /Linux/.test(ua) ? "Linux" : "Dispositivo";
-  const browser = /EdgA?\//.test(ua) ? "Edge" : /SamsungBrowser/.test(ua) ? "Samsung Internet" : /OPR\//.test(ua) ? "Opera" : /Firefox|FxiOS/.test(ua) ? "Firefox" : /CriOS|Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : "navegador";
-  return `${os3} \xB7 ${browser}`;
-}
-function pushRoutes(app, ctx) {
-  app.get("/v1/push/config", async (req) => {
-    const a = auth(req);
-    const keys = await getVapidKeys(ctx);
-    const n = await ctx.db.query("SELECT count(*)::int AS n FROM push_subscriptions WHERE user_id = $1 AND org_id = $2", [a.user.id, a.org.id]);
-    return { vapidPublicKey: keys.publicKey, configured: true, subscriptions: n.rows[0]?.n ?? 0 };
-  });
-  app.get("/v1/push/devices", async (req) => {
-    const a = auth(req);
-    const r = await ctx.db.query(
-      `SELECT id, endpoint, user_agent, created_at, last_success_at FROM push_subscriptions
-        WHERE user_id = $1 AND org_id = $2 ORDER BY created_at DESC`,
-      [a.user.id, a.org.id]
-    );
-    return {
-      devices: r.rows.map((d) => ({
-        id: d.id,
-        name: deviceName(String(d.user_agent ?? "")),
-        createdAt: d.created_at,
-        lastSuccessAt: d.last_success_at,
-        // o painel compara com a inscrição deste navegador para mostrar "este dispositivo"
-        endpointHash: Buffer.from(String(d.endpoint)).toString("base64url").slice(-24)
-      }))
-    };
-  });
-  app.post("/v1/push/subscriptions", async (req) => {
-    const a = requireRole(req, "viewer");
-    const b = parse5(external_exports.object({
-      endpoint: external_exports.string().url().max(800).refine((u) => u.startsWith("https://"), "endpoint de push precisa ser https"),
-      keys: external_exports.object({ p256dh: external_exports.string().min(10).max(255), auth: external_exports.string().min(8).max(255) })
-    }), req.body);
-    await ctx.db.query(
-      `INSERT INTO push_subscriptions(user_id, org_id, endpoint, p256dh, auth, user_agent) VALUES ($1,$2,$3,$4,$5,$6)
-       ON CONFLICT (endpoint) DO UPDATE SET user_id = EXCLUDED.user_id, org_id = EXCLUDED.org_id, p256dh = EXCLUDED.p256dh,
-         auth = EXCLUDED.auth, user_agent = EXCLUDED.user_agent`,
-      [a.user.id, a.org.id, b.endpoint, b.keys.p256dh, b.keys.auth, String(req.headers["user-agent"] ?? "").slice(0, 255)]
-    );
-    return { ok: true };
-  });
-  app.post("/v1/push/unsubscribe", async (req) => {
-    const a = auth(req);
-    const { endpoint } = parse5(external_exports.object({ endpoint: external_exports.string().url().max(800) }), req.body);
-    await ctx.db.query("DELETE FROM push_subscriptions WHERE endpoint = $1 AND user_id = $2", [endpoint, a.user.id]);
-    return { ok: true };
-  });
-  app.delete("/v1/push/devices/:id", async (req) => {
-    const a = auth(req);
-    const { id } = parse5(external_exports.object({ id: external_exports.string().uuid() }), req.params);
-    const r = await ctx.db.query("DELETE FROM push_subscriptions WHERE id = $1 AND user_id = $2", [id, a.user.id]);
-    return { ok: (r.rowCount ?? 0) > 0 };
-  });
-  app.post("/v1/push/test", async (req) => {
-    const a = requireRole(req, "viewer");
-    return sendPushToUser(ctx, a.user.id, a.org.id, {
-      kind: "test",
-      title: "Venda aprovada! \u{1F525} (teste)",
-      body: "R$ 197,00 \xB7 as notifica\xE7\xF5es deste dispositivo est\xE3o funcionando.",
-      url: "/",
-      tag: `test-${Date.now()}`
-    });
-  });
-}
-
 // src/lib/flood.ts
 var FloodGuard = class {
   constructor(windowMs = 6e4, maxKeys = 5e4) {
@@ -96036,6 +96209,7 @@ Canonical: ${ctx.config.APP_URL.replace(/\/$/, "")}/.well-known/security.txt
   });
   authRoutes(app, ctx);
   twoFactorRoutes(app, ctx);
+  googleRoutes(app, ctx);
   orgRoutes(app, ctx);
   pixelRoutes(app, ctx);
   integrationRoutes(app, ctx);
@@ -96054,14 +96228,39 @@ Canonical: ${ctx.config.APP_URL.replace(/\/$/, "")}/.well-known/security.txt
     "/checkout-loader.js": "checkout-loader.js",
     "/checkout-loader-ic-only.js": "checkout-loader.js"
   };
+  const compiled = /* @__PURE__ */ new Map();
+  const loadScript = (file2) => {
+    const p = path4.join(pixelDir, file2);
+    if (!existsSync2(p)) return null;
+    let c = compiled.get(p);
+    if (!c) {
+      const raw = readFileSync(p);
+      c = {
+        raw,
+        br: brotliCompressSync(raw, { params: { [zlibConstants.BROTLI_PARAM_QUALITY]: 11 } }),
+        gz: gzipSync(raw, { level: 9 }),
+        etag: `"${createHash4("sha256").update(raw).digest("base64url").slice(0, 16)}"`
+      };
+      compiled.set(p, c);
+    }
+    return c;
+  };
   for (const [route, file2] of Object.entries(scripts)) {
-    app.get(route, async (_req, reply) => {
-      const p = path4.join(pixelDir, file2);
-      if (!existsSync2(p)) return reply.code(404).send("// build do pixel ausente");
+    app.get(route, async (req, reply) => {
+      const c = loadScript(file2);
+      if (!c) return reply.code(404).send("// build do pixel ausente");
       reply.header("Content-Type", "application/javascript; charset=utf-8");
-      reply.header("Cache-Control", "public, max-age=300");
+      reply.header("Cache-Control", "public, max-age=3600, stale-while-revalidate=604800");
+      reply.header("ETag", c.etag);
+      reply.header("Vary", "Accept-Encoding");
       reply.header("Access-Control-Allow-Origin", "*");
-      return readFileSync(p, "utf8");
+      reply.header("Cross-Origin-Resource-Policy", "cross-origin");
+      reply.header("Timing-Allow-Origin", "*");
+      if (req.headers["if-none-match"] === c.etag) return reply.code(304).send();
+      const accept = String(req.headers["accept-encoding"] ?? "");
+      if (/\bbr\b/.test(accept)) return reply.header("Content-Encoding", "br").send(c.br);
+      if (/\bgzip\b/.test(accept)) return reply.header("Content-Encoding", "gzip").send(c.gz);
+      return reply.send(c.raw);
     });
   }
   const webDir = ctx.config.WEB_DIST_DIR || firstDir(path4.join(here2, "web", "index.html"), path4.resolve(here2, "../../web/dist/index.html")).replace(/[\\/]index\.html$/, "");

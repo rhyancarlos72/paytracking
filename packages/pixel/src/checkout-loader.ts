@@ -108,9 +108,20 @@ import {
     setTimeout(() => attempt(false), 150);
   };
 
+  // a Meta começa a carregar JÁ, em paralelo com a consulta do pixel (os comandos ficam na fila)
+  loadFbq();
+  // a mesma aba recarregando o checkout não pergunta de novo (5 min)
+  const cacheKey = `pt_cfg_${productId}_${key}`;
+  try {
+    const c = JSON.parse(sessionStorage.getItem(cacheKey) || 'null');
+    if (c && c.t > Date.now() - 300_000 && c.cfg?.success) { fire(c.cfg); return; }
+  } catch { /* sessionStorage indisponível */ }
   const url = `${base}/v1/pixel-config?produto_id=${encodeURIComponent(productId)}${key ? `&key=${encodeURIComponent(key)}` : ''}`;
   fetch(url, { credentials: 'omit' })
     .then((r) => r.json())
-    .then(fire)
+    .then((cfg: Dict) => {
+      try { if (cfg?.success) sessionStorage.setItem(cacheKey, JSON.stringify({ t: Date.now(), cfg })); } catch { /* */ }
+      fire(cfg);
+    })
     .catch(() => log('Falha ao buscar a configuração do pixel', 'err'));
 })();

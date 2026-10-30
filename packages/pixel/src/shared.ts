@@ -3,24 +3,34 @@
 export type Dict = Record<string, unknown>;
 
 /** SHA-256 síncrono (o Pixel precisa do external_id hasheado ANTES do primeiro PageView). */
+let SHA_INIT: number[] | null = null;
+let SHA_K: number[] | null = null;
+const shaMemo: Record<string, string> = {};
+
 export function sha256(ascii: string): string {
+  if (shaMemo[ascii]) return shaMemo[ascii]!;
   const rightRotate = (v: number, a: number) => (v >>> a) | (v << (32 - a));
   const maxWord = 2 ** 32;
   let result = '';
   const words: number[] = [];
   const s = unescape(encodeURIComponent(ascii));
   const bitLength = s.length * 8;
-  let hash: number[] = [];
-  const k: number[] = [];
-  let primeCounter = 0;
-  const isComposite: Record<number, boolean> = {};
-  for (let candidate = 2; primeCounter < 64; candidate++) {
-    if (!isComposite[candidate]) {
-      for (let i = 0; i < 313; i += candidate) isComposite[i] = true;
-      hash[primeCounter] = (candidate ** 0.5 * maxWord) | 0;
-      k[primeCounter++] = (candidate ** (1 / 3) * maxWord) | 0;
+  if (!SHA_INIT || !SHA_K) {
+    // constantes do SHA-256 (raízes dos primeiros primos): calculadas uma vez só
+    SHA_INIT = [];
+    SHA_K = [];
+    let primeCounter = 0;
+    const isComposite: Record<number, boolean> = {};
+    for (let candidate = 2; primeCounter < 64; candidate++) {
+      if (!isComposite[candidate]) {
+        for (let i = 0; i < 313; i += candidate) isComposite[i] = true;
+        SHA_INIT[primeCounter] = (candidate ** 0.5 * maxWord) | 0;
+        SHA_K[primeCounter++] = (candidate ** (1 / 3) * maxWord) | 0;
+      }
     }
   }
+  let hash: number[] = SHA_INIT.slice(0, 8);
+  const k = SHA_K;
   let str = s + '\x80';
   while ((str.length % 64) - 56) str += '\x00';
   for (let i = 0; i < str.length; i++) {
@@ -56,7 +66,7 @@ export function sha256(ascii: string): string {
       result += (b < 16 ? '0' : '') + b.toString(16);
     }
   }
-  return result;
+  return (shaMemo[ascii] = result);
 }
 
 export function getCookie(name: string): string {

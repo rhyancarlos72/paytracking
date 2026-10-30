@@ -5,12 +5,14 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { wakeDispatcher } from './capi/wake.js';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
+import { brotliCompressSync, constants as zlibConstants, gzipSync } from 'node:zlib';
 import { ZodError } from 'zod';
 import type { Ctx } from './context.js';
 import { resolveSession } from './auth/service.js';
 import { authRoutes } from './auth/routes.js';
 import { twoFactorRoutes } from './auth/two-factor.js';
+import { googleRoutes } from './auth/google.js';
 import { orgRoutes } from './orgs/routes.js';
 import { pixelRoutes } from './pixels/routes.js';
 import { integrationRoutes } from './integrations/routes.js';
@@ -141,6 +143,7 @@ export async function buildApp(ctx: Ctx): Promise<FastifyInstance> {
 
   authRoutes(app, ctx);
   twoFactorRoutes(app, ctx);
+  googleRoutes(app, ctx);
   orgRoutes(app, ctx);
   pixelRoutes(app, ctx);
   integrationRoutes(app, ctx);
@@ -163,14 +166,41 @@ export async function buildApp(ctx: Ctx): Promise<FastifyInstance> {
     '/checkout-loader.js': 'checkout-loader.js',
     '/checkout-loader-ic-only.js': 'checkout-loader.js',
   };
+  // em memória e já comprimidos (brotli/gzip): resposta instantânea, sem ler o disco a cada visita
+  const compiled = new Map<string, { raw: Buffer; br: Buffer; gz: Buffer; etag: string }>();
+  const loadScript = (file: string) => {
+    const p = path.join(pixelDir, file);
+    if (!existsSync(p)) return null;
+    let c = compiled.get(p);
+    if (!c) {
+      const raw = readFileSync(p);
+      c = {
+        raw,
+        br: brotliCompressSync(raw, { params: { [zlibConstants.BROTLI_PARAM_QUALITY]: 11 } }),
+        gz: gzipSync(raw, { level: 9 }),
+        etag: `"${createHash('sha256').update(raw).digest('base64url').slice(0, 16)}"`,
+      };
+      compiled.set(p, c);
+    }
+    return c;
+  };
   for (const [route, file] of Object.entries(scripts)) {
-    app.get(route, async (_req, reply) => {
-      const p = path.join(pixelDir, file);
-      if (!existsSync(p)) return reply.code(404).send('// build do pixel ausente');
+    app.get(route, async (req, reply) => {
+      const c = loadScript(file);
+      if (!c) return reply.code(404).send('// build do pixel ausente');
       reply.header('Content-Type', 'application/javascript; charset=utf-8');
-      reply.header('Cache-Control', 'public, max-age=300');
+      // 1 h no navegador e no CDN; depois usa o que tem e revalida em segundo plano (ETag)
+      reply.header('Cache-Control', 'public, max-age=3600, stale-while-revalidate=604800');
+      reply.header('ETag', c.etag);
+      reply.header('Vary', 'Accept-Encoding');
       reply.header('Access-Control-Allow-Origin', '*');
-      return readFileSync(p, 'utf8');
+      reply.header('Cross-Origin-Resource-Policy', 'cross-origin');
+      reply.header('Timing-Allow-Origin', '*');
+      if (req.headers['if-none-match'] === c.etag) return reply.code(304).send();
+      const accept = String(req.headers['accept-encoding'] ?? '');
+      if (/\bbr\b/.test(accept)) return reply.header('Content-Encoding', 'br').send(c.br);
+      if (/\bgzip\b/.test(accept)) return reply.header('Content-Encoding', 'gzip').send(c.gz);
+      return reply.send(c.raw);
     });
   }
 

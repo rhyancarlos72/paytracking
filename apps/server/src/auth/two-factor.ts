@@ -3,6 +3,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import type { Ctx } from '../context.js';
 import { sha256Hex } from '../lib/crypto.js';
+import { deviceName } from '../notifications/routes.js';
 import { badRequest, unauthorized } from '../lib/errors.js';
 import { auth, clientIp, parse, setSessionCookie } from '../lib/http.js';
 import { hit, clear } from '../lib/rate-limit.js';
@@ -82,7 +83,7 @@ export async function hasTwoFactor(ctx: Ctx, userId: string): Promise<boolean> {
 /** Aviso de segurança por e-mail. Falha de envio nunca bloqueia a ação. */
 export async function securityAlert(ctx: Ctx, req: FastifyRequest, to: string, what: string) {
   const when = ctx.now().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-  const device = String(req.headers['user-agent'] ?? 'desconhecido').slice(0, 120);
+  const device = deviceName(String(req.headers['user-agent'] ?? ''));
   await ctx.mailer.send({
     to,
     subject: `Alerta de segurança: ${what} — PayTracking`,

@@ -59,19 +59,23 @@ export function planState(org: Pick<OrgSummary, 'plan_status' | 'plan_expires_at
 
 export async function createUserWithOrg(
   ctx: Ctx,
-  input: { email: string; password: string; name?: string | null; orgName?: string | null },
+  input: { email: string; password?: string; name?: string | null; orgName?: string | null; googleSub?: string },
 ): Promise<{ userId: string; orgId: string }> {
-  validatePassword(input.password);
+  // conta criada pelo Google nasce sem senha conhecida (hash de um valor aleatório descartado);
+  // se quiser, a pessoa cria uma senha depois em "Esqueci a senha"
+  if (input.password === undefined && !input.googleSub) throw badRequest('Informe uma senha.');
+  if (input.password !== undefined) validatePassword(input.password);
   const email = input.email.trim().toLowerCase();
-  const hash = await hashPassword(input.password);
+  const hash = await hashPassword(input.password ?? randomToken(32));
   const trialEnd = new Date(ctx.now().getTime() + ctx.config.PLAN_TRIAL_DAYS * 86_400_000);
   return tx(ctx.db, async (c) => {
     const exists = await c.query('SELECT 1 FROM users WHERE email = $1', [email]);
     if (exists.rowCount) throw conflict('Já existe uma conta com este e-mail. Faça login.');
     const isAdmin = ctx.config.platformAdmins.has(email);
     const u = await c.query<{ id: string }>(
-      'INSERT INTO users(email, password_hash, name, is_platform_admin) VALUES ($1, $2, $3, $4) RETURNING id',
-      [email, hash, input.name?.trim() || null, isAdmin],
+      `INSERT INTO users(email, password_hash, name, is_platform_admin, google_sub, email_verified_at)
+       VALUES ($1, $2, $3, $4, $5, CASE WHEN $5::text IS NULL THEN NULL ELSE now() END) RETURNING id`,
+      [email, hash, input.name?.trim() || null, isAdmin, input.googleSub ?? null],
     );
     const userId = u.rows[0]!.id;
     const o = await c.query<{ id: string }>(

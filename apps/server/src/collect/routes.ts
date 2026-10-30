@@ -159,7 +159,9 @@ export function collectRoutes(app: FastifyInstance, ctx: Ctx) {
    */
   async function pixelConfig(req: FastifyRequest, reply: FastifyReply) {
     cors(req, reply);
-    reply.header('Cache-Control', 'no-store');
+    // dado público (qual pixel atende o produto): cache curto deixa o checkout mais rápido
+    reply.header('Cache-Control', 'public, max-age=300');
+    reply.header('Timing-Allow-Origin', '*');
     const q = (req.query ?? {}) as Record<string, string | undefined>;
     const productId = String(q.produto_id ?? q.product_id ?? q.offer_id ?? q.product_sku ?? q.produtoId ?? q.productId ?? '').replace(/\s+/g, '');
     if (!productId) return reply.code(400).send({ success: false, error: 'Missing produto_id' });

@@ -19,8 +19,8 @@ export function authRoutes(app: FastifyInstance, ctx: Ctx) {
     const token = await issueToken(ctx, userId, 'email_verify', 60 * 24 * 3);
     await ctx.mailer.send({
       to,
-      subject: 'Confirme seu e-mail — PayTracking',
-      text: `Confirme seu e-mail acessando: ${ctx.config.APP_URL}/verificar-email?token=${token}\n\nO link expira em 3 dias.`,
+      subject: 'Bem-vindo! Confirme seu e-mail — PayTracking',
+      text: `Sua conta foi criada e o teste grátis de ${ctx.config.PLAN_TRIAL_DAYS} dias já começou.\n\nFalta só confirmar que este e-mail é seu: ${ctx.config.APP_URL}/verificar-email?token=${token}\n\nO link expira em 3 dias. Com o e-mail confirmado, você consegue recuperar o acesso se esquecer a senha.`,
     });
   }
 
@@ -96,7 +96,7 @@ export function authRoutes(app: FastifyInstance, ctx: Ctx) {
       await ctx.mailer.send({
         to: body.email,
         subject: 'Redefinição de senha — PayTracking',
-        text: `Para criar uma nova senha acesse: ${ctx.config.APP_URL}/redefinir-senha?token=${token}\n\nO link expira em 1 hora. Se você não pediu, ignore este e-mail.`,
+        text: `Recebemos um pedido para criar uma nova senha na sua conta.\n\nPara escolher a nova senha: ${ctx.config.APP_URL}/redefinir-senha?token=${token}\n\nO link vale por 1 hora e funciona uma única vez. Se não foi você, ignore este e-mail: sua senha atual continua valendo.`,
       });
     }
     // Resposta idêntica exista ou não a conta (evita enumeração de e-mails).

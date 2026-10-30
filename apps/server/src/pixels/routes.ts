@@ -60,8 +60,11 @@ export function snippets(api: string, p: PixelRow) {
     };
     return Object.entries(all).map(([k, v]) => `s.setAttribute(${JSON.stringify(k)},${JSON.stringify(v)});`).join('');
   };
+  // preconnect: abre as conexões com o PayTracking e com a Meta enquanto a página ainda carrega;
+  // crossOrigin="anonymous" faz o script e o envio dos eventos usarem a MESMA conexão
+  const hints = `<link rel="preconnect" href=${JSON.stringify(api)} crossorigin><link rel="preconnect" href="https://connect.facebook.net">`;
   const wrap = (a: string) =>
-    `<script>!function(){var s=document.createElement("script");s.async=true;s.src=${JSON.stringify(`${api}/pixel.js`)};${a}document.head.appendChild(s)}();</script>`;
+    `${hints}<script>!function(){var s=document.createElement("script");s.async=true;s.crossOrigin="anonymous";s.src=${JSON.stringify(`${api}/pixel.js`)};${a}document.head.appendChild(s)}();</script>`;
   const click: Record<string, string> = { 'data-ic-click': '1' };
   if (p.ic_rule_type !== 'none' && p.ic_rule_value) {
     click['data-ic-rule'] = p.ic_rule_type;
@@ -71,7 +74,7 @@ export function snippets(api: string, p: PixelRow) {
     salesPage: wrap(attrs({})),
     salesPageWithClickIc: wrap(attrs(click)),
     checkoutPage: wrap(attrs({ 'data-ic-onload': '1' })),
-    globalCheckoutLoader: `<script src=${JSON.stringify(`${api}/checkout-loader.js`)} data-key=${JSON.stringify(p.public_key)} defer></script>`,
+    globalCheckoutLoader: `${hints}<script src=${JSON.stringify(`${api}/checkout-loader.js`)} data-key=${JSON.stringify(p.public_key)} crossorigin="anonymous" defer></script>`,
   };
 }
 
