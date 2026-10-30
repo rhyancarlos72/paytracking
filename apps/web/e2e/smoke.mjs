@@ -48,6 +48,7 @@ try {
   const email = `e2e_${Date.now()}@demo.paytracking.dev`;
   await page.goto(`${BASE}/criar-conta`);
   await page.fill('#name', 'Demonstração E2E');
+  await page.getByRole('button', { name: /Adicionar nome da empresa/ }).click();
   await page.fill('#org', 'Loja Demonstração');
   await page.fill('#email', email);
   await page.fill('#pw', 'SenhaForte123');
