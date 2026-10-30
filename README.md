@@ -93,6 +93,11 @@ node apps/web/e2e/smoke.mjs
 | Legado (continua aceito) | `POST /api/webhook_gateway.php?gateway=…&token=…` e `POST /api/webhook.php` |
 | Pixel do navegador | `/pixel.js`, `/checkout-loader.js` (e o antigo `/checkout-loader-ic-only.js`) |
 
+**Checkout próprio:** em Integrações → Checkout próprio, o painel gera o `paytrack_dispatch.php`
+com URL, token e segredo preenchidos (o arquivo é montado no navegador). No webhook do seu gateway
+(EFI, Woovi…), chame `paytrack_dispatch_checkout_purchase($pdo, $transacao, 'efi')` quando o PIX for
+pago. As requisições reais desse arquivo são testadas em `apps/server/test/checkout-dispatch.test.ts`.
+
 A importação do banco antigo mantém os mesmos tokens, então as URLs já cadastradas nos gateways não precisam ser trocadas. Veja [`docs/PLANO-MIGRACAO.md`](docs/PLANO-MIGRACAO.md).
 
 ## Documentação

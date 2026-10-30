@@ -35,7 +35,7 @@ export default function SalesPage() {
             <option value="">Todos os status</option>
             {['approved', 'pending', 'refunded', 'chargeback', 'canceled', 'failed'].map((k) => <option key={k} value={k}>{STATUS_LABEL[k]}</option>)}
           </Select>
-          <Select aria-label="Origem" value={provider} onChange={(e) => period.set({ origem: e.target.value, pagina: null })} className="w-[170px]">
+          <Select aria-label="Origem" value={provider} onChange={(e) => period.set({ origem: e.target.value, pagina: null })} className="w-[190px]">
             <option value="">Todas as origens</option>
             {Object.entries(PROVIDER_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </Select>

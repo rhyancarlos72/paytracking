@@ -1,7 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, Code2, Plus, Target } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { PageHeader } from '../components/shell';
@@ -40,6 +41,10 @@ export default function PixelsPage() {
   const q = useQuery<{ pixels: Pixel[] }>({ queryKey: ['pixels'], queryFn: () => get('/v1/pixels') });
   const [editing, setEditing] = useState<Pixel | 'new' | null>(null);
   const [install, setInstall] = useState<Pixel | null>(null);
+  const [sp, setSp] = useSearchParams();
+  useEffect(() => {
+    if (sp.get('novo') && s.can('admin')) { setEditing('new'); const n = new URLSearchParams(sp); n.delete('novo'); setSp(n, { replace: true }); }
+  }, [sp, s, setSp]);
   const refresh = () => qc.invalidateQueries({ queryKey: ['pixels'] });
   const toggle = useMutation({ mutationFn: (id: string) => post(`/v1/pixels/${id}/toggle`), onSuccess: refresh, onError: (e) => toast.err(e) });
   const verify = useMutation({
@@ -59,11 +64,14 @@ export default function PixelsPage() {
         : (
           <div className="grid gap-4 xl:grid-cols-2">
             {q.data.pixels.map((p) => (
-              <div key={p.id} className="card p-5">
+              <div key={p.id} className="card card-interactive p-5">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className={p.active ? 'icon-tile-primary h-11 w-11' : 'icon-tile h-11 w-11'} aria-hidden><Target className="h-5 w-5" /></span>
+                    <div className="min-w-0">
                     <p className="truncate font-semibold">{p.name}</p>
                     <p className="mt-0.5 font-mono text-xs text-muted">Pixel {p.metaPixelId}</p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge tone={p.active ? 'ok' : 'neutral'} dot>{p.active ? 'Ativo' : 'Inativo'}</Badge>

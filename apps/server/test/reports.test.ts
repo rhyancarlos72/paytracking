@@ -9,7 +9,8 @@ beforeAll(async () => { env = await setup(); });
 afterAll(async () => { await env.close(); });
 beforeEach(() => env.fake.reset());
 
-const today = () => localDate(new Date(), 'UTC');
+// data no fuso padrão das organizações de teste (a venda é do dia local; em UTC o dia vira às 21h em São Paulo)
+const today = () => localDate(new Date(), 'America/Sao_Paulo');
 
 async function seedRates(date = today()) {
   for (const [q, r] of [['BRL', '6.00000000'], ['USD', '1.08000000'], ['EUR', '1']] as const) {

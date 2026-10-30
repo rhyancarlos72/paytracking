@@ -37,7 +37,7 @@ export function PeriodPicker({ period }: { period: ReturnType<typeof usePeriod> 
     <div className="flex flex-wrap items-center gap-2">
       <div className="relative">
         <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
-        <Select aria-label="Período" value={period.preset} onChange={(e) => period.set({ periodo: e.target.value })} className="w-[190px] pl-9">
+        <Select aria-label="Período" value={period.preset} onChange={(e) => period.set({ periodo: e.target.value })} className="w-[210px] pl-9">
           {PRESETS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
         </Select>
       </div>
