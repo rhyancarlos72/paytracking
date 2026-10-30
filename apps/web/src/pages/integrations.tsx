@@ -88,8 +88,8 @@ export default function IntegrationsPage() {
               const rejected = i.stats?.rejected ?? 0;
               return (
                 <article key={i.id} className="card card-interactive p-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="flex min-w-0 flex-1 items-center gap-3">
                       <ProviderMark provider={i.provider} />
                       <div className="min-w-0"><h2 className="truncate font-semibold">{i.name}</h2><p className="truncate text-xs text-muted">{i.providerLabel} · {i.authMethod}</p></div>
                     </div>
@@ -100,7 +100,7 @@ export default function IntegrationsPage() {
                     </div>
                   </div>
 
-                  <div className="mt-5 grid grid-cols-3 gap-2">
+                  <div className="mt-5 grid grid-cols-3 items-stretch gap-2">
                     <Metric label="Processados (7 dias)" value={int(i.stats?.processed ?? 0)} />
                     <Metric label="Rejeitados" value={int(rejected)} tone={rejected > 0 ? 'err' : undefined} />
                     <Metric label="Último webhook" value={relative(i.lastReceivedAt)} small />
@@ -126,16 +126,16 @@ export default function IntegrationsPage() {
                       {i.provider === 'checkout' && (
                         <Button size="sm" icon={<Download className="h-4 w-4" />} title="O token só aparece na criação: o arquivo vem sem ele (defina PAYTRACKING_TOKEN). Para um arquivo completo, use “Novo token”."
                           onClick={() => downloadText('paytracking.php', buildPaytrackingPhp({ webhookUrl: checkoutEndpoint(location.origin), token: null }))}>
-                          Baixar paytracking.php (sem token)
+                          <span className="sm:hidden">Baixar PHP</span><span className="hidden sm:inline">Baixar paytracking.php (sem token)</span>
                         </Button>
                       )}
                       <Button size="sm" icon={<KeyRound className="h-4 w-4" />} onClick={() => setSecretFor(i)}>{i.secretConfigured ? 'Trocar segredo' : 'Definir segredo'}</Button>
-                      <Select aria-label="Pixel padrão" className="h-8 w-[180px] rounded-lg text-[13px]" value={i.defaultPixelId ?? ''} onChange={(e) => update.mutate({ id: i.id, body: { defaultPixelId: e.target.value || null } })}>
+                      <Select aria-label="Pixel padrão" className="h-8 w-[180px] rounded-lg text-base sm:text-[13px]" value={i.defaultPixelId ?? ''} onChange={(e) => update.mutate({ id: i.id, body: { defaultPixelId: e.target.value || null } })}>
                         <option value="">Pixel: por produto</option>
                         {(pixels.data?.pixels ?? []).map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
                       </Select>
                       {i.configurableAmountUnit && (
-                        <Select aria-label="Unidade do valor" className="h-8 w-[150px] rounded-lg text-[13px]" value={i.amountUnit} onChange={(e) => update.mutate({ id: i.id, body: { amountUnit: e.target.value } })}>
+                        <Select aria-label="Unidade do valor" className="h-8 w-[150px] rounded-lg text-base sm:text-[13px]" value={i.amountUnit} onChange={(e) => update.mutate({ id: i.id, body: { amountUnit: e.target.value } })}>
                           <option value="major">Valor em reais</option><option value="minor">Valor em centavos</option>
                         </Select>
                       )}
@@ -159,8 +159,8 @@ export default function IntegrationsPage() {
 function Metric({ label, value, tone, small }: { label: string; value: string; tone?: 'err'; small?: boolean }) {
   return (
     <div className="rounded-xl border border-border bg-surface-2/50 px-3 py-2.5">
-      <p className="truncate text-[11px] text-muted">{label}</p>
-      <p className={clsx('num mt-0.5 truncate font-semibold', small ? 'text-[13px]' : 'text-lg', tone === 'err' && 'text-err')}>{value}</p>
+      <p className="text-[11px] leading-tight text-muted sm:truncate">{label}</p>
+      <p className={clsx('num mt-1 font-semibold leading-tight sm:truncate', small ? 'text-[13px]' : 'text-lg', tone === 'err' && 'text-err')}>{value}</p>
     </div>
   );
 }

@@ -353,10 +353,10 @@ export function ConfirmButton({ onConfirm, title, description, confirmLabel = 'C
 // ------------------------------------------------------------------ Tabs / segmented
 export function Segmented<T extends string>({ value, onChange, options, label }: { value: T; onChange: (v: T) => void; options: Array<{ value: T; label: string }>; label: string }) {
   return (
-    <div role="radiogroup" aria-label={label} className="inline-flex rounded-xl border border-border bg-surface-2 p-1">
+    <div role="radiogroup" aria-label={label} className="no-scrollbar inline-flex max-w-full overflow-x-auto rounded-xl border border-border bg-surface-2 p-1">
       {options.map((o) => (
         <button key={o.value} role="radio" aria-checked={value === o.value} onClick={() => onChange(o.value)}
-          className={clsx('h-8 rounded-lg px-3 text-[13px] font-medium transition-all duration-150', value === o.value ? 'bg-surface text-fg shadow-sm ring-1 ring-border' : 'text-muted hover:text-fg')}>
+          className={clsx('h-8 shrink-0 whitespace-nowrap rounded-lg px-3 text-[13px] font-medium transition-all duration-150', value === o.value ? 'bg-surface text-fg shadow-sm ring-1 ring-border' : 'text-muted hover:text-fg')}>
           {o.label}
         </button>
       ))}

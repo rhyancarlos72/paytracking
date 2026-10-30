@@ -70,6 +70,8 @@
 }
 
 @layer base {
+  /* item de grid nunca alarga a página por causa de texto longo (rolagem lateral no celular) */
+  .grid > * { min-width: 0; }
   html { font-feature-settings: 'cv11', 'ss01', 'ss03'; -webkit-tap-highlight-color: transparent; text-rendering: optimizeLegibility; }
   body { @apply min-h-screen bg-bg text-[15px] leading-relaxed text-fg; }
   /* títulos na fonte da marca (Plus Jakarta Sans, a mesma família geométrica do logo) */
@@ -83,7 +85,9 @@
 @layer components {
   /* Superfícies */
   .card {
-    @apply relative rounded-2xl border border-border bg-surface shadow-card;
+    /* min-width 0: dentro de grid/flex o cartão não cresce até o tamanho do texto mais longo
+       (era o que fazia a tela "expandir" para o lado no celular) */
+    @apply relative min-w-0 rounded-2xl border border-border bg-surface shadow-card;
     box-shadow: inset 0 1px 0 rgb(var(--card-highlight) / 0.04), 0 1px 2px rgb(0 0 0 / 0.04), 0 2px 8px -2px rgb(0 0 0 / 0.04);
   }
   .dark .card { @apply bg-surface/80 backdrop-blur-xl; }
@@ -101,7 +105,7 @@
   .label { @apply mb-1.5 block text-[13px] font-medium text-fg; }
   .hint { @apply mt-1.5 text-xs text-muted; }
   .input {
-    @apply h-10 w-full rounded-xl border border-border bg-surface px-3.5 text-sm text-fg shadow-sm placeholder:text-subtle
+    @apply h-10 w-full rounded-xl border border-border bg-surface px-3.5 text-base text-fg sm:text-sm shadow-sm placeholder:text-subtle
       transition hover:border-border-strong focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/15
       disabled:cursor-not-allowed disabled:opacity-60;
   }
@@ -155,4 +159,9 @@
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
+
+@layer utilities {
+  .no-scrollbar { scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
 }

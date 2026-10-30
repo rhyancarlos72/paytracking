@@ -1,8 +1,10 @@
 /**
  * Som de venda — sons ORIGINAIS sintetizados no navegador (Web Audio API), sem arquivos de
- * terceiros. O usuário pode trocar por um arquivo próprio, guardado só neste navegador.
+ * terceiros. O usuário pode trocar por um arquivo próprio, que fica salvo na conta dele
+ * (toca em todos os aparelhos em que ele entrar) e em cache neste navegador.
  * Preferências por dispositivo (localStorage), com try/catch: em modo privado tudo segue funcionando.
  */
+import { del, get, put } from './api';
 
 export type SoundPreset = 'caixa' | 'moedas' | 'sino' | 'conquista' | 'proprio';
 export interface SoundSettings { enabled: boolean; preset: SoundPreset; volume: number }
@@ -36,7 +38,7 @@ export function saveSettings(s: SoundSettings) {
 }
 export const customSound = () => ({ dataUrl: store.get(CUSTOM_KEY), name: store.get(CUSTOM_NAME_KEY) });
 
-/** Guarda um arquivo de áudio próprio (até 1 MB) só neste navegador. */
+/** Guarda um arquivo de áudio próprio (até 1 MB) na conta e neste navegador. */
 export async function setCustomSound(file: File): Promise<void> {
   if (!file.type.startsWith('audio/')) throw new Error('Escolha um arquivo de áudio (mp3, wav, ogg…).');
   if (file.size > MAX_CUSTOM_BYTES) throw new Error('O arquivo precisa ter até 1 MB.');
@@ -47,17 +49,42 @@ export async function setCustomSound(file: File): Promise<void> {
     r.readAsDataURL(file);
   });
   await decode(dataUrl); // valida que o navegador consegue tocar
-  if (!store.set(CUSTOM_KEY, dataUrl)) throw new Error('O navegador não deixou salvar o arquivo (armazenamento cheio ou modo privado).');
+  await put('/v1/me/sale-sound', { name: file.name, dataUrl }); // na conta: vale em todos os aparelhos
+  store.set(CUSTOM_KEY, dataUrl); // cache local (se o navegador não deixar, baixa da conta quando precisar)
   store.set(CUSTOM_NAME_KEY, file.name);
   customBuffer = null;
   saveSettings({ ...loadSettings(), preset: 'proprio' });
 }
-export function removeCustomSound() {
+export async function removeCustomSound() {
+  await del('/v1/me/sale-sound');
   store.set(CUSTOM_KEY, null);
   store.set(CUSTOM_NAME_KEY, null);
   customBuffer = null;
   const s = loadSettings();
   saveSettings({ ...s, preset: s.preset === 'proprio' ? 'caixa' : s.preset });
+}
+
+/**
+ * Ao abrir o painel: traz o som salvo na conta para este aparelho e o torna o principal
+ * (a menos que a pessoa já tenha escolhido outro som neste aparelho). Quem tinha um arquivo só
+ * neste navegador, de antes de existir o som na conta, tem o arquivo enviado para a conta.
+ */
+export async function syncAccountSound(): Promise<void> {
+  const remote = await get<{ name: string; dataUrl: string } | null>('/v1/me/sale-sound').catch(() => undefined);
+  if (remote === undefined) return; // sem rede: tenta na próxima vez
+  const local = store.get(CUSTOM_KEY);
+  if (!remote) {
+    if (local) await put('/v1/me/sale-sound', { name: store.get(CUSTOM_NAME_KEY) ?? 'som-de-venda', dataUrl: local }).catch(() => undefined);
+    return;
+  }
+  const chosenHere = store.get(KEY) !== null;
+  if (local !== remote.dataUrl) {
+    store.set(CUSTOM_KEY, remote.dataUrl);
+    store.set(CUSTOM_NAME_KEY, remote.name);
+    customBuffer = null;
+  }
+  if (!chosenHere) saveSettings({ ...loadSettings(), preset: 'proprio' });
+  else listeners.forEach((fn) => fn());
 }
 
 // ------------------------------------------------------------------ áudio
@@ -116,9 +143,14 @@ export async function playSaleSound(override?: Partial<SoundSettings>): Promise<
   out.connect(c.destination);
   const t = c.currentTime + 0.02;
   if (s.preset === 'proprio') {
-    const url = store.get(CUSTOM_KEY);
-    if (!url) return playSaleSound({ ...override, preset: 'caixa' });
-    customBuffer ??= await decode(url);
+    let url = store.get(CUSTOM_KEY);
+    if (!url && !customBuffer) {
+      // navegador sem espaço/modo privado: busca o arquivo na conta
+      const remote = await get<{ dataUrl: string } | null>('/v1/me/sale-sound').catch(() => null);
+      url = remote?.dataUrl ?? null;
+    }
+    if (!url && !customBuffer) return playSaleSound({ ...override, preset: 'caixa' });
+    customBuffer ??= await decode(url!);
     const src = c.createBufferSource();
     src.buffer = customBuffer;
     src.connect(out);
@@ -172,10 +204,25 @@ function noise(c: AudioContext, out: AudioNode, t: number, dur: number, gain: nu
 const SYNTH: Record<Exclude<SoundPreset, 'proprio'>, Synth> = {
   // "cha" (mecanismo) + "ching" (dois toques de campainha)
   caixa(c, out, t) {
-    noise(c, out, t, 0.06, 0.5, 2600);
-    noise(c, out, t + 0.05, 0.04, 0.35, 4200);
-    bell(c, out, t + 0.09, 1975.5, 1.1, 0.32);
-    bell(c, out, t + 0.2, 2637, 1.3, 0.26);
+    // gaveta abrindo: batida grave curta que desce de tom
+    const o = c.createOscillator();
+    const g = c.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(170, t);
+    o.frequency.exponentialRampToValueAtTime(70, t + 0.12);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.55, t + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+    o.connect(g).connect(out);
+    o.start(t);
+    o.stop(t + 0.2);
+    // "cha": mecanismo metálico
+    noise(c, out, t + 0.01, 0.06, 0.5, 2600);
+    noise(c, out, t + 0.06, 0.05, 0.35, 4200);
+    // "ching": dois toques de campainha + brilho de moedas no final
+    bell(c, out, t + 0.1, 1975.5, 1.1, 0.32);
+    bell(c, out, t + 0.21, 2637, 1.4, 0.27);
+    [3951, 4699, 5274].forEach((f, i) => tone(c, out, t + 0.32 + i * 0.045, f, 0.3, 0.045, 'triangle'));
   },
   moedas(c, out, t) {
     const notes = [3520, 3951, 3322, 4186, 3729, 4435];

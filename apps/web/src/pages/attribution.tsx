@@ -26,7 +26,7 @@ export default function AttributionPage() {
           { value: 'utm_medium', label: 'Mídia' }, { value: 'utm_source', label: 'Origem' },
         ]} />
       </div>
-      <div className="mb-4 grid gap-4 sm:grid-cols-4">
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
         {[['PageView', int(tot.pv)], ['InitiateCheckout', int(tot.ic)], ['Vendas', int(tot.s)], ['Receita', money(tot.rev, s.currency)]].map(([l, v]) => (
           <div key={l} className="card p-4"><p className="text-[13px] text-muted">{l}</p><p className="num mt-1 text-xl font-semibold">{v}</p></div>
         ))}

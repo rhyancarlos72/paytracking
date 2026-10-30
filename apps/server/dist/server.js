@@ -96540,6 +96540,25 @@ Painel: ${ctx.config.APP_URL}`
       return { ok: false, channel: ctx.mailer.kind, error: e.message.slice(0, 300) };
     }
   });
+  app.get("/v1/admin/google", async (req) => {
+    requirePlatformAdmin(req);
+    const { GOOGLE_CLIENT_ID: id, GOOGLE_CLIENT_SECRET: secret } = ctx.config;
+    const api = new URL(ctx.config.PUBLIC_API_URL);
+    const appUrl = new URL(ctx.config.APP_URL);
+    const problems = [];
+    if (!id || !secret) problems.push("Defina GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET nas vari\xE1veis de ambiente da hospedagem e reinicie o app.");
+    if (id && !/^[\w-]+\.apps\.googleusercontent\.com$/.test(id)) problems.push("GOOGLE_CLIENT_ID n\xE3o parece um ID do cliente OAuth (deve terminar em .apps.googleusercontent.com). Confira se n\xE3o colou o segredo no lugar do ID, ou espa\xE7os a mais.");
+    if (secret && !/^GOCSPX-/.test(secret)) problems.push('GOOGLE_CLIENT_SECRET n\xE3o come\xE7a com "GOCSPX-". Confira se \xE9 a "Chave secreta do cliente" do mesmo ID.');
+    if (ctx.config.isProd && api.protocol !== "https:") problems.push("PUBLIC_API_URL precisa come\xE7ar com https:// (o Google recusa redirecionamento sem HTTPS).");
+    if (api.host !== appUrl.host) problems.push(`APP_URL (${appUrl.host}) e PUBLIC_API_URL (${api.host}) est\xE3o em endere\xE7os diferentes: o login volta sem sess\xE3o. Use o mesmo endere\xE7o nos dois (com ou sem www, igual).`);
+    return {
+      configured: !!(id && secret),
+      clientIdHint: id ? `\u2026${id.replace(/\.apps\.googleusercontent\.com$/, "").slice(-8)}.apps.googleusercontent.com` : null,
+      redirectUri: `${ctx.config.PUBLIC_API_URL.replace(/\/$/, "")}/v1/auth/google/callback`,
+      jsOrigin: appUrl.origin,
+      problems
+    };
+  });
   app.get("/v1/admin/overview", async (req) => {
     requirePlatformAdmin(req);
     const totals = await ctx.db.query(
@@ -96600,6 +96619,55 @@ Painel: ${ctx.config.APP_URL}`
     const r = await ctx.db.query("DELETE FROM organizations WHERE id = $1", [id]);
     if (!r.rowCount) throw notFound("Organiza\xE7\xE3o n\xE3o encontrada.");
     await audit(ctx, null, a.user.id, "admin.org_deleted", id);
+    return { ok: true };
+  });
+}
+
+// src/notifications/sound.ts
+var MAX_SOUND_BYTES = 1024 * 1024;
+function sniffAudio(b) {
+  if (b.length < 12) return null;
+  if (b.subarray(0, 3).toString("latin1") === "ID3" || b[0] === 255 && (b[1] & 224) === 224 && (b[1] & 6) !== 0) return "audio/mpeg";
+  if (b[0] === 255 && (b[1] & 246) === 240) return "audio/aac";
+  if (b.subarray(0, 4).toString("latin1") === "RIFF" && b.subarray(8, 12).toString("latin1") === "WAVE") return "audio/wav";
+  if (b.subarray(0, 4).toString("latin1") === "OggS") return "audio/ogg";
+  if (b.subarray(4, 8).toString("latin1") === "ftyp") return "audio/mp4";
+  if (b.readUInt32BE(0) === 440786851) return "audio/webm";
+  return null;
+}
+function saleSoundRoutes(app, ctx) {
+  app.get("/v1/me/sale-sound", async (req, reply) => {
+    const a = auth(req);
+    const r = await ctx.db.query(
+      "SELECT name, mime, data, updated_at FROM user_sale_sounds WHERE user_id = $1",
+      [a.user.id]
+    );
+    const row = r.rows[0];
+    if (!row) return reply.code(204).send();
+    return { name: row.name, updatedAt: row.updated_at, dataUrl: `data:${row.mime};base64,${row.data.toString("base64")}` };
+  });
+  app.put("/v1/me/sale-sound", { bodyLimit: Math.ceil(MAX_SOUND_BYTES * 1.4) + 4096 }, async (req) => {
+    const a = auth(req);
+    await hit(ctx.db, `sound:user:${a.user.id}`, 20, 3600);
+    const body = parse5(external_exports.object({
+      name: external_exports.string().trim().min(1).max(120),
+      dataUrl: external_exports.string().regex(/^data:audio\/[\w.+-]+;base64,[A-Za-z0-9+/]+=*$/, "Arquivo de \xE1udio inv\xE1lido.")
+    }), req.body);
+    const data = Buffer.from(body.dataUrl.slice(body.dataUrl.indexOf(",") + 1), "base64");
+    if (data.length > MAX_SOUND_BYTES) throw badRequest("O arquivo precisa ter at\xE9 1 MB.");
+    const mime = sniffAudio(data);
+    if (!mime) throw badRequest("Formato n\xE3o reconhecido. Use MP3, WAV, OGG, M4A ou WEBM.");
+    const name2 = body.name.replace(/[^\p{L}\p{N} ._()-]/gu, "_");
+    await ctx.db.query(
+      `INSERT INTO user_sale_sounds(user_id, name, mime, data) VALUES ($1, $2, $3, $4)
+       ON CONFLICT (user_id) DO UPDATE SET name = EXCLUDED.name, mime = EXCLUDED.mime, data = EXCLUDED.data, updated_at = now()`,
+      [a.user.id, name2, mime, data]
+    );
+    return { ok: true, name: name2, mime, bytes: data.length };
+  });
+  app.delete("/v1/me/sale-sound", async (req) => {
+    const a = auth(req);
+    await ctx.db.query("DELETE FROM user_sale_sounds WHERE user_id = $1", [a.user.id]);
     return { ok: true };
   });
 }
@@ -96758,6 +96826,7 @@ Canonical: ${ctx.config.APP_URL.replace(/\/$/, "")}/.well-known/security.txt
   billingRoutes(app, ctx);
   adminRoutes(app, ctx);
   pushRoutes(app, ctx);
+  saleSoundRoutes(app, ctx);
   const here2 = path4.dirname(fileURLToPath2(import.meta.url));
   const firstDir = (...dirs) => dirs.find((d) => existsSync2(d)) ?? dirs[dirs.length - 1];
   const pixelDir = ctx.config.PIXEL_DIST_DIR || firstDir(path4.join(here2, "pixel"), path4.resolve(here2, "../../../packages/pixel/dist"));

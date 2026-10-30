@@ -22,6 +22,27 @@ export function adminRoutes(app: FastifyInstance, ctx: Ctx) {
     }
   });
 
+  /** Login com Google: valores exatos para o Google Cloud e problemas de configuração detectáveis. */
+  app.get('/v1/admin/google', async (req) => {
+    requirePlatformAdmin(req);
+    const { GOOGLE_CLIENT_ID: id, GOOGLE_CLIENT_SECRET: secret } = ctx.config;
+    const api = new URL(ctx.config.PUBLIC_API_URL);
+    const appUrl = new URL(ctx.config.APP_URL);
+    const problems: string[] = [];
+    if (!id || !secret) problems.push('Defina GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET nas variáveis de ambiente da hospedagem e reinicie o app.');
+    if (id && !/^[\w-]+\.apps\.googleusercontent\.com$/.test(id)) problems.push('GOOGLE_CLIENT_ID não parece um ID do cliente OAuth (deve terminar em .apps.googleusercontent.com). Confira se não colou o segredo no lugar do ID, ou espaços a mais.');
+    if (secret && !/^GOCSPX-/.test(secret)) problems.push('GOOGLE_CLIENT_SECRET não começa com "GOCSPX-". Confira se é a "Chave secreta do cliente" do mesmo ID.');
+    if (ctx.config.isProd && api.protocol !== 'https:') problems.push('PUBLIC_API_URL precisa começar com https:// (o Google recusa redirecionamento sem HTTPS).');
+    if (api.host !== appUrl.host) problems.push(`APP_URL (${appUrl.host}) e PUBLIC_API_URL (${api.host}) estão em endereços diferentes: o login volta sem sessão. Use o mesmo endereço nos dois (com ou sem www, igual).`);
+    return {
+      configured: !!(id && secret),
+      clientIdHint: id ? `…${id.replace(/\.apps\.googleusercontent\.com$/, '').slice(-8)}.apps.googleusercontent.com` : null,
+      redirectUri: `${ctx.config.PUBLIC_API_URL.replace(/\/$/, '')}/v1/auth/google/callback`,
+      jsOrigin: appUrl.origin,
+      problems,
+    };
+  });
+
   app.get('/v1/admin/overview', async (req) => {
     requirePlatformAdmin(req);
     const totals = await ctx.db.query(

@@ -117,4 +117,17 @@ describe('login com Google', () => {
     expect(String(r.headers.location)).toMatch(/\/entrar\?voltar=%2Fvendas#desafio=/);
     expect(([] as string[]).concat((r.headers['set-cookie'] as string[]) ?? []).some((x) => x.startsWith('pt_session='))).toBe(false);
   });
+
+  it('admin vê a URI exata para o Google Cloud e os problemas de configuração', async () => {
+    const { client } = await newAccount(env, 'root@paytracking.test');
+    const r = await client.get('/v1/admin/google');
+    expect(r.status).toBe(200);
+    expect(r.data.redirectUri).toBe('http://localhost:8080/v1/auth/google/callback');
+    expect(r.data.jsOrigin).toBe(APP_URL);
+    expect(r.data.clientIdHint).toMatch(/\.apps\.googleusercontent\.com$/);
+    expect(r.data.problems.join(' ')).toContain('GOCSPX-'); // segredo do teste não é uma chave real do Google
+    expect(r.data.problems.join(' ')).toContain('endereços diferentes'); // APP_URL :5173 × API :8080 no teste
+    const { client: comum } = await newAccount(env);
+    expect((await comum.get('/v1/admin/google')).status).toBe(403);
+  });
 });

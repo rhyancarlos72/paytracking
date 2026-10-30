@@ -118,7 +118,7 @@ function Members() {
               <div className="flex items-center gap-2">
                 {owner && m.id !== s.user.id ? (
                   <>
-                    <Select aria-label={`Papel de ${m.email}`} className="h-8 w-[150px] text-[13px]" value={m.role} onChange={async (e) => { try { await patch(`/v1/org/members/${m.id}`, { role: e.target.value }); void refresh(); } catch (err) { toast.err(err); } }}>
+                    <Select aria-label={`Papel de ${m.email}`} className="h-8 w-[150px] text-base sm:text-[13px]" value={m.role} onChange={async (e) => { try { await patch(`/v1/org/members/${m.id}`, { role: e.target.value }); void refresh(); } catch (err) { toast.err(err); } }}>
                       {(['viewer', 'analyst', 'admin', 'owner'] as Role[]).map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
                     </Select>
                     <ConfirmButton size="sm" variant="ghost" danger title={`Remover ${m.email}?`} confirmLabel="Remover" onConfirm={async () => { await del(`/v1/org/members/${m.id}`); await refresh(); }}>Remover</ConfirmButton>
@@ -455,12 +455,12 @@ function SaleSoundCard() {
   ];
   return (
     <Card title="Som de venda aprovada" icon={<Volume2 />}
-      description="Toca no painel a cada venda aprovada (em qualquer página). A preferência vale só para este navegador."
+      description="Toca no painel a cada venda aprovada, em qualquer página. Seu arquivo próprio fica salvo na sua conta e toca em todos os seus aparelhos."
       actions={<Switch checked={settings.enabled} label="Tocar som a cada venda" onChange={(v) => { update({ enabled: v }); if (v) void unlockAudio(); }} />}>
       <div className={clsx('space-y-5', !settings.enabled && 'pointer-events-none opacity-50')} aria-disabled={!settings.enabled}>
         <div role="radiogroup" aria-label="Som" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {options.map((o) => (
-            <div key={o.value} className={clsx('flex items-center gap-3 rounded-2xl border p-3.5 transition',
+            <div key={o.value} className={clsx('flex min-w-0 items-center gap-3 rounded-2xl border p-3.5 transition',
               settings.preset === o.value ? 'border-primary bg-primary/[0.07] ring-2 ring-primary/20' : 'border-border hover:border-border-strong')}>
               <button type="button" role="radio" aria-checked={settings.preset === o.value} onClick={() => { update({ preset: o.value }); void preview(o.value); }}
                 className="min-w-0 flex-1 text-left">
@@ -487,12 +487,12 @@ function SaleSoundCard() {
                 e.target.value = '';
                 if (!f) return;
                 setBusy(true);
-                try { await setCustomSound(f); toast.ok('Som salvo neste navegador', f.name); await preview('proprio'); } catch (err) { toast.err(err); } finally { setBusy(false); }
+                try { await setCustomSound(f); toast.ok('Som salvo na sua conta', `${f.name} agora toca em todos os seus aparelhos.`); await preview('proprio'); } catch (err) { toast.err(err); } finally { setBusy(false); }
               }} />
               <Button icon={<Upload className="h-4 w-4" />} loading={busy} onClick={() => fileRef.current?.click()}>{custom.dataUrl ? 'Trocar arquivo' : 'Enviar arquivo'}</Button>
-              {custom.dataUrl && <Button variant="ghost" onClick={() => { removeCustomSound(); toast.info('Som próprio removido'); }}>Remover</Button>}
+              {custom.dataUrl && <Button variant="ghost" onClick={async () => { try { await removeCustomSound(); toast.info('Som próprio removido da sua conta'); } catch (err) { toast.err(err); } }}>Remover</Button>}
             </div>
-            <p className="hint">mp3, wav ou ogg de até 1 MB. Fica salvo só neste navegador, não vai para o servidor. Use um som que você tenha o direito de usar.</p>
+            <p className="hint">mp3, wav, ogg ou m4a de até 1 MB. Fica salvo na sua conta (só você ouve) e vira o som principal em todos os seus aparelhos. Use um som que você tenha o direito de usar.</p>
           </div>
         </div>
         <p className="text-xs text-muted">Os navegadores só tocam sons depois de um clique na página. Se o painel ficou aberto sem uso, clique em qualquer lugar (ou em “Ativar som de vendas” no topo) para liberar.</p>

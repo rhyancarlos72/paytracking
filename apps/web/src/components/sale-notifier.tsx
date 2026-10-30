@@ -3,7 +3,7 @@ import { Volume2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { get, qs } from '../lib/api';
 import { money, PROVIDER_LABEL } from '../lib/format';
-import { armAutoUnlock, audioUnlocked, loadSettings, onSoundChange, playSaleSound, unlockAudio } from '../lib/sale-sound';
+import { armAutoUnlock, audioUnlocked, loadSettings, onSoundChange, playSaleSound, syncAccountSound, unlockAudio } from '../lib/sale-sound';
 import { useSession } from '../lib/session';
 import { useToast } from './toast';
 
@@ -39,6 +39,7 @@ export function useSaleNotifier() {
 
   useEffect(() => {
     armAutoUnlock();
+    void syncAccountSound(); // som salvo na conta vira o principal neste aparelho
     let stopped = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let floor: string | null = null;

@@ -62,7 +62,7 @@ export function CommandPalette({ open, onClose, commands }: { open: boolean; onC
           <Search className="h-4 w-4 shrink-0 text-muted" aria-hidden />
           <input ref={input} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar páginas e ações…"
             role="combobox" aria-expanded="true" aria-controls={`${id}-list`} aria-activedescendant={results[active] ? `${id}-${results[active]!.id}` : undefined}
-            aria-label="Buscar páginas e ações" className="h-14 w-full bg-transparent text-[15px] text-fg outline-none placeholder:text-subtle" />
+            aria-label="Buscar páginas e ações" className="h-14 w-full bg-transparent text-base text-fg outline-none placeholder:text-subtle sm:text-[15px]" />
           <span className="kbd">Esc</span>
         </div>
         <ul ref={list} id={`${id}-list`} role="listbox" aria-label="Resultados" className="max-h-[50vh] overflow-y-auto p-2">
