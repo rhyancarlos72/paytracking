@@ -93255,7 +93255,10 @@ function safeDecode4(s) {
   }
 }
 function matchUtmToRow(utmValues, rows) {
-  const fields = utmValues.map((v) => (v ?? "").trim().toLowerCase()).filter((v) => v !== "" && v !== "null");
+  const fields = utmValues.flatMap((v) => {
+    const t = (v ?? "").trim().toLowerCase();
+    return t.includes("|") ? [t, ...t.split("|").map((x) => x.trim())] : [t];
+  }).filter((v) => v !== "" && v !== "null");
   if (!fields.length) return -1;
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
@@ -96019,7 +96022,8 @@ function metaRoutes(app, ctx) {
     for (const p of pays.rows) {
       const values = [p.utm_campaign, p.utm_content, p.utm_term, p.utm_medium, p.utm_id].filter(Boolean);
       if (q.level === "campaign") {
-        for (const v of [...values]) {
+        const parts = values.flatMap((v) => [v, ...String(v).split("|").map((x) => x.trim())]).filter(Boolean);
+        for (const v of parts) {
           const parent = adsetMap.get(`id:${v}`) ?? adsetMap.get(`name:${String(v).toLowerCase()}`);
           if (parent) {
             values.push(parent);

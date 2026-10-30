@@ -198,4 +198,10 @@ describe('UTM', () => {
     expect(matchUtmToRow(['x|120210000000001'], rows)).toBe(0);
     expect(matchUtmToRow([null, ''], rows)).toBe(-1);
   });
+  it('parâmetros de URL recomendados: "nome|id" casa pelo ID e, se o ID mudou, pelo nome', () => {
+    const rows = [{ id: '120210000000001', name: 'BLACK FRIDAY | CBO' }, { id: '120210000000002', name: 'Remarketing 7 dias' }];
+    expect(matchUtmToRow(['Remarketing 7 dias|120210000000002'], rows)).toBe(1);
+    expect(matchUtmToRow(['Remarketing 7 dias|999999999999999'], rows)).toBe(1); // campanha duplicada: ID novo, mesmo nome
+    expect(matchUtmToRow(['Outra|999999999999999'], rows)).toBe(-1);
+  });
 });

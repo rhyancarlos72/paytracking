@@ -36,7 +36,7 @@ export default function AttributionPage() {
       <Card padded={false}>
         {q.isError ? <ErrorState error={q.error} onRetry={() => q.refetch()} />
           : !q.data ? <div className="space-y-2 p-4">{Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-10" />)}</div>
-          : rows.length === 0 ? <EmptyState title="Sem dados de UTM no período" description="Use parâmetros utm_* nos links dos anúncios (ex.: utm_campaign={{campaign.name}}|{{campaign.id}})." />
+          : rows.length === 0 ? <EmptyState title="Sem dados de UTM no período" description="Cole os parâmetros de URL recomendados em todos os anúncios da Meta (o texto pronto está em Integrações)." />
           : (
             <div className="overflow-x-auto">
               <table className="table-base min-w-[760px]">

@@ -54,7 +54,10 @@ export interface AttributionRow {
  * ou contendo o ID numérico. Retorna o índice da primeira linha casada ou -1.
  */
 export function matchUtmToRow(utmValues: Array<string | null | undefined>, rows: AttributionRow[]): number {
-  const fields = utmValues.map((v) => (v ?? '').trim().toLowerCase()).filter((v) => v !== '' && v !== 'null');
+  // "nome|id" (modelo recomendado {{campaign.name}}|{{campaign.id}}): vale o texto inteiro e cada parte
+  const fields = utmValues
+    .flatMap((v) => { const t = (v ?? '').trim().toLowerCase(); return t.includes('|') ? [t, ...t.split('|').map((x) => x.trim())] : [t]; })
+    .filter((v) => v !== '' && v !== 'null');
   if (!fields.length) return -1;
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i]!;

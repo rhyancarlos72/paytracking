@@ -10,4 +10,6 @@ regexes = [
   '''(SenhaForte|NovaSenha|OutraSenha|Trocada)\d+''',
   '''tok-projeto-legado-abc123''',
   '''gw-usuario-legado-xyz789''',
+  # chave PÚBLICA do pixel da plataforma: vai no HTML de qualquer página com o pixel (não é segredo)
+  '''pt_px_f342a0cca4cfa0ef45db''',
 ]

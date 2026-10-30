@@ -11,6 +11,7 @@ import { buildPaytrackingPhp, checkoutEndpoint, downloadText } from '../lib/disp
 import { int, relative } from '../lib/format';
 import { useSession } from '../lib/session';
 import { mask, Name, useNamesHidden } from '../lib/privacy';
+import { MetaUtmCard } from '../components/meta-utm';
 
 interface Integration {
   id: string; provider: string; providerLabel: string; authMethod: string; requiresSecret: boolean; configurableAmountUnit: boolean;
@@ -79,6 +80,8 @@ export default function IntegrationsPage() {
       {revealed && <RevealedPanel r={revealed} onDone={() => setRevealed(null)} />}
 
       {!hasCheckout && q.data && !revealed && admin && <CheckoutHero onStart={() => setCreating('checkout')} />}
+
+      <MetaUtmCard className="mb-6" />
 
       {q.isError ? <Card><ErrorState error={q.error} onRetry={() => q.refetch()} /></Card>
         : !q.data ? <div className="grid gap-4 xl:grid-cols-2"><Skeleton className="h-64" /><Skeleton className="h-64" /></div>

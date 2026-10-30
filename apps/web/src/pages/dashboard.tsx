@@ -364,7 +364,7 @@ function TopCampaigns({ query, currency }: { query: Record<string, string | unde
           <div className="flex flex-col items-center py-8 text-center">
             <span className="icon-tile h-11 w-11 [&>svg]:h-5 [&>svg]:w-5" aria-hidden><Megaphone /></span>
             <p className="mt-3 text-sm font-semibold">Nenhuma venda com campanha no período</p>
-            <p className="mt-1 max-w-sm text-xs text-muted">Use <code className="font-mono">utm_campaign={'{{campaign.name}}'}</code> nos links dos anúncios para ver o ranking aqui.</p>
+            <p className="mt-1 max-w-sm text-xs text-muted">Cole os <Link to="/integracoes" className="font-semibold text-primary hover:underline">parâmetros de URL recomendados</Link> em todos os anúncios da Meta para ver o ranking aqui.</p>
           </div>
         ) : (
           <ol className="space-y-4">

@@ -159,7 +159,9 @@ export function metaRoutes(app: FastifyInstance, ctx: Ctx) {
     for (const p of pays.rows) {
       const values: string[] = [p.utm_campaign, p.utm_content, p.utm_term, p.utm_medium, p.utm_id].filter(Boolean);
       if (q.level === 'campaign') {
-        for (const v of [...values]) {
+        // conjunto → campanha, aceitando "nome|id" (parâmetros de URL recomendados)
+        const parts = values.flatMap((v) => [v, ...String(v).split('|').map((x) => x.trim())]).filter(Boolean);
+        for (const v of parts) {
           const parent = adsetMap.get(`id:${v}`) ?? adsetMap.get(`name:${String(v).toLowerCase()}`);
           if (parent) { values.push(parent); break; }
         }
