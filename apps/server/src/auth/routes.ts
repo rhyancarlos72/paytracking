@@ -9,6 +9,7 @@ import {
   revokeSessions, validatePassword, verifyPassword,
 } from './service.js';
 import { hasTwoFactor, issueChallenge, securityAlert } from './two-factor.js';
+import { trackSignup } from '../platform/tracking.js';
 
 const email = z.string().trim().toLowerCase().email('E-mail inválido').max(190);
 
@@ -28,8 +29,10 @@ export function authRoutes(app: FastifyInstance, ctx: Ctx) {
     await hit(ctx.db, `signup:ip:${clientIp(req)}`, 10, 3600);
     const body = parse(z.object({
       email, password: z.string(), name: z.string().trim().max(120).optional(), orgName: z.string().trim().max(120).optional(),
+      utms: z.record(z.string(), z.unknown()).optional(),
     }), req.body);
     const { userId, orgId } = await createUserWithOrg(ctx, body);
+    await trackSignup(ctx, req, { userId, orgId, email: body.email, name: body.name, utms: body.utms });
     const s = await createSession(ctx, userId, { ip: clientIp(req), ua: req.headers['user-agent'], orgId });
     setSessionCookie(reply, s.token, s.expires, secure);
     await sendVerification(userId, body.email).catch((e) => ctx.log.error({ err: String(e) }, 'falha ao enviar verificação'));

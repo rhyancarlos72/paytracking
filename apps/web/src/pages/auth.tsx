@@ -10,6 +10,7 @@ import { Button, Callout, Field, Input, Spinner } from '../components/ui';
 import { Logo } from '../components/logo';
 import { get, post } from '../lib/api';
 import { useMe } from '../lib/session';
+import { platformPixelLoaded, storedUtms, usePlatformPixel } from '../lib/platform-pixel';
 
 const password = z.string().min(10, 'Mínimo de 10 caracteres').max(200)
   .regex(/[A-Z]/, 'Inclua uma letra maiúscula').regex(/[a-z]/, 'Inclua uma letra minúscula').regex(/\d/, 'Inclua um número');
@@ -91,9 +92,12 @@ function useAfterAuth() {
   const nav = useNavigate();
   const [sp] = useSearchParams();
   return async () => {
-    await qc.invalidateQueries({ queryKey: ['me'] });
     const back = sp.get('voltar');
-    nav(back && back.startsWith('/') && !back.startsWith('//') ? back : '/', { replace: true });
+    const dest = back && back.startsWith('/') && !back.startsWith('//') ? back : '/';
+    // o pixel da plataforma (páginas públicas) não pode seguir para dentro do painel: recarrega limpo
+    if (platformPixelLoaded()) { location.replace(dest); return; }
+    await qc.invalidateQueries({ queryKey: ['me'] });
+    nav(dest, { replace: true });
   };
 }
 
@@ -291,6 +295,7 @@ export function LoginPage() {
 
 export function SignupPage() {
   const after = useAfterAuth();
+  usePlatformPixel();
   const [error, setError] = useState<string | null>(null);
   const [withOrg, setWithOrg] = useState(false);
   const schema = z.object({
@@ -315,7 +320,7 @@ export function SignupPage() {
       <GoogleButton label="Criar conta com Google" />
       <form className="space-y-4" noValidate onSubmit={f.handleSubmit(async ({ confirm: _c, ...v }) => {
         setError(null);
-        try { await post('/v1/auth/signup', v); await after(); } catch (e) { setError((e as Error).message); }
+        try { await post('/v1/auth/signup', { ...v, utms: storedUtms() }); await after(); } catch (e) { setError((e as Error).message); }
       })}>
         {error && <Callout tone="err" title={error} />}
         <Field label="Seu nome" htmlFor="name" error={err.name?.message}><Input id="name" autoComplete="name" placeholder="Como devemos te chamar" {...f.register('name')} /></Field>

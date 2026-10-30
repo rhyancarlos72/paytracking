@@ -5,6 +5,7 @@ import { clientIp, setSessionCookie } from '../lib/http.js';
 import { hit } from '../lib/rate-limit.js';
 import { createSession, createUserWithOrg } from './service.js';
 import { hasTwoFactor, issueChallenge, securityAlert } from './two-factor.js';
+import { trackSignup } from '../platform/tracking.js';
 
 /**
  * Login com Google (OpenID Connect, fluxo "authorization code" + PKCE).
@@ -132,6 +133,7 @@ export function googleRoutes(app: FastifyInstance, ctx: Ctx) {
         const r = await createUserWithOrg(ctx, { email, name: token.name?.slice(0, 120) ?? null, googleSub: sub });
         userId = r.userId;
         created = true;
+        await trackSignup(ctx, req, { userId, orgId: r.orgId, email, name: token.name ?? null });
       }
     }
 

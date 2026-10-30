@@ -4,7 +4,7 @@
  *   data-key, data-pixel-id, data-endpoint, data-currency, data-country,
  *   data-ic-click, data-ic-rule, data-ic-value, data-ic-selector, data-ic-onload,
  *   data-ic-auto-text, data-ic-price, data-content-id, data-content-name, data-ic-url-pattern,
- *   data-test, data-token (legado), data-capture-pii (novo, padrão "1").
+ *   data-test, data-token (legado), data-capture-pii (novo, padrão "1"), data-auto-config ("0" desliga os eventos automáticos da Meta).
  * Regras preservadas: PageView em todo carregamento; IC só por clique OU no checkout;
  * Purchase nunca pelo navegador; supressão de IC de 5 min por pixel; decoração de links
  * com pt_ic_event_id, pt_fbc, fbclid, UTMs, src e xcod/sck (≤240 caracteres).
@@ -71,6 +71,8 @@ import {
   } catch { /* */ }
   ensureFbp();
   ensureFbc();
+  // data-auto-config="0": desliga os "eventos automáticos" da Meta (leitura de botões e dados da página)
+  if (attr('data-auto-config') === '0') fbq('set', 'autoConfig', false, PIXEL_ID);
   let lastInit = JSON.stringify(matchData());
   fbq('init', PIXEL_ID, JSON.parse(lastInit));
 

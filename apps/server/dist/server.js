@@ -40454,13 +40454,13 @@ function parseCookie(str2, options) {
   } while (index < len);
   return obj2;
 }
-function stringifyCookie(cookie2, options) {
+function stringifyCookie(cookie3, options) {
   const enc = options?.encode || defaultEncode;
-  const keys = Object.keys(cookie2);
+  const keys = Object.keys(cookie3);
   let str2 = "";
   for (let i = 0; i < keys.length; i++) {
     const name2 = keys[i];
-    const val = cookie2[name2];
+    const val = cookie3[name2];
     if (val === void 0)
       continue;
     if (!cookieNameRegExp.test(name2)) {
@@ -40476,51 +40476,51 @@ function stringifyCookie(cookie2, options) {
   }
   return str2;
 }
-function stringifySetCookie(cookie2, options) {
+function stringifySetCookie(cookie3, options) {
   const enc = options?.encode || defaultEncode;
-  if (!cookieNameRegExp.test(cookie2.name)) {
-    throw new TypeError(`argument name is invalid: ${cookie2.name}`);
+  if (!cookieNameRegExp.test(cookie3.name)) {
+    throw new TypeError(`argument name is invalid: ${cookie3.name}`);
   }
-  const value = cookie2.value == null ? "" : enc(cookie2.value);
+  const value = cookie3.value == null ? "" : enc(cookie3.value);
   if (!cookieValueRegExp.test(value)) {
-    throw new TypeError(`argument val is invalid: ${cookie2.value}`);
+    throw new TypeError(`argument val is invalid: ${cookie3.value}`);
   }
-  let str2 = cookie2.name + "=" + value;
-  if (cookie2.maxAge !== void 0) {
-    if (!Number.isInteger(cookie2.maxAge)) {
-      throw new TypeError(`option maxAge is invalid: ${cookie2.maxAge}`);
+  let str2 = cookie3.name + "=" + value;
+  if (cookie3.maxAge !== void 0) {
+    if (!Number.isInteger(cookie3.maxAge)) {
+      throw new TypeError(`option maxAge is invalid: ${cookie3.maxAge}`);
     }
-    str2 += "; Max-Age=" + cookie2.maxAge;
+    str2 += "; Max-Age=" + cookie3.maxAge;
   }
-  if (cookie2.domain) {
-    if (!domainValueRegExp.test(cookie2.domain)) {
-      throw new TypeError(`option domain is invalid: ${cookie2.domain}`);
+  if (cookie3.domain) {
+    if (!domainValueRegExp.test(cookie3.domain)) {
+      throw new TypeError(`option domain is invalid: ${cookie3.domain}`);
     }
-    str2 += "; Domain=" + cookie2.domain;
+    str2 += "; Domain=" + cookie3.domain;
   }
-  if (cookie2.path) {
-    if (!pathValueRegExp.test(cookie2.path)) {
-      throw new TypeError(`option path is invalid: ${cookie2.path}`);
+  if (cookie3.path) {
+    if (!pathValueRegExp.test(cookie3.path)) {
+      throw new TypeError(`option path is invalid: ${cookie3.path}`);
     }
-    str2 += "; Path=" + cookie2.path;
+    str2 += "; Path=" + cookie3.path;
   }
-  if (cookie2.expires) {
-    if (!Number.isFinite(cookie2.expires.valueOf())) {
-      throw new TypeError(`option expires is invalid: ${cookie2.expires}`);
+  if (cookie3.expires) {
+    if (!Number.isFinite(cookie3.expires.valueOf())) {
+      throw new TypeError(`option expires is invalid: ${cookie3.expires}`);
     }
-    str2 += "; Expires=" + cookie2.expires.toUTCString();
+    str2 += "; Expires=" + cookie3.expires.toUTCString();
   }
-  if (cookie2.httpOnly) {
+  if (cookie3.httpOnly) {
     str2 += "; HttpOnly";
   }
-  if (cookie2.secure) {
+  if (cookie3.secure) {
     str2 += "; Secure";
   }
-  if (cookie2.partitioned) {
+  if (cookie3.partitioned) {
     str2 += "; Partitioned";
   }
-  if (cookie2.priority) {
-    const priority = typeof cookie2.priority === "string" ? cookie2.priority.toLowerCase() : void 0;
+  if (cookie3.priority) {
+    const priority = typeof cookie3.priority === "string" ? cookie3.priority.toLowerCase() : void 0;
     switch (priority) {
       case "low":
         str2 += "; Priority=Low";
@@ -40532,11 +40532,11 @@ function stringifySetCookie(cookie2, options) {
         str2 += "; Priority=High";
         break;
       default:
-        throw new TypeError(`option priority is invalid: ${cookie2.priority}`);
+        throw new TypeError(`option priority is invalid: ${cookie3.priority}`);
     }
   }
-  if (cookie2.sameSite) {
-    const sameSite = typeof cookie2.sameSite === "string" ? cookie2.sameSite.toLowerCase() : cookie2.sameSite;
+  if (cookie3.sameSite) {
+    const sameSite = typeof cookie3.sameSite === "string" ? cookie3.sameSite.toLowerCase() : cookie3.sameSite;
     switch (sameSite) {
       case true:
       case "strict":
@@ -40549,7 +40549,7 @@ function stringifySetCookie(cookie2, options) {
         str2 += "; SameSite=None";
         break;
       default:
-        throw new TypeError(`option sameSite is invalid: ${cookie2.sameSite}`);
+        throw new TypeError(`option sameSite is invalid: ${cookie3.sameSite}`);
     }
   }
   return str2;
@@ -41099,9 +41099,9 @@ var require_set_cookie = __commonJS({
           );
         }
       }
-      var cookie2 = createNullObj();
-      cookie2.name = name2;
-      cookie2.value = value;
+      var cookie3 = createNullObj();
+      cookie3.name = name2;
+      cookie3.value = value;
       parts.forEach(function(part) {
         var sides = part.split("=");
         var key = sides.shift().trim().toLowerCase();
@@ -41122,27 +41122,27 @@ var require_set_cookie = __commonJS({
               );
             }
           } else {
-            cookie2.expires = expires;
+            cookie3.expires = expires;
           }
         } else if (key === "max-age") {
           if (/^-?\d+$/.test(value2)) {
-            cookie2.maxAge = parseInt(value2, 10);
+            cookie3.maxAge = parseInt(value2, 10);
           } else if (!options.silent) {
             console.error("set-cookie-parser: failed to parse max-age:", value2);
           }
         } else if (key === "secure") {
-          cookie2.secure = true;
+          cookie3.secure = true;
         } else if (key === "httponly") {
-          cookie2.httpOnly = true;
+          cookie3.httpOnly = true;
         } else if (key === "samesite") {
-          cookie2.sameSite = value2;
+          cookie3.sameSite = value2;
         } else if (key === "partitioned") {
-          cookie2.partitioned = true;
+          cookie3.partitioned = true;
         } else if (key) {
-          cookie2[key] = value2;
+          cookie3[key] = value2;
         }
       });
-      return cookie2;
+      return cookie3;
     }
     function parseNameValuePair(nameValuePairStr) {
       var name2 = "";
@@ -41215,9 +41215,9 @@ var require_set_cookie = __commonJS({
       } else {
         var cookies = createNullObj();
         return input2.reduce(function(cookies2, str2) {
-          var cookie2 = parseString(str2, options);
-          if (cookie2) {
-            cookies2[cookie2.name] = cookie2;
+          var cookie3 = parseString(str2, options);
+          if (cookie3) {
+            cookies2[cookie3.name] = cookie3;
           }
           return cookies2;
         }, cookies);
@@ -78787,6 +78787,14 @@ var schema = external_exports.object({
   PRIVACY_CONTACT: external_exports.string().default(""),
   /** Código da meta tag de verificação do Google Search Console (só o valor de content="...") */
   GOOGLE_SITE_VERIFICATION: external_exports.string().default(""),
+  /**
+   * Pixel da PRÓPRIA plataforma (marketing do PayTracking): pixel cadastrado na conta do dono.
+   * Navegador: carregado só nas páginas públicas e só em produção (auto). Servidor: Lead no
+   * cadastro e Purchase quando a assinatura é paga, enviados pela Conversions API desse pixel.
+   */
+  PLATFORM_PIXEL_KEY: external_exports.string().default("pt_px_f342a0cca4cfa0ef45db"),
+  PLATFORM_PIXEL_ID: external_exports.string().default("2215202246010798"),
+  PLATFORM_PIXEL_BROWSER: external_exports.enum(["auto", "on", "off"]).default("auto"),
   WEBHOOK_BODY_RETENTION_DAYS: external_exports.coerce.number().int().min(1).default(30),
   TRACKING_RETENTION_DAYS: external_exports.coerce.number().int().min(7).default(180),
   /**
@@ -79235,10 +79243,10 @@ var Cookies = class {
    */
   set(cookieStr, url2) {
     const urlparts = parse3(url2 || "");
-    const cookie2 = this.parse(cookieStr);
+    const cookie3 = this.parse(cookieStr);
     let domain2;
-    if (cookie2.domain) {
-      domain2 = cookie2.domain.replace(/^\./, "");
+    if (cookie3.domain) {
+      domain2 = cookie3.domain.replace(/^\./, "");
       if (
         // can't be valid if the requested domain is shorter than current hostname
         urlparts.hostname.length < domain2.length || // a top level domain is not a valid scope, 'Domain=com' would otherwise be
@@ -79247,18 +79255,18 @@ var Cookies = class {
         net2.isIP(urlparts.hostname) || // prefix domains with dot to be sure that partial matches are not used
         !("." + urlparts.hostname).endsWith("." + domain2)
       ) {
-        cookie2.domain = urlparts.hostname;
+        cookie3.domain = urlparts.hostname;
       }
     } else {
-      cookie2.domain = urlparts.hostname;
+      cookie3.domain = urlparts.hostname;
     }
-    if (!cookie2.path) {
-      cookie2.path = this.getPath(urlparts.pathname);
+    if (!cookie3.path) {
+      cookie3.path = this.getPath(urlparts.pathname);
     }
-    if (!cookie2.expires) {
-      cookie2.expires = new Date(Date.now() + (Number(this.options.sessionTimeout || SESSION_TIMEOUT) || SESSION_TIMEOUT) * 1e3);
+    if (!cookie3.expires) {
+      cookie3.expires = new Date(Date.now() + (Number(this.options.sessionTimeout || SESSION_TIMEOUT) || SESSION_TIMEOUT) * 1e3);
     }
-    return this.add(cookie2);
+    return this.add(cookie3);
   }
   /**
    * Returns cookie string for the 'Cookie:' header.
@@ -79267,7 +79275,7 @@ var Cookies = class {
    * @returns Cookie header or empty string if no matches were found
    */
   get(url2) {
-    return this.list(url2).map((cookie2) => cookie2.name + "=" + cookie2.value).join("; ");
+    return this.list(url2).map((cookie3) => cookie3.name + "=" + cookie3.value).join("; ");
   }
   /**
    * Lists all valied cookie objects for the specified URL
@@ -79278,13 +79286,13 @@ var Cookies = class {
   list(url2) {
     const result = [];
     for (let i = this.cookies.length - 1; i >= 0; i--) {
-      const cookie2 = this.cookies[i];
-      if (this.isExpired(cookie2)) {
+      const cookie3 = this.cookies[i];
+      if (this.isExpired(cookie3)) {
         this.cookies.splice(i, 1);
         continue;
       }
-      if (this.match(cookie2, url2)) {
-        result.unshift(cookie2);
+      if (this.match(cookie3, url2)) {
+        result.unshift(cookie3);
       }
     }
     return result;
@@ -79296,7 +79304,7 @@ var Cookies = class {
    * @returns Cookie object
    */
   parse(cookieStr) {
-    const cookie2 = {};
+    const cookie3 = {};
     let hasNameValue = false;
     (cookieStr || "").toString().split(";").forEach((cookiePart) => {
       if (!cookiePart.trim()) {
@@ -79309,8 +79317,8 @@ var Cookies = class {
       if (!hasNameValue) {
         hasNameValue = true;
         if (name2) {
-          cookie2.name = name2;
-          cookie2.value = value;
+          cookie3.name = name2;
+          cookie3.value = value;
         }
         return;
       }
@@ -79318,32 +79326,32 @@ var Cookies = class {
         case "expires": {
           const expires = new Date(value);
           if (expires.toString() !== "Invalid Date") {
-            cookie2.expires = expires;
+            cookie3.expires = expires;
           }
           break;
         }
         case "path":
-          cookie2.path = value;
+          cookie3.path = value;
           break;
         case "domain":
           domain2 = value.toLowerCase();
           if (domain2.length && domain2.charAt(0) !== ".") {
             domain2 = "." + domain2;
           }
-          cookie2.domain = domain2;
+          cookie3.domain = domain2;
           break;
         case "max-age":
-          cookie2.expires = new Date(Date.now() + (Number(value) || 0) * 1e3);
+          cookie3.expires = new Date(Date.now() + (Number(value) || 0) * 1e3);
           break;
         case "secure":
-          cookie2.secure = true;
+          cookie3.secure = true;
           break;
         case "httponly":
-          cookie2.httponly = true;
+          cookie3.httponly = true;
           break;
       }
     });
-    return cookie2;
+    return cookie3;
   }
   /**
    * Checks if a cookie object is valid for a specified URL
@@ -79352,18 +79360,18 @@ var Cookies = class {
    * @param url URL to check for
    * @returns true if cookie is valid for specifiec URL
    */
-  match(cookie2, url2) {
+  match(cookie3, url2) {
     const urlparts = parse3(url2 || "");
-    if (urlparts.hostname !== cookie2.domain && (cookie2.domain.charAt(0) !== "." || ("." + urlparts.hostname).substr(-cookie2.domain.length) !== cookie2.domain)) {
+    if (urlparts.hostname !== cookie3.domain && (cookie3.domain.charAt(0) !== "." || ("." + urlparts.hostname).substr(-cookie3.domain.length) !== cookie3.domain)) {
       return false;
     }
     const pathname = urlparts.pathname || "/";
-    const cookiePath = cookie2.path;
+    const cookiePath = cookie3.path;
     const pathMatches = pathname === cookiePath || pathname.startsWith(cookiePath) && (cookiePath.endsWith("/") || pathname.charAt(cookiePath.length) === "/");
     if (!pathMatches) {
       return false;
     }
-    if (cookie2.secure && urlparts.protocol !== "https:") {
+    if (cookie3.secure && urlparts.protocol !== "https:") {
       return false;
     }
     return true;
@@ -79373,22 +79381,22 @@ var Cookies = class {
    *
    * @param cookie Cookie value to be stored
    */
-  add(cookie2) {
-    if (!cookie2 || !cookie2.name) {
+  add(cookie3) {
+    if (!cookie3 || !cookie3.name) {
       return false;
     }
     for (let i = 0, len = this.cookies.length; i < len; i++) {
-      if (this.compare(this.cookies[i], cookie2)) {
-        if (this.isExpired(cookie2)) {
+      if (this.compare(this.cookies[i], cookie3)) {
+        if (this.isExpired(cookie3)) {
           this.cookies.splice(i, 1);
           return false;
         }
-        this.cookies[i] = cookie2;
+        this.cookies[i] = cookie3;
         return true;
       }
     }
-    if (!this.isExpired(cookie2)) {
-      this.cookies.push(cookie2);
+    if (!this.isExpired(cookie3)) {
+      this.cookies.push(cookie3);
     }
     return true;
   }
@@ -79408,8 +79416,8 @@ var Cookies = class {
    * @param cookie Cookie object to check against
    * @returns True, if the cookie is expired
    */
-  isExpired(cookie2) {
-    return cookie2.expires && cookie2.expires < /* @__PURE__ */ new Date() || !cookie2.value;
+  isExpired(cookie3) {
+    return cookie3.expires && cookie3.expires < /* @__PURE__ */ new Date() || !cookie3.value;
   }
   /**
    * Returns the default path for an URL path argument, the default-path of
@@ -79547,8 +79555,8 @@ function nmfetch(url2, options) {
     return fetchRes;
   }
   if (options.cookie) {
-    [].concat(options.cookie || []).forEach((cookie2) => {
-      options.cookies.set(cookie2, url2);
+    [].concat(options.cookie || []).forEach((cookie3) => {
+      options.cookies.set(cookie3, url2);
     });
     options.cookie = false;
   }
@@ -79697,8 +79705,8 @@ function nmfetch(url2, options) {
         break;
     }
     if (res.headers["set-cookie"]) {
-      [].concat(res.headers["set-cookie"] || []).forEach((cookie2) => {
-        options.cookies.set(cookie2, url2);
+      [].concat(res.headers["set-cookie"] || []).forEach((cookie3) => {
+        options.cookies.set(cookie3, url2);
       });
     }
     if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location) {
@@ -92541,297 +92549,6 @@ function twoFactorRoutes(app, ctx) {
   });
 }
 
-// src/auth/routes.ts
-var email3 = external_exports.string().trim().toLowerCase().email("E-mail inv\xE1lido").max(190);
-function authRoutes(app, ctx) {
-  const secure = ctx.config.isProd;
-  async function sendVerification(userId, to) {
-    const token = await issueToken(ctx, userId, "email_verify", 60 * 24 * 3);
-    await ctx.mailer.send({
-      to,
-      subject: "Bem-vindo! Confirme seu e-mail \u2014 PayTracking",
-      text: `Sua conta foi criada e o teste gr\xE1tis de ${ctx.config.PLAN_TRIAL_DAYS} dias j\xE1 come\xE7ou.
-
-Falta s\xF3 confirmar que este e-mail \xE9 seu: ${ctx.config.APP_URL}/verificar-email?token=${token}
-
-O link expira em 3 dias. Com o e-mail confirmado, voc\xEA consegue recuperar o acesso se esquecer a senha.`
-    });
-  }
-  app.post("/v1/auth/signup", async (req, reply) => {
-    await hit(ctx.db, `signup:ip:${clientIp(req)}`, 10, 3600);
-    const body = parse5(external_exports.object({
-      email: email3,
-      password: external_exports.string(),
-      name: external_exports.string().trim().max(120).optional(),
-      orgName: external_exports.string().trim().max(120).optional()
-    }), req.body);
-    const { userId, orgId } = await createUserWithOrg(ctx, body);
-    const s = await createSession(ctx, userId, { ip: clientIp(req), ua: req.headers["user-agent"], orgId });
-    setSessionCookie(reply, s.token, s.expires, secure);
-    await sendVerification(userId, body.email).catch((e) => ctx.log.error({ err: String(e) }, "falha ao enviar verifica\xE7\xE3o"));
-    return reply.code(201).send({ ok: true });
-  });
-  app.post("/v1/auth/login", async (req, reply) => {
-    const body = parse5(external_exports.object({ email: email3, password: external_exports.string().min(1).max(200) }), req.body);
-    const ipBucket = `login:ip:${clientIp(req)}`;
-    const emailBucket = `login:email:${body.email}`;
-    await hit(ctx.db, ipBucket, 30, 900);
-    await hit(ctx.db, emailBucket, 8, 900);
-    const user = await authenticate(ctx, body.email, body.password);
-    if (!user) throw unauthorized("E-mail ou senha incorretos.");
-    await clear(ctx.db, emailBucket);
-    if (await hasTwoFactor(ctx, user.id)) return { ok: false, twoFactorRequired: true, challenge: issueChallenge(ctx, user.id) };
-    const s = await createSession(ctx, user.id, { ip: clientIp(req), ua: req.headers["user-agent"] });
-    setSessionCookie(reply, s.token, s.expires, secure);
-    return { ok: true };
-  });
-  app.post("/v1/auth/logout", async (req, reply) => {
-    if (req.auth) await ctx.db.query("UPDATE sessions SET revoked_at = now() WHERE id = $1", [req.auth.sessionId]);
-    clearSessionCookie(reply, secure);
-    return { ok: true };
-  });
-  app.get("/v1/auth/me", async (req) => {
-    const a = auth(req);
-    const orgs = await ctx.db.query(
-      `SELECT o.id, o.name, m.role FROM memberships m JOIN organizations o ON o.id = m.org_id WHERE m.user_id = $1 ORDER BY o.name`,
-      [a.user.id]
-    );
-    const plan = planState(a.org, ctx.now());
-    return {
-      user: a.user,
-      role: a.role,
-      org: {
-        id: a.org.id,
-        name: a.org.name,
-        reportingCurrency: a.org.reporting_currency,
-        timezone: a.org.timezone,
-        goalDailyMinor: a.org.goal_daily_minor.toString(),
-        goalMonthlyMinor: a.org.goal_monthly_minor.toString()
-      },
-      plan: { ...plan, expiresAt: a.org.plan_expires_at, priceMinor: ctx.config.PLAN_PRICE_MINOR },
-      orgs: orgs.rows
-    };
-  });
-  app.post("/v1/auth/switch-org", async (req) => {
-    const a = auth(req);
-    const { orgId } = parse5(external_exports.object({ orgId: external_exports.string().uuid() }), req.body);
-    const m = await ctx.db.query("SELECT 1 FROM memberships WHERE org_id = $1 AND user_id = $2", [orgId, a.user.id]);
-    if (!m.rowCount) throw badRequest("Organiza\xE7\xE3o n\xE3o encontrada.");
-    await ctx.db.query("UPDATE sessions SET active_org_id = $1 WHERE id = $2", [orgId, a.sessionId]);
-    return { ok: true };
-  });
-  app.post("/v1/auth/forgot-password", async (req) => {
-    await hit(ctx.db, `forgot:ip:${clientIp(req)}`, 10, 3600);
-    const body = parse5(external_exports.object({ email: email3 }), req.body);
-    const u = await ctx.db.query("SELECT id FROM users WHERE email = $1", [body.email]);
-    const row = u.rows[0];
-    if (row) {
-      const token = await issueToken(ctx, row.id, "password_reset", 60);
-      await ctx.mailer.send({
-        to: body.email,
-        subject: "Redefini\xE7\xE3o de senha \u2014 PayTracking",
-        text: `Recebemos um pedido para criar uma nova senha na sua conta.
-
-Para escolher a nova senha: ${ctx.config.APP_URL}/redefinir-senha?token=${token}
-
-O link vale por 1 hora e funciona uma \xFAnica vez. Se n\xE3o foi voc\xEA, ignore este e-mail: sua senha atual continua valendo.`
-      });
-    }
-    return { ok: true };
-  });
-  app.post("/v1/auth/reset-password", async (req) => {
-    await hit(ctx.db, `reset:ip:${clientIp(req)}`, 20, 3600);
-    const body = parse5(external_exports.object({ token: external_exports.string().min(20), password: external_exports.string() }), req.body);
-    validatePassword(body.password);
-    const userId = await consumeToken(ctx, body.token, "password_reset");
-    if (!userId) throw badRequest("Link inv\xE1lido ou expirado. Solicite um novo.");
-    await ctx.db.query("UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2", [await hashPassword(body.password), userId]);
-    await revokeSessions(ctx, userId);
-    await ctx.db.query(`INSERT INTO audit_log(user_id, action) VALUES ($1, 'auth.password_reset')`, [userId]);
-    const to = await ctx.db.query("SELECT email FROM users WHERE id = $1", [userId]);
-    if (to.rows[0]) await securityAlert(ctx, req, to.rows[0].email, "Sua senha foi redefinida");
-    return { ok: true };
-  });
-  app.post("/v1/auth/verify-email", async (req) => {
-    const body = parse5(external_exports.object({ token: external_exports.string().min(20) }), req.body);
-    const userId = await consumeToken(ctx, body.token, "email_verify");
-    if (!userId) throw badRequest("Link inv\xE1lido ou expirado.");
-    await ctx.db.query("UPDATE users SET email_verified_at = now() WHERE id = $1", [userId]);
-    return { ok: true };
-  });
-  app.post("/v1/auth/resend-verification", async (req) => {
-    const a = auth(req);
-    await hit(ctx.db, `verify:user:${a.user.id}`, 5, 3600);
-    if (!a.user.emailVerified) await sendVerification(a.user.id, a.user.email);
-    return { ok: true };
-  });
-  app.post("/v1/auth/change-password", async (req) => {
-    const a = auth(req);
-    await hit(ctx.db, `chpw:user:${a.user.id}`, 10, 900);
-    const body = parse5(external_exports.object({ currentPassword: external_exports.string().min(1), newPassword: external_exports.string() }), req.body);
-    validatePassword(body.newPassword);
-    if (body.newPassword === body.currentPassword) throw badRequest("A nova senha deve ser diferente da atual.");
-    const r = await ctx.db.query("SELECT password_hash FROM users WHERE id = $1", [a.user.id]);
-    if (!await verifyPassword(body.currentPassword, r.rows[0]?.password_hash ?? "")) throw badRequest("Senha atual incorreta.");
-    await ctx.db.query("UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2", [await hashPassword(body.newPassword), a.user.id]);
-    const revoked = await revokeSessions(ctx, a.user.id, a.sessionId);
-    await ctx.db.query(`INSERT INTO audit_log(org_id, user_id, action) VALUES ($1, $2, 'auth.password_changed')`, [a.org.id, a.user.id]);
-    await securityAlert(ctx, req, a.user.email, "Sua senha foi alterada");
-    return { ok: true, revokedSessions: revoked };
-  });
-  app.get("/v1/auth/sessions", async (req) => {
-    const a = auth(req);
-    const r = await ctx.db.query(
-      `SELECT left(id, 12) AS id, host(ip) AS ip, user_agent, created_at, last_seen_at, (id = $2) AS current
-         FROM sessions WHERE user_id = $1 AND revoked_at IS NULL AND expires_at > now() ORDER BY last_seen_at DESC`,
-      [a.user.id, a.sessionId]
-    );
-    return { sessions: r.rows };
-  });
-  app.post("/v1/auth/sessions/revoke-others", async (req) => {
-    const a = auth(req);
-    return { revoked: await revokeSessions(ctx, a.user.id, a.sessionId) };
-  });
-  app.patch("/v1/auth/preferences", async (req) => {
-    const a = auth(req);
-    const body = parse5(external_exports.object({ hideEmail: external_exports.boolean().optional(), hideNames: external_exports.boolean().optional(), name: external_exports.string().trim().max(120).optional() }), req.body);
-    await ctx.db.query(
-      "UPDATE users SET hide_email = COALESCE($2, hide_email), name = COALESCE($3, name), hide_names = COALESCE($4, hide_names), updated_at = now() WHERE id = $1",
-      [a.user.id, body.hideEmail ?? null, body.name ?? null, body.hideNames ?? null]
-    );
-    return { ok: true };
-  });
-}
-
-// src/auth/google.ts
-import { createHash as createHash2, randomBytes as randomBytes4 } from "node:crypto";
-var AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
-var TOKEN_URL = "https://oauth2.googleapis.com/token";
-var COOKIE = "pt_google";
-var COOKIE_PATH = "/v1/auth/google";
-var TTL_MS = 10 * 6e4;
-var b64url = (b) => b.toString("base64url");
-var safeBack = (v) => typeof v === "string" && v.startsWith("/") && !v.startsWith("//") && !v.startsWith("/\\") ? v.slice(0, 300) : "/";
-function decodeJwtPayload(jwt2) {
-  const part = jwt2.split(".")[1];
-  if (!part) return null;
-  try {
-    return JSON.parse(Buffer.from(part, "base64url").toString("utf8"));
-  } catch {
-    return null;
-  }
-}
-var googleEnabled = (ctx) => !!(ctx.config.GOOGLE_CLIENT_ID && ctx.config.GOOGLE_CLIENT_SECRET);
-function googleRoutes(app, ctx) {
-  const secure = ctx.config.isProd;
-  const redirectUri = `${ctx.config.PUBLIC_API_URL.replace(/\/$/, "")}/v1/auth/google/callback`;
-  const appUrl = ctx.config.APP_URL.replace(/\/$/, "");
-  const fail = (reply, code2) => {
-    reply.clearCookie(COOKIE, { path: COOKIE_PATH });
-    return reply.redirect(`${appUrl}/entrar?erro=${encodeURIComponent(code2)}`, 302);
-  };
-  app.get("/v1/auth/providers", async () => ({ google: googleEnabled(ctx) }));
-  app.get("/v1/auth/google/start", async (req, reply) => {
-    if (!googleEnabled(ctx)) return fail(reply, "google_desativado");
-    await hit(ctx.db, `google:ip:${clientIp(req)}`, 30, 900);
-    const flow = {
-      state: b64url(randomBytes4(24)),
-      nonce: b64url(randomBytes4(24)),
-      verifier: b64url(randomBytes4(48)),
-      back: safeBack(req.query.voltar),
-      exp: ctx.now().getTime() + TTL_MS
-    };
-    reply.setCookie(COOKIE, ctx.box.encrypt(JSON.stringify(flow)), {
-      path: COOKIE_PATH,
-      httpOnly: true,
-      secure,
-      sameSite: "lax",
-      maxAge: TTL_MS / 1e3
-    });
-    const q = new URLSearchParams({
-      client_id: ctx.config.GOOGLE_CLIENT_ID,
-      redirect_uri: redirectUri,
-      response_type: "code",
-      scope: "openid email profile",
-      state: flow.state,
-      nonce: flow.nonce,
-      code_challenge: b64url(createHash2("sha256").update(flow.verifier).digest()),
-      code_challenge_method: "S256",
-      prompt: "select_account"
-    });
-    return reply.redirect(`${AUTH_URL}?${q}`, 302);
-  });
-  app.get("/v1/auth/google/callback", async (req, reply) => {
-    if (!googleEnabled(ctx)) return fail(reply, "google_desativado");
-    const q = req.query;
-    if (q.error) return fail(reply, q.error === "access_denied" ? "google_cancelado" : "google_falhou");
-    let flow;
-    try {
-      flow = JSON.parse(ctx.box.decrypt(String(req.cookies[COOKIE] ?? "")));
-    } catch {
-      return fail(reply, "google_expirou");
-    }
-    if (!q.state || q.state !== flow.state || flow.exp < ctx.now().getTime() || !q.code) return fail(reply, "google_expirou");
-    reply.clearCookie(COOKIE, { path: COOKIE_PATH });
-    let token = null;
-    try {
-      const r = await ctx.fetch(TOKEN_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          code: q.code,
-          client_id: ctx.config.GOOGLE_CLIENT_ID,
-          client_secret: ctx.config.GOOGLE_CLIENT_SECRET,
-          redirect_uri: redirectUri,
-          grant_type: "authorization_code",
-          code_verifier: flow.verifier
-        }).toString(),
-        signal: AbortSignal.timeout(1e4)
-      });
-      const body = await r.json().catch(() => null);
-      if (!r.ok || !body?.id_token) {
-        ctx.log.warn({ status: r.status }, "google: troca do c\xF3digo falhou");
-        return fail(reply, "google_falhou");
-      }
-      token = decodeJwtPayload(body.id_token);
-    } catch (e) {
-      ctx.log.warn({ err: String(e) }, "google: sem resposta");
-      return fail(reply, "google_falhou");
-    }
-    const nowSec = ctx.now().getTime() / 1e3;
-    if (!token || !["accounts.google.com", "https://accounts.google.com"].includes(String(token.iss)) || token.aud !== ctx.config.GOOGLE_CLIENT_ID || !token.exp || token.exp < nowSec || token.nonce !== flow.nonce || !token.sub || !token.email) return fail(reply, "google_falhou");
-    if (token.email_verified !== true && token.email_verified !== "true") return fail(reply, "google_email_nao_verificado");
-    const email4 = token.email.trim().toLowerCase();
-    const sub = String(token.sub);
-    let userId;
-    let created = false;
-    const bySub = await ctx.db.query("SELECT id FROM users WHERE google_sub = $1", [sub]);
-    if (bySub.rows[0]) userId = bySub.rows[0].id;
-    else {
-      const byEmail = await ctx.db.query("SELECT id, google_sub FROM users WHERE email = $1", [email4]);
-      const existing = byEmail.rows[0];
-      if (existing) {
-        if (existing.google_sub && existing.google_sub !== sub) return fail(reply, "google_outra_conta");
-        await ctx.db.query("UPDATE users SET google_sub = $2, email_verified_at = COALESCE(email_verified_at, now()), updated_at = now() WHERE id = $1", [existing.id, sub]);
-        userId = existing.id;
-        await ctx.db.query(`INSERT INTO audit_log(user_id, action, ip) VALUES ($1, 'auth.google_linked', $2)`, [userId, clientIp(req) || null]);
-        await securityAlert(ctx, req, email4, "O login com Google foi conectado");
-      } else {
-        await hit(ctx.db, `signup:ip:${clientIp(req)}`, 10, 3600);
-        const r = await createUserWithOrg(ctx, { email: email4, name: token.name?.slice(0, 120) ?? null, googleSub: sub });
-        userId = r.userId;
-        created = true;
-      }
-    }
-    if (await hasTwoFactor(ctx, userId)) {
-      return reply.redirect(`${appUrl}/entrar?voltar=${encodeURIComponent(flow.back)}#desafio=${encodeURIComponent(issueChallenge(ctx, userId))}`, 302);
-    }
-    const s = await createSession(ctx, userId, { ip: clientIp(req), ua: req.headers["user-agent"] });
-    setSessionCookie(reply, s.token, s.expires, secure);
-    return reply.redirect(`${appUrl}${created ? "/?bem-vindo=1" : flow.back}`, 302);
-  });
-}
-
 // ../../packages/domain/src/money.ts
 var EXPONENTS = {
   BIF: 0,
@@ -93228,8 +92945,8 @@ function isReversal(to) {
 }
 
 // ../../packages/domain/src/meta-normalize.ts
-import { createHash as createHash3 } from "node:crypto";
-var sha256 = (v) => createHash3("sha256").update(v, "utf8").digest("hex");
+import { createHash as createHash2 } from "node:crypto";
+var sha256 = (v) => createHash2("sha256").update(v, "utf8").digest("hex");
 var isHash = (v) => /^[a-f0-9]{64}$/i.test(v);
 var ACCENTS = {
   \u00E1: "a",
@@ -93549,6 +93266,418 @@ function matchUtmToRow(utmValues, rows) {
     }
   }
   return -1;
+}
+
+// src/capi/outbox.ts
+async function enqueueCapi(c, i) {
+  const r = await c.query(
+    `INSERT INTO capi_outbox(org_id, pixel_id, event_name, event_id, payload, payment_id, tracking_event_id, correlation_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     ON CONFLICT (pixel_id, event_name, event_id) DO NOTHING RETURNING id`,
+    [
+      i.orgId,
+      i.pixelId,
+      i.event.event_name,
+      i.event.event_id,
+      JSON.stringify(i.event),
+      i.paymentId ?? null,
+      i.trackingEventId ?? null,
+      i.correlationId ?? null
+    ]
+  );
+  return r.rows[0] ? Number(r.rows[0].id) : null;
+}
+async function raiseAlert(c, orgId, a) {
+  await c.query(
+    `INSERT INTO alerts(org_id, kind, severity, dedup_key, title, detail) VALUES ($1, $2, $3, $4, $5, $6)
+     ON CONFLICT (org_id, dedup_key) WHERE resolved_at IS NULL
+     DO UPDATE SET occurrences = alerts.occurrences + 1, last_seen_at = now(), detail = EXCLUDED.detail`,
+    [orgId, a.kind, a.severity, a.dedupKey, a.title, a.detail ?? null]
+  );
+}
+async function resolveAlert(c, orgId, dedupKey) {
+  await c.query("UPDATE alerts SET resolved_at = now() WHERE org_id = $1 AND dedup_key = $2 AND resolved_at IS NULL", [orgId, dedupKey]);
+}
+
+// src/platform/tracking.ts
+async function platformPixel(ctx, db) {
+  const key = ctx.config.PLATFORM_PIXEL_KEY.trim();
+  if (!key || key === "off") return null;
+  const r = await db.query("SELECT id, org_id FROM pixels WHERE public_key = $1 AND active", [key]);
+  return r.rows[0] ?? null;
+}
+var platformPixelInBrowser = (ctx) => {
+  const c = ctx.config;
+  if (!c.PLATFORM_PIXEL_KEY || c.PLATFORM_PIXEL_KEY === "off" || !c.PLATFORM_PIXEL_ID) return false;
+  return c.PLATFORM_PIXEL_BROWSER === "on" || c.PLATFORM_PIXEL_BROWSER === "auto" && c.isProd;
+};
+var FB_PARAM = /^fb\.\d\.\d{10,16}\.[\w.-]{6,500}$/;
+var cookie = (req, name2) => {
+  const v = req.cookies?.[name2];
+  return v && FB_PARAM.test(v) ? v : null;
+};
+async function trackSignup(ctx, req, u) {
+  try {
+    const utm = Object.fromEntries(UTM_KEYS.map((k) => [k, typeof u.utms?.[k] === "string" ? String(u.utms[k]).slice(0, 200) : null]));
+    const fbp = cookie(req, "_fbp");
+    const fbc = cookie(req, "_fbc");
+    const ip = clientIp(req) || null;
+    const ua = String(req.headers["user-agent"] ?? "").slice(0, 400) || null;
+    await ctx.db.query(
+      `INSERT INTO signup_attribution(user_id, org_id, fbp, fbc, client_ip, user_agent, utm_source, utm_medium, utm_campaign, utm_content, utm_term, utm_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) ON CONFLICT (user_id) DO NOTHING`,
+      [u.userId, u.orgId, fbp, fbc, ip, ua, utm.utm_source, utm.utm_medium, utm.utm_campaign, utm.utm_content, utm.utm_term, utm.utm_id]
+    );
+    const px = await platformPixel(ctx, ctx.db);
+    if (!px) return;
+    const [first, ...rest] = (u.name ?? "").trim().split(/\s+/);
+    const event = buildServerEvent({
+      eventName: "Lead",
+      eventId: `pt_signup_${u.userId}`,
+      eventTime: ctx.now().getTime() / 1e3,
+      eventSourceUrl: `${ctx.config.APP_URL.replace(/\/$/, "")}/criar-conta`,
+      customer: { email: u.email, firstName: first || null, lastName: rest.join(" ") || null, externalId: u.userId, country: "BR" },
+      tracking: { fbp, fbc, clientIp: ip, userAgent: ua },
+      contentName: "PayTracking \u2014 cadastro (teste gr\xE1tis)",
+      utms: utm
+    });
+    await enqueueCapi(ctx.db, { orgId: px.org_id, pixelId: px.id, event });
+    wakeDispatcher();
+  } catch (e) {
+    ctx.log.warn({ err: String(e) }, "pixel da plataforma: falha ao registrar cadastro");
+  }
+}
+async function trackSubscriptionPurchase(ctx, c, p) {
+  const px = await platformPixel(ctx, c);
+  if (!px) return;
+  const owner = await c.query(
+    `SELECT u.id, u.email, u.name, a.fbp, a.fbc, host(a.client_ip) AS client_ip, a.user_agent,
+            a.utm_source, a.utm_medium, a.utm_campaign, a.utm_content, a.utm_term, a.utm_id
+       FROM memberships m JOIN users u ON u.id = m.user_id
+       LEFT JOIN signup_attribution a ON a.user_id = u.id
+      WHERE m.org_id = $1 AND m.role = 'owner' ORDER BY m.created_at LIMIT 1`,
+    [p.orgId]
+  );
+  const o = owner.rows[0];
+  if (!o) return;
+  const [first, ...rest] = (o.name ?? "").trim().split(/\s+/);
+  const amount2 = BigInt(p.amountMinor);
+  const event = buildServerEvent({
+    eventName: "Purchase",
+    eventId: `pt_billing_${p.correlationId}`,
+    eventTime: ctx.now().getTime() / 1e3,
+    eventSourceUrl: `${ctx.config.APP_URL.replace(/\/$/, "")}/financeiro`,
+    customer: { email: o.email, firstName: first || null, lastName: rest.join(" ") || null, externalId: o.id, country: "BR" },
+    tracking: { fbp: o.fbp, fbc: o.fbc, clientIp: o.client_ip, userAgent: o.user_agent },
+    valueMinor: amount2,
+    currency: "BRL",
+    orderId: p.correlationId,
+    products: [{ id: "paytracking-mensal", name: "PayTracking \u2014 assinatura mensal", quantity: 1, priceMinor: amount2 }],
+    utms: Object.fromEntries(UTM_KEYS.map((k) => [k, o[k] ?? null]))
+  });
+  await enqueueCapi(c, { orgId: px.org_id, pixelId: px.id, event, correlationId: null });
+}
+function platformTrackingRoutes(app, ctx) {
+  app.get("/v1/public/tracking", async (req, reply) => {
+    reply.header("Cache-Control", "private, no-store");
+    if (!platformPixelInBrowser(ctx) || req.auth) return { pixel: null, signedIn: !!req.auth };
+    const api = ctx.config.PUBLIC_API_URL.replace(/\/$/, "");
+    return { signedIn: false, pixel: { key: ctx.config.PLATFORM_PIXEL_KEY, pixelId: ctx.config.PLATFORM_PIXEL_ID, script: `${api}/pixel.js`, endpoint: `${api}/v1/collect`, currency: "BRL", country: "BR" } };
+  });
+}
+
+// src/auth/routes.ts
+var email3 = external_exports.string().trim().toLowerCase().email("E-mail inv\xE1lido").max(190);
+function authRoutes(app, ctx) {
+  const secure = ctx.config.isProd;
+  async function sendVerification(userId, to) {
+    const token = await issueToken(ctx, userId, "email_verify", 60 * 24 * 3);
+    await ctx.mailer.send({
+      to,
+      subject: "Bem-vindo! Confirme seu e-mail \u2014 PayTracking",
+      text: `Sua conta foi criada e o teste gr\xE1tis de ${ctx.config.PLAN_TRIAL_DAYS} dias j\xE1 come\xE7ou.
+
+Falta s\xF3 confirmar que este e-mail \xE9 seu: ${ctx.config.APP_URL}/verificar-email?token=${token}
+
+O link expira em 3 dias. Com o e-mail confirmado, voc\xEA consegue recuperar o acesso se esquecer a senha.`
+    });
+  }
+  app.post("/v1/auth/signup", async (req, reply) => {
+    await hit(ctx.db, `signup:ip:${clientIp(req)}`, 10, 3600);
+    const body = parse5(external_exports.object({
+      email: email3,
+      password: external_exports.string(),
+      name: external_exports.string().trim().max(120).optional(),
+      orgName: external_exports.string().trim().max(120).optional(),
+      utms: external_exports.record(external_exports.string(), external_exports.unknown()).optional()
+    }), req.body);
+    const { userId, orgId } = await createUserWithOrg(ctx, body);
+    await trackSignup(ctx, req, { userId, orgId, email: body.email, name: body.name, utms: body.utms });
+    const s = await createSession(ctx, userId, { ip: clientIp(req), ua: req.headers["user-agent"], orgId });
+    setSessionCookie(reply, s.token, s.expires, secure);
+    await sendVerification(userId, body.email).catch((e) => ctx.log.error({ err: String(e) }, "falha ao enviar verifica\xE7\xE3o"));
+    return reply.code(201).send({ ok: true });
+  });
+  app.post("/v1/auth/login", async (req, reply) => {
+    const body = parse5(external_exports.object({ email: email3, password: external_exports.string().min(1).max(200) }), req.body);
+    const ipBucket = `login:ip:${clientIp(req)}`;
+    const emailBucket = `login:email:${body.email}`;
+    await hit(ctx.db, ipBucket, 30, 900);
+    await hit(ctx.db, emailBucket, 8, 900);
+    const user = await authenticate(ctx, body.email, body.password);
+    if (!user) throw unauthorized("E-mail ou senha incorretos.");
+    await clear(ctx.db, emailBucket);
+    if (await hasTwoFactor(ctx, user.id)) return { ok: false, twoFactorRequired: true, challenge: issueChallenge(ctx, user.id) };
+    const s = await createSession(ctx, user.id, { ip: clientIp(req), ua: req.headers["user-agent"] });
+    setSessionCookie(reply, s.token, s.expires, secure);
+    return { ok: true };
+  });
+  app.post("/v1/auth/logout", async (req, reply) => {
+    if (req.auth) await ctx.db.query("UPDATE sessions SET revoked_at = now() WHERE id = $1", [req.auth.sessionId]);
+    clearSessionCookie(reply, secure);
+    return { ok: true };
+  });
+  app.get("/v1/auth/me", async (req) => {
+    const a = auth(req);
+    const orgs = await ctx.db.query(
+      `SELECT o.id, o.name, m.role FROM memberships m JOIN organizations o ON o.id = m.org_id WHERE m.user_id = $1 ORDER BY o.name`,
+      [a.user.id]
+    );
+    const plan = planState(a.org, ctx.now());
+    return {
+      user: a.user,
+      role: a.role,
+      org: {
+        id: a.org.id,
+        name: a.org.name,
+        reportingCurrency: a.org.reporting_currency,
+        timezone: a.org.timezone,
+        goalDailyMinor: a.org.goal_daily_minor.toString(),
+        goalMonthlyMinor: a.org.goal_monthly_minor.toString()
+      },
+      plan: { ...plan, expiresAt: a.org.plan_expires_at, priceMinor: ctx.config.PLAN_PRICE_MINOR },
+      orgs: orgs.rows
+    };
+  });
+  app.post("/v1/auth/switch-org", async (req) => {
+    const a = auth(req);
+    const { orgId } = parse5(external_exports.object({ orgId: external_exports.string().uuid() }), req.body);
+    const m = await ctx.db.query("SELECT 1 FROM memberships WHERE org_id = $1 AND user_id = $2", [orgId, a.user.id]);
+    if (!m.rowCount) throw badRequest("Organiza\xE7\xE3o n\xE3o encontrada.");
+    await ctx.db.query("UPDATE sessions SET active_org_id = $1 WHERE id = $2", [orgId, a.sessionId]);
+    return { ok: true };
+  });
+  app.post("/v1/auth/forgot-password", async (req) => {
+    await hit(ctx.db, `forgot:ip:${clientIp(req)}`, 10, 3600);
+    const body = parse5(external_exports.object({ email: email3 }), req.body);
+    const u = await ctx.db.query("SELECT id FROM users WHERE email = $1", [body.email]);
+    const row = u.rows[0];
+    if (row) {
+      const token = await issueToken(ctx, row.id, "password_reset", 60);
+      await ctx.mailer.send({
+        to: body.email,
+        subject: "Redefini\xE7\xE3o de senha \u2014 PayTracking",
+        text: `Recebemos um pedido para criar uma nova senha na sua conta.
+
+Para escolher a nova senha: ${ctx.config.APP_URL}/redefinir-senha?token=${token}
+
+O link vale por 1 hora e funciona uma \xFAnica vez. Se n\xE3o foi voc\xEA, ignore este e-mail: sua senha atual continua valendo.`
+      });
+    }
+    return { ok: true };
+  });
+  app.post("/v1/auth/reset-password", async (req) => {
+    await hit(ctx.db, `reset:ip:${clientIp(req)}`, 20, 3600);
+    const body = parse5(external_exports.object({ token: external_exports.string().min(20), password: external_exports.string() }), req.body);
+    validatePassword(body.password);
+    const userId = await consumeToken(ctx, body.token, "password_reset");
+    if (!userId) throw badRequest("Link inv\xE1lido ou expirado. Solicite um novo.");
+    await ctx.db.query("UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2", [await hashPassword(body.password), userId]);
+    await revokeSessions(ctx, userId);
+    await ctx.db.query(`INSERT INTO audit_log(user_id, action) VALUES ($1, 'auth.password_reset')`, [userId]);
+    const to = await ctx.db.query("SELECT email FROM users WHERE id = $1", [userId]);
+    if (to.rows[0]) await securityAlert(ctx, req, to.rows[0].email, "Sua senha foi redefinida");
+    return { ok: true };
+  });
+  app.post("/v1/auth/verify-email", async (req) => {
+    const body = parse5(external_exports.object({ token: external_exports.string().min(20) }), req.body);
+    const userId = await consumeToken(ctx, body.token, "email_verify");
+    if (!userId) throw badRequest("Link inv\xE1lido ou expirado.");
+    await ctx.db.query("UPDATE users SET email_verified_at = now() WHERE id = $1", [userId]);
+    return { ok: true };
+  });
+  app.post("/v1/auth/resend-verification", async (req) => {
+    const a = auth(req);
+    await hit(ctx.db, `verify:user:${a.user.id}`, 5, 3600);
+    if (!a.user.emailVerified) await sendVerification(a.user.id, a.user.email);
+    return { ok: true };
+  });
+  app.post("/v1/auth/change-password", async (req) => {
+    const a = auth(req);
+    await hit(ctx.db, `chpw:user:${a.user.id}`, 10, 900);
+    const body = parse5(external_exports.object({ currentPassword: external_exports.string().min(1), newPassword: external_exports.string() }), req.body);
+    validatePassword(body.newPassword);
+    if (body.newPassword === body.currentPassword) throw badRequest("A nova senha deve ser diferente da atual.");
+    const r = await ctx.db.query("SELECT password_hash FROM users WHERE id = $1", [a.user.id]);
+    if (!await verifyPassword(body.currentPassword, r.rows[0]?.password_hash ?? "")) throw badRequest("Senha atual incorreta.");
+    await ctx.db.query("UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2", [await hashPassword(body.newPassword), a.user.id]);
+    const revoked = await revokeSessions(ctx, a.user.id, a.sessionId);
+    await ctx.db.query(`INSERT INTO audit_log(org_id, user_id, action) VALUES ($1, $2, 'auth.password_changed')`, [a.org.id, a.user.id]);
+    await securityAlert(ctx, req, a.user.email, "Sua senha foi alterada");
+    return { ok: true, revokedSessions: revoked };
+  });
+  app.get("/v1/auth/sessions", async (req) => {
+    const a = auth(req);
+    const r = await ctx.db.query(
+      `SELECT left(id, 12) AS id, host(ip) AS ip, user_agent, created_at, last_seen_at, (id = $2) AS current
+         FROM sessions WHERE user_id = $1 AND revoked_at IS NULL AND expires_at > now() ORDER BY last_seen_at DESC`,
+      [a.user.id, a.sessionId]
+    );
+    return { sessions: r.rows };
+  });
+  app.post("/v1/auth/sessions/revoke-others", async (req) => {
+    const a = auth(req);
+    return { revoked: await revokeSessions(ctx, a.user.id, a.sessionId) };
+  });
+  app.patch("/v1/auth/preferences", async (req) => {
+    const a = auth(req);
+    const body = parse5(external_exports.object({ hideEmail: external_exports.boolean().optional(), hideNames: external_exports.boolean().optional(), name: external_exports.string().trim().max(120).optional() }), req.body);
+    await ctx.db.query(
+      "UPDATE users SET hide_email = COALESCE($2, hide_email), name = COALESCE($3, name), hide_names = COALESCE($4, hide_names), updated_at = now() WHERE id = $1",
+      [a.user.id, body.hideEmail ?? null, body.name ?? null, body.hideNames ?? null]
+    );
+    return { ok: true };
+  });
+}
+
+// src/auth/google.ts
+import { createHash as createHash3, randomBytes as randomBytes4 } from "node:crypto";
+var AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
+var TOKEN_URL = "https://oauth2.googleapis.com/token";
+var COOKIE = "pt_google";
+var COOKIE_PATH = "/v1/auth/google";
+var TTL_MS = 10 * 6e4;
+var b64url = (b) => b.toString("base64url");
+var safeBack = (v) => typeof v === "string" && v.startsWith("/") && !v.startsWith("//") && !v.startsWith("/\\") ? v.slice(0, 300) : "/";
+function decodeJwtPayload(jwt2) {
+  const part = jwt2.split(".")[1];
+  if (!part) return null;
+  try {
+    return JSON.parse(Buffer.from(part, "base64url").toString("utf8"));
+  } catch {
+    return null;
+  }
+}
+var googleEnabled = (ctx) => !!(ctx.config.GOOGLE_CLIENT_ID && ctx.config.GOOGLE_CLIENT_SECRET);
+function googleRoutes(app, ctx) {
+  const secure = ctx.config.isProd;
+  const redirectUri = `${ctx.config.PUBLIC_API_URL.replace(/\/$/, "")}/v1/auth/google/callback`;
+  const appUrl = ctx.config.APP_URL.replace(/\/$/, "");
+  const fail = (reply, code2) => {
+    reply.clearCookie(COOKIE, { path: COOKIE_PATH });
+    return reply.redirect(`${appUrl}/entrar?erro=${encodeURIComponent(code2)}`, 302);
+  };
+  app.get("/v1/auth/providers", async () => ({ google: googleEnabled(ctx) }));
+  app.get("/v1/auth/google/start", async (req, reply) => {
+    if (!googleEnabled(ctx)) return fail(reply, "google_desativado");
+    await hit(ctx.db, `google:ip:${clientIp(req)}`, 30, 900);
+    const flow = {
+      state: b64url(randomBytes4(24)),
+      nonce: b64url(randomBytes4(24)),
+      verifier: b64url(randomBytes4(48)),
+      back: safeBack(req.query.voltar),
+      exp: ctx.now().getTime() + TTL_MS
+    };
+    reply.setCookie(COOKIE, ctx.box.encrypt(JSON.stringify(flow)), {
+      path: COOKIE_PATH,
+      httpOnly: true,
+      secure,
+      sameSite: "lax",
+      maxAge: TTL_MS / 1e3
+    });
+    const q = new URLSearchParams({
+      client_id: ctx.config.GOOGLE_CLIENT_ID,
+      redirect_uri: redirectUri,
+      response_type: "code",
+      scope: "openid email profile",
+      state: flow.state,
+      nonce: flow.nonce,
+      code_challenge: b64url(createHash3("sha256").update(flow.verifier).digest()),
+      code_challenge_method: "S256",
+      prompt: "select_account"
+    });
+    return reply.redirect(`${AUTH_URL}?${q}`, 302);
+  });
+  app.get("/v1/auth/google/callback", async (req, reply) => {
+    if (!googleEnabled(ctx)) return fail(reply, "google_desativado");
+    const q = req.query;
+    if (q.error) return fail(reply, q.error === "access_denied" ? "google_cancelado" : "google_falhou");
+    let flow;
+    try {
+      flow = JSON.parse(ctx.box.decrypt(String(req.cookies[COOKIE] ?? "")));
+    } catch {
+      return fail(reply, "google_expirou");
+    }
+    if (!q.state || q.state !== flow.state || flow.exp < ctx.now().getTime() || !q.code) return fail(reply, "google_expirou");
+    reply.clearCookie(COOKIE, { path: COOKIE_PATH });
+    let token = null;
+    try {
+      const r = await ctx.fetch(TOKEN_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          code: q.code,
+          client_id: ctx.config.GOOGLE_CLIENT_ID,
+          client_secret: ctx.config.GOOGLE_CLIENT_SECRET,
+          redirect_uri: redirectUri,
+          grant_type: "authorization_code",
+          code_verifier: flow.verifier
+        }).toString(),
+        signal: AbortSignal.timeout(1e4)
+      });
+      const body = await r.json().catch(() => null);
+      if (!r.ok || !body?.id_token) {
+        ctx.log.warn({ status: r.status }, "google: troca do c\xF3digo falhou");
+        return fail(reply, "google_falhou");
+      }
+      token = decodeJwtPayload(body.id_token);
+    } catch (e) {
+      ctx.log.warn({ err: String(e) }, "google: sem resposta");
+      return fail(reply, "google_falhou");
+    }
+    const nowSec = ctx.now().getTime() / 1e3;
+    if (!token || !["accounts.google.com", "https://accounts.google.com"].includes(String(token.iss)) || token.aud !== ctx.config.GOOGLE_CLIENT_ID || !token.exp || token.exp < nowSec || token.nonce !== flow.nonce || !token.sub || !token.email) return fail(reply, "google_falhou");
+    if (token.email_verified !== true && token.email_verified !== "true") return fail(reply, "google_email_nao_verificado");
+    const email4 = token.email.trim().toLowerCase();
+    const sub = String(token.sub);
+    let userId;
+    let created = false;
+    const bySub = await ctx.db.query("SELECT id FROM users WHERE google_sub = $1", [sub]);
+    if (bySub.rows[0]) userId = bySub.rows[0].id;
+    else {
+      const byEmail = await ctx.db.query("SELECT id, google_sub FROM users WHERE email = $1", [email4]);
+      const existing = byEmail.rows[0];
+      if (existing) {
+        if (existing.google_sub && existing.google_sub !== sub) return fail(reply, "google_outra_conta");
+        await ctx.db.query("UPDATE users SET google_sub = $2, email_verified_at = COALESCE(email_verified_at, now()), updated_at = now() WHERE id = $1", [existing.id, sub]);
+        userId = existing.id;
+        await ctx.db.query(`INSERT INTO audit_log(user_id, action, ip) VALUES ($1, 'auth.google_linked', $2)`, [userId, clientIp(req) || null]);
+        await securityAlert(ctx, req, email4, "O login com Google foi conectado");
+      } else {
+        await hit(ctx.db, `signup:ip:${clientIp(req)}`, 10, 3600);
+        const r = await createUserWithOrg(ctx, { email: email4, name: token.name?.slice(0, 120) ?? null, googleSub: sub });
+        userId = r.userId;
+        created = true;
+        await trackSignup(ctx, req, { userId, orgId: r.orgId, email: email4, name: token.name ?? null });
+      }
+    }
+    if (await hasTwoFactor(ctx, userId)) {
+      return reply.redirect(`${appUrl}/entrar?voltar=${encodeURIComponent(flow.back)}#desafio=${encodeURIComponent(issueChallenge(ctx, userId))}`, 302);
+    }
+    const s = await createSession(ctx, userId, { ip: clientIp(req), ua: req.headers["user-agent"] });
+    setSessionCookie(reply, s.token, s.expires, secure);
+    return reply.redirect(`${appUrl}${created ? "/?bem-vindo=1" : flow.back}`, 302);
+  });
 }
 
 // src/orgs/routes.ts
@@ -94675,37 +94804,6 @@ function integrationRoutes(app, ctx) {
 
 // src/webhooks/ingest.ts
 import { randomUUID } from "node:crypto";
-
-// src/capi/outbox.ts
-async function enqueueCapi(c, i) {
-  const r = await c.query(
-    `INSERT INTO capi_outbox(org_id, pixel_id, event_name, event_id, payload, payment_id, tracking_event_id, correlation_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-     ON CONFLICT (pixel_id, event_name, event_id) DO NOTHING RETURNING id`,
-    [
-      i.orgId,
-      i.pixelId,
-      i.event.event_name,
-      i.event.event_id,
-      JSON.stringify(i.event),
-      i.paymentId ?? null,
-      i.trackingEventId ?? null,
-      i.correlationId ?? null
-    ]
-  );
-  return r.rows[0] ? Number(r.rows[0].id) : null;
-}
-async function raiseAlert(c, orgId, a) {
-  await c.query(
-    `INSERT INTO alerts(org_id, kind, severity, dedup_key, title, detail) VALUES ($1, $2, $3, $4, $5, $6)
-     ON CONFLICT (org_id, dedup_key) WHERE resolved_at IS NULL
-     DO UPDATE SET occurrences = alerts.occurrences + 1, last_seen_at = now(), detail = EXCLUDED.detail`,
-    [orgId, a.kind, a.severity, a.dedupKey, a.title, a.detail ?? null]
-  );
-}
-async function resolveAlert(c, orgId, dedupKey) {
-  await c.query("UPDATE alerts SET resolved_at = now() WHERE org_id = $1 AND dedup_key = $2 AND resolved_at IS NULL", [orgId, dedupKey]);
-}
 
 // src/tracking/identity.ts
 var emailLookupHash = (email4) => {
@@ -96525,6 +96623,7 @@ function billingRoutes(app, ctx) {
         [row.org_id, row.period_days ?? PERIOD_DAYS]
       );
       await c.query(`INSERT INTO audit_log(org_id, action, target) VALUES ($1, 'billing.paid', $2)`, [row.org_id, correlationID]);
+      await trackSubscriptionPurchase(ctx, c, { orgId: row.org_id, amountMinor: row.amount_minor, correlationId: correlationID });
       return { status: 200, body: { ok: true, renewed: true } };
     });
   }
@@ -96798,6 +96897,12 @@ function privacy(l) {
   <li>Sess\xF5es e seguran\xE7a: endere\xE7o IP, navegador/dispositivo, data e hora de acesso, e um registro das a\xE7\xF5es importantes (auditoria).</li>
   <li>Notifica\xE7\xF5es: a inscri\xE7\xE3o de notifica\xE7\xF5es do navegador (endere\xE7o t\xE9cnico do servi\xE7o de push e chaves p\xFAblicas do aparelho) e o nome do aparelho; se voc\xEA enviar, o arquivo de \xE1udio escolhido como som de venda.</li>
 </ul>
+<h3>3.1.1 Medi\xE7\xE3o dos nossos pr\xF3prios an\xFAncios</h3>
+<ul>
+  <li>Nas p\xE1ginas p\xFAblicas do PayTracking (p\xE1gina de vendas e cadastro) usamos o Pixel da Meta e o pixel do pr\xF3prio PayTracking para saber quais an\xFAncios trazem novos clientes: p\xE1gina visitada, origem, par\xE2metros de campanha (UTMs), cookies <code>_fbp</code>/<code>_fbc</code>, endere\xE7o IP e navegador.</li>
+  <li>Quando voc\xEA cria a conta (evento \u201CLead\u201D) e quando paga a assinatura (evento \u201CPurchase\u201D, com o valor pago), enviamos esse evento \xE0 Meta pela API de Convers\xF5es com seu e-mail e nome <b>apenas em resumo criptogr\xE1fico (SHA-256)</b>, junto com os identificadores acima.</li>
+  <li>Dentro do painel logado n\xE3o usamos o Pixel da Meta, e nenhum dado do seu neg\xF3cio (vendas, campanhas, clientes) \xE9 usado para medir os nossos an\xFAncios.</li>
+</ul>
 <h3>3.2 Integra\xE7\xF5es configuradas por voc\xEA</h3>
 <ul>
   <li>Identificadores dos seus pixels, produtos e integra\xE7\xF5es; tokens e segredos de webhook (cifrados).</li>
@@ -96832,6 +96937,7 @@ function privacy(l) {
     <tr><td>Seguran\xE7a: verifica\xE7\xE3o em duas etapas, alertas de acesso, limite de tentativas, preven\xE7\xE3o a fraude e abuso</td><td>Leg\xEDtimo interesse (art. 7\xBA, IX)</td></tr>
     <tr><td>Cobran\xE7a da assinatura</td><td>Execu\xE7\xE3o de contrato</td></tr>
     <tr><td>E-mails transacionais (confirma\xE7\xE3o de e-mail, redefini\xE7\xE3o de senha, convites e alertas de seguran\xE7a)</td><td>Execu\xE7\xE3o de contrato e leg\xEDtimo interesse</td></tr>
+    <tr><td>Medir e melhorar os an\xFAncios do pr\xF3prio PayTracking (pixel nas p\xE1ginas p\xFAblicas; eventos de cadastro e de pagamento da assinatura)</td><td>Leg\xEDtimo interesse (art. 7\xBA, IX); voc\xEA pode se opor pelo e-mail de contato</td></tr>
     <tr><td>Guarda de registros de acesso pelo prazo legal</td><td>Cumprimento de obriga\xE7\xE3o legal (Marco Civil da Internet, art. 15)</td></tr>
   </tbody>
 </table>
@@ -96841,7 +96947,7 @@ function privacy(l) {
 <p>Compartilhamos dados apenas com prestadores necess\xE1rios para operar o servi\xE7o, que atuam sob nossas instru\xE7\xF5es:</p>
 <ul>
   <li><b>Hospedagem da aplica\xE7\xE3o</b> e <b>Neon</b> (banco de dados PostgreSQL gerenciado), onde os dados ficam armazenados.</li>
-  <li><b>Meta Platforms</b>: recebe as convers\xF5es pela API de Convers\xF5es (com dados pessoais j\xE1 em resumo criptogr\xE1fico) e fornece as m\xE9tricas de an\xFAncios, por instru\xE7\xE3o do cliente.</li>
+  <li><b>Meta Platforms</b>: recebe as convers\xF5es pela API de Convers\xF5es (com dados pessoais j\xE1 em resumo criptogr\xE1fico) e fornece as m\xE9tricas de an\xFAncios, por instru\xE7\xE3o do cliente; e, para medir os an\xFAncios do pr\xF3prio PayTracking, recebe os eventos de cadastro e de pagamento da assinatura descritos no item 3.1.1.</li>
   <li><b>Google</b>: autentica\xE7\xE3o, quando voc\xEA usa o login com Google; e o servi\xE7o de notifica\xE7\xF5es do Chrome/Android.</li>
   <li><b>Apple e Mozilla</b>: servi\xE7os de notifica\xE7\xE3o dos navegadores, quando voc\xEA ativa notifica\xE7\xF5es nesses aparelhos.</li>
   <li><b>Woovi</b>: gera\xE7\xE3o e confirma\xE7\xE3o das cobran\xE7as PIX da assinatura.</li>
@@ -96868,7 +96974,12 @@ function privacy(l) {
   <li><code>pt_google</code> \u2014 essencial e tempor\xE1rio (10 minutos): protege o login com Google contra falsifica\xE7\xE3o.</li>
   <li>Armazenamento local do navegador: prefer\xEAncias como tema, som de venda e notifica\xE7\xF5es.</li>
 </ul>
-<p>O painel n\xE3o usa cookies de publicidade nem de rastreamento de terceiros.</p>
+<p>O painel logado n\xE3o usa cookies de publicidade nem de rastreamento de terceiros.</p>
+<h3>Na p\xE1gina de vendas e no cadastro do PayTracking</h3>
+<ul>
+  <li><code>_fbp</code> e <code>_fbc</code> \u2014 cookies da Meta para medir os an\xFAncios do PayTracking (Pixel da Meta, com os eventos autom\xE1ticos desligados).</li>
+  <li><code>pt_ua</code>, e no armazenamento do navegador <code>pt_xid</code> e <code>pt_utms</code> \u2014 pixel do PayTracking, para saber de qual an\xFAncio ou campanha a visita veio.</li>
+</ul>
 <h3>No pixel instalado nas p\xE1ginas dos clientes</h3>
 <ul>
   <li><code>_fbp</code> e <code>_fbc</code> \u2014 cookies da Meta usados para atribuir as convers\xF5es aos an\xFAncios.</li>
@@ -97119,6 +97230,7 @@ Canonical: ${ctx.config.APP_URL.replace(/\/$/, "")}/.well-known/security.txt
   pushRoutes(app, ctx);
   saleSoundRoutes(app, ctx);
   legalRoutes(app, ctx);
+  platformTrackingRoutes(app, ctx);
   const here2 = path4.dirname(fileURLToPath2(import.meta.url));
   const firstDir = (...dirs) => dirs.find((d) => existsSync2(d)) ?? dirs[dirs.length - 1];
   const pixelDir = ctx.config.PIXEL_DIST_DIR || firstDir(path4.join(here2, "pixel"), path4.resolve(here2, "../../../packages/pixel/dist"));
@@ -97182,11 +97294,11 @@ Canonical: ${ctx.config.APP_URL.replace(/\/$/, "")}/.well-known/security.txt
       if (req.method === "GET" && !isAsset && !req.url.startsWith("/v1/") && !req.url.startsWith("/api/")) {
         reply.header("Content-Security-Policy", [
           "default-src 'self'",
-          "script-src 'self'",
+          "script-src 'self' https://connect.facebook.net",
           "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
           "font-src 'self' https://fonts.gstatic.com data:",
           "img-src 'self' data: https:",
-          "connect-src 'self'",
+          "connect-src 'self' https://www.facebook.com https://connect.facebook.net",
           "media-src 'self' data: blob:",
           "worker-src 'self'",
           "manifest-src 'self'",

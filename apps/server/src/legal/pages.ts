@@ -119,6 +119,12 @@ function privacy(l: Legal): string {
   <li>Sessões e segurança: endereço IP, navegador/dispositivo, data e hora de acesso, e um registro das ações importantes (auditoria).</li>
   <li>Notificações: a inscrição de notificações do navegador (endereço técnico do serviço de push e chaves públicas do aparelho) e o nome do aparelho; se você enviar, o arquivo de áudio escolhido como som de venda.</li>
 </ul>
+<h3>3.1.1 Medição dos nossos próprios anúncios</h3>
+<ul>
+  <li>Nas páginas públicas do PayTracking (página de vendas e cadastro) usamos o Pixel da Meta e o pixel do próprio PayTracking para saber quais anúncios trazem novos clientes: página visitada, origem, parâmetros de campanha (UTMs), cookies <code>_fbp</code>/<code>_fbc</code>, endereço IP e navegador.</li>
+  <li>Quando você cria a conta (evento “Lead”) e quando paga a assinatura (evento “Purchase”, com o valor pago), enviamos esse evento à Meta pela API de Conversões com seu e-mail e nome <b>apenas em resumo criptográfico (SHA-256)</b>, junto com os identificadores acima.</li>
+  <li>Dentro do painel logado não usamos o Pixel da Meta, e nenhum dado do seu negócio (vendas, campanhas, clientes) é usado para medir os nossos anúncios.</li>
+</ul>
 <h3>3.2 Integrações configuradas por você</h3>
 <ul>
   <li>Identificadores dos seus pixels, produtos e integrações; tokens e segredos de webhook (cifrados).</li>
@@ -153,6 +159,7 @@ function privacy(l: Legal): string {
     <tr><td>Segurança: verificação em duas etapas, alertas de acesso, limite de tentativas, prevenção a fraude e abuso</td><td>Legítimo interesse (art. 7º, IX)</td></tr>
     <tr><td>Cobrança da assinatura</td><td>Execução de contrato</td></tr>
     <tr><td>E-mails transacionais (confirmação de e-mail, redefinição de senha, convites e alertas de segurança)</td><td>Execução de contrato e legítimo interesse</td></tr>
+    <tr><td>Medir e melhorar os anúncios do próprio PayTracking (pixel nas páginas públicas; eventos de cadastro e de pagamento da assinatura)</td><td>Legítimo interesse (art. 7º, IX); você pode se opor pelo e-mail de contato</td></tr>
     <tr><td>Guarda de registros de acesso pelo prazo legal</td><td>Cumprimento de obrigação legal (Marco Civil da Internet, art. 15)</td></tr>
   </tbody>
 </table>
@@ -162,7 +169,7 @@ function privacy(l: Legal): string {
 <p>Compartilhamos dados apenas com prestadores necessários para operar o serviço, que atuam sob nossas instruções:</p>
 <ul>
   <li><b>Hospedagem da aplicação</b> e <b>Neon</b> (banco de dados PostgreSQL gerenciado), onde os dados ficam armazenados.</li>
-  <li><b>Meta Platforms</b>: recebe as conversões pela API de Conversões (com dados pessoais já em resumo criptográfico) e fornece as métricas de anúncios, por instrução do cliente.</li>
+  <li><b>Meta Platforms</b>: recebe as conversões pela API de Conversões (com dados pessoais já em resumo criptográfico) e fornece as métricas de anúncios, por instrução do cliente; e, para medir os anúncios do próprio PayTracking, recebe os eventos de cadastro e de pagamento da assinatura descritos no item 3.1.1.</li>
   <li><b>Google</b>: autenticação, quando você usa o login com Google; e o serviço de notificações do Chrome/Android.</li>
   <li><b>Apple e Mozilla</b>: serviços de notificação dos navegadores, quando você ativa notificações nesses aparelhos.</li>
   <li><b>Woovi</b>: geração e confirmação das cobranças PIX da assinatura.</li>
@@ -189,7 +196,12 @@ function privacy(l: Legal): string {
   <li><code>pt_google</code> — essencial e temporário (10 minutos): protege o login com Google contra falsificação.</li>
   <li>Armazenamento local do navegador: preferências como tema, som de venda e notificações.</li>
 </ul>
-<p>O painel não usa cookies de publicidade nem de rastreamento de terceiros.</p>
+<p>O painel logado não usa cookies de publicidade nem de rastreamento de terceiros.</p>
+<h3>Na página de vendas e no cadastro do PayTracking</h3>
+<ul>
+  <li><code>_fbp</code> e <code>_fbc</code> — cookies da Meta para medir os anúncios do PayTracking (Pixel da Meta, com os eventos automáticos desligados).</li>
+  <li><code>pt_ua</code>, e no armazenamento do navegador <code>pt_xid</code> e <code>pt_utms</code> — pixel do PayTracking, para saber de qual anúncio ou campanha a visita veio.</li>
+</ul>
 <h3>No pixel instalado nas páginas dos clientes</h3>
 <ul>
   <li><code>_fbp</code> e <code>_fbc</code> — cookies da Meta usados para atribuir as conversões aos anúncios.</li>

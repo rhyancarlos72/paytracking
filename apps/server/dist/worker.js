@@ -24600,6 +24600,14 @@ var schema = external_exports.object({
   PRIVACY_CONTACT: external_exports.string().default(""),
   /** Código da meta tag de verificação do Google Search Console (só o valor de content="...") */
   GOOGLE_SITE_VERIFICATION: external_exports.string().default(""),
+  /**
+   * Pixel da PRÓPRIA plataforma (marketing do PayTracking): pixel cadastrado na conta do dono.
+   * Navegador: carregado só nas páginas públicas e só em produção (auto). Servidor: Lead no
+   * cadastro e Purchase quando a assinatura é paga, enviados pela Conversions API desse pixel.
+   */
+  PLATFORM_PIXEL_KEY: external_exports.string().default("pt_px_f342a0cca4cfa0ef45db"),
+  PLATFORM_PIXEL_ID: external_exports.string().default("2215202246010798"),
+  PLATFORM_PIXEL_BROWSER: external_exports.enum(["auto", "on", "off"]).default("auto"),
   WEBHOOK_BODY_RETENTION_DAYS: external_exports.coerce.number().int().min(1).default(30),
   TRACKING_RETENTION_DAYS: external_exports.coerce.number().int().min(7).default(180),
   /**

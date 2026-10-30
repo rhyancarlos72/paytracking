@@ -8,6 +8,7 @@ import { randomToken } from '../lib/crypto.js';
 import { AppError } from '../lib/errors.js';
 import { jsonSafe, requireRole } from '../lib/http.js';
 import { hit } from '../lib/rate-limit.js';
+import { trackSubscriptionPurchase } from '../platform/tracking.js';
 
 /**
  * Assinatura mensal via PIX Woovi/OpenPix (porta de app/billing.php).
@@ -111,6 +112,8 @@ export function billingRoutes(app: FastifyInstance, ctx: Ctx) {
         [row.org_id, row.period_days ?? PERIOD_DAYS],
       );
       await c.query(`INSERT INTO audit_log(org_id, action, target) VALUES ($1, 'billing.paid', $2)`, [row.org_id, correlationID]);
+      // pixel da plataforma: Purchase da assinatura (vai para a fila da Conversions API na mesma transação)
+      await trackSubscriptionPurchase(ctx, c, { orgId: row.org_id, amountMinor: row.amount_minor, correlationId: correlationID });
       return { status: 200, body: { ok: true, renewed: true } };
     });
   }

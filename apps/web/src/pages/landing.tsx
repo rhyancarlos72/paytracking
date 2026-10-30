@@ -8,6 +8,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Logo, LogoMark } from '../components/logo';
 import { get } from '../lib/api';
+import { usePlatformPixel } from '../lib/platform-pixel';
 
 /**
  * Página de vendas (tela inicial para quem não está logado).
@@ -530,6 +531,7 @@ function MobileBar({ plan }: { plan?: Plan }) {
 }
 
 export default function LandingPage() {
+  usePlatformPixel(); // pixel da plataforma só para visitantes (o servidor confere a sessão)
   const plan = useQuery({ queryKey: ['public-plan'], queryFn: () => get<Plan>('/v1/public/plan'), staleTime: 300_000, retry: 1 });
   useEffect(() => {
     document.title = 'PayTracking · Rastreamento de vendas para Meta Ads sem taxa por venda';

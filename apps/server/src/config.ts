@@ -69,6 +69,14 @@ const schema = z.object({
   PRIVACY_CONTACT: z.string().default(''),
   /** Código da meta tag de verificação do Google Search Console (só o valor de content="...") */
   GOOGLE_SITE_VERIFICATION: z.string().default(''),
+  /**
+   * Pixel da PRÓPRIA plataforma (marketing do PayTracking): pixel cadastrado na conta do dono.
+   * Navegador: carregado só nas páginas públicas e só em produção (auto). Servidor: Lead no
+   * cadastro e Purchase quando a assinatura é paga, enviados pela Conversions API desse pixel.
+   */
+  PLATFORM_PIXEL_KEY: z.string().default('pt_px_f342a0cca4cfa0ef45db'),
+  PLATFORM_PIXEL_ID: z.string().default('2215202246010798'),
+  PLATFORM_PIXEL_BROWSER: z.enum(['auto', 'on', 'off']).default('auto'),
 
   WEBHOOK_BODY_RETENTION_DAYS: z.coerce.number().int().min(1).default(30),
   TRACKING_RETENTION_DAYS: z.coerce.number().int().min(7).default(180),
