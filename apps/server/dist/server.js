@@ -83177,7 +83177,8 @@ async function buildApp(ctx) {
     await app.register(import_static.default, { root: webDir, wildcard: false, maxAge: "1h", index: false });
     const indexHtml = readFileSync(path2.join(webDir, "index.html"), "utf8");
     app.setNotFoundHandler((req, reply) => {
-      if (req.method === "GET" && !req.url.startsWith("/v1/") && !req.url.startsWith("/api/")) {
+      const isAsset = /^\/assets\//.test(req.url) || /\.(?:js|mjs|css|map|woff2?|png|svg|ico|webmanifest)(?:\?|$)/.test(req.url);
+      if (req.method === "GET" && !isAsset && !req.url.startsWith("/v1/") && !req.url.startsWith("/api/")) {
         reply.header("Content-Security-Policy", [
           "default-src 'self'",
           "script-src 'self'",

@@ -1,14 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, Info } from 'lucide-react';
+import { AlertTriangle, ArrowDownRight, ArrowRight, ArrowUpRight, BarChart3, CheckCircle2, Clock3, Info, Radio, Target, TrendingUp, Zap } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { RevenueChart } from '../components/charts';
+import { RevenueChart, Sparkline } from '../components/charts';
 import { PeriodPicker, usePeriod } from '../components/period';
 import { PageHeader } from '../components/shell';
-import { Badge, Callout, Card, ErrorState, Select, Skeleton } from '../components/ui';
+import { Avatar, Badge, Button, Callout, Card, ErrorState, ProgressRing, Select, Skeleton, STATUS_TONE, useCountUp } from '../components/ui';
 import { get, qs } from '../lib/api';
-import { delta, int, money, pct, PROVIDER_LABEL, ratio } from '../lib/format';
+import { delta, int, minorToNumber, money, pct, PROVIDER_LABEL, ratio, relative, STATUS_LABEL } from '../lib/format';
 import { useSession } from '../lib/session';
 
 interface Kpis {
@@ -25,46 +25,45 @@ interface Dashboard {
   goals: { daily: { goalMinor: string; achievedMinor: string }; monthly: { goalMinor: string; achievedMinor: string } };
   events: { received: number; capi: Record<string, number> }; openAlerts: number;
 }
+interface RecentPayment { id: string; provider: string; transaction_id: string; status: string; amount_minor: string | null; currency: string | null; utm_campaign: string | null; created_at: string; approved_at: string | null }
+
+function greeting() {
+  const h = new Date().getHours();
+  return h < 5 ? 'Boa madrugada' : h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+}
 
 function Delta({ cur, prev, invert }: { cur: number; prev: number; invert?: boolean }) {
   const d = delta(cur, prev);
-  if (d === null || d === 0) return <span className="text-xs text-muted">{d === 0 ? 'estável' : 'sem base anterior'}</span>;
+  if (d === null || d === 0) return <span className="text-xs text-muted">{d === 0 ? 'estável vs. anterior' : 'sem base anterior'}</span>;
   const good = invert ? d < 0 : d > 0;
   return (
-    <span className={clsx('inline-flex items-center gap-0.5 text-xs font-medium', good ? 'text-ok' : 'text-err')}>
+    <span className={clsx('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ring-inset', good ? 'bg-ok/10 text-ok ring-ok/20' : 'bg-err/10 text-err ring-err/20')}>
       {d > 0 ? <ArrowUpRight className="h-3.5 w-3.5" aria-hidden /> : <ArrowDownRight className="h-3.5 w-3.5" aria-hidden />}
-      {pct(Math.abs(d))}<span className="sr-only">{d > 0 ? 'de aumento' : 'de queda'}</span>
-      <span className="ml-1 font-normal text-muted">vs. anterior</span>
+      {pct(Math.abs(d))}<span className="sr-only">{d > 0 ? 'de aumento' : 'de queda'} em relação ao período anterior</span>
     </span>
   );
 }
 
-function Stat({ label, value, sub, help, deltaEl }: { label: string; value: ReactNode; sub?: ReactNode; help?: string; deltaEl?: ReactNode }) {
-  return (
-    <div className="card p-5">
-      <div className="flex items-center gap-1.5 text-[13px] font-medium text-muted">
-        {label}
-        {help && <span title={help} className="cursor-help"><Info className="h-3.5 w-3.5" aria-label={help} /></span>}
-      </div>
-      <div className="num mt-2 text-2xl font-semibold tracking-tight">{value}</div>
-      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">{deltaEl}{sub && <span className="text-xs text-muted">{sub}</span>}</div>
-    </div>
-  );
+/** Valor em dinheiro que conta até o total (o texto final é exato). */
+function AnimatedMoney({ minor, currency, className }: { minor: string; currency: string; className?: string }) {
+  const v = useCountUp(Number(minor));
+  return <span className={clsx('num', className)}>{money(String(Math.round(v)), currency)}</span>;
 }
 
-function Goal({ label, goal, achieved, currency }: { label: string; goal: string; achieved: string; currency: string }) {
-  const g = Number(goal);
-  const p = g > 0 ? Math.min(1, Number(achieved) / g) : 0;
+function Help({ text }: { text: string }) {
+  return <span title={text} className="cursor-help text-subtle transition hover:text-muted"><Info className="h-3.5 w-3.5" aria-label={text} /></span>;
+}
+
+function Kpi({ label, value, help, deltaEl, sub, trend, icon }: { label: string; value: ReactNode; help?: string; deltaEl?: ReactNode; sub?: ReactNode; trend?: number[]; icon: ReactNode }) {
   return (
-    <div>
-      <div className="mb-1.5 flex items-baseline justify-between gap-2">
-        <span className="text-[13px] font-medium">{label}</span>
-        <span className="num text-[13px] text-muted">{money(achieved, currency)} {g > 0 && <>/ {money(goal, currency)}</>}</span>
+    <div className="card card-interactive overflow-hidden p-5">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 text-[13px] font-medium text-muted">{label}{help && <Help text={help} />}</div>
+        <span className="icon-tile h-8 w-8 [&>svg]:h-4 [&>svg]:w-4" aria-hidden>{icon}</span>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-surface-2" role="progressbar" aria-valuenow={Math.round(p * 100)} aria-valuemin={0} aria-valuemax={100} aria-label={label}>
-        <div className={clsx('h-full rounded-full transition-[width] duration-700', p >= 1 ? 'bg-ok' : 'bg-primary')} style={{ width: `${p * 100}%` }} />
-      </div>
-      <p className="mt-1 text-xs text-muted">{g > 0 ? (p >= 1 ? 'Meta atingida' : `${pct(p, 0)} da meta`) : <Link className="text-primary hover:underline" to="/configuracoes">Definir meta</Link>}</p>
+      <div className="num mt-3 text-[26px] font-semibold leading-none tracking-tight">{value}</div>
+      <div className="mt-2.5 flex min-h-[22px] flex-wrap items-center gap-x-2 gap-y-1">{deltaEl}{sub && <span className="text-xs text-muted">{sub}</span>}</div>
+      {trend && trend.length > 1 && <Sparkline values={trend} height={36} className="-mx-5 -mb-5 mt-3 w-[calc(100%+2.5rem)]" />}
     </div>
   );
 }
@@ -82,17 +81,19 @@ export default function DashboardPage() {
     refetchInterval: 60_000,
   });
   const cur = s.currency;
+  const firstName = (s.user.name ?? '').replace(/\[.*?\]/g, '').trim().split(/\s+/)[0];
 
   return (
     <>
-      <PageHeader title="Resumo" description={`Vendas confirmadas, investimento e retorno — valores em ${cur}, fuso ${s.org.timezone}.`}
+      <PageHeader title="Resumo" eyebrow={`${greeting()}${firstName ? `, ${firstName}` : ''}`}
+        description={`Vendas confirmadas, investimento e retorno — valores em ${cur}, fuso ${s.org.timezone}.`}
         actions={<>
           <PeriodPicker period={period} />
-          <Select aria-label="Origem" value={provider} onChange={(e) => period.set({ origem: e.target.value })} className="w-[170px]">
+          <Select aria-label="Origem" value={provider} onChange={(e) => period.set({ origem: e.target.value })} className="w-[190px]">
             <option value="">Todas as origens</option>
             {Object.entries(PROVIDER_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </Select>
-          <Select aria-label="Pixel" value={pixelId} onChange={(e) => period.set({ pixel: e.target.value })} className="w-[170px]">
+          <Select aria-label="Pixel" value={pixelId} onChange={(e) => period.set({ pixel: e.target.value })} className="w-[180px]">
             <option value="">Todos os pixels</option>
             {(pixels.data?.pixels ?? []).map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </Select>
@@ -103,10 +104,12 @@ export default function DashboardPage() {
         const c = d.current;
         const p = d.previous;
         const metaOn = c.meta.connected;
+        const revTrend = c.series.map((x) => minorToNumber(x.revenueMinor, cur));
+        const salesTrend = c.series.map((x) => x.sales);
         return (
           <div className="space-y-6">
             {d.openAlerts > 0 && (
-              <Callout tone="warn" title={`${d.openAlerts} alerta(s) aberto(s) na operação`} action={<Link to="/diagnostico" className="text-sm font-medium text-primary hover:underline">Ver diagnóstico</Link>}>
+              <Callout tone="warn" title={`${d.openAlerts} alerta(s) aberto(s) na operação`} action={<Link to="/diagnostico" className="text-sm font-semibold text-primary hover:underline">Ver diagnóstico →</Link>}>
                 Há falhas de entrega ou de configuração que podem afetar a atribuição.
               </Callout>
             )}
@@ -116,60 +119,66 @@ export default function DashboardPage() {
               </Callout>
             )}
 
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <Stat label="Receita confirmada" value={money(c.revenueMinor, cur)} help="Soma das vendas aprovadas no período (status atual = aprovado), convertida pela cotação do dia da aprovação."
-                deltaEl={<Delta cur={Number(c.revenueMinor)} prev={Number(p.revenueMinor)} />} />
-              <Stat label="Vendas confirmadas" value={int(c.sales)} help="Pagamentos aprovados pelo gateway. PIX/boleto gerado não conta."
-                deltaEl={<Delta cur={c.sales} prev={p.sales} />} sub={c.averageTicketMinor ? `Ticket médio ${money(c.averageTicketMinor, cur)}` : undefined} />
-              <Stat label="Investimento Meta" value={metaOn ? money(c.meta.spendMinor!, cur) : '—'}
-                help="Gasto da conta de anúncios selecionada (nível conta), convertido por dia."
-                deltaEl={metaOn ? <Delta cur={Number(c.meta.spendMinor)} prev={Number(p.meta.spendMinor ?? 0)} invert /> : undefined}
-                sub={metaOn ? undefined : <Link to="/integracoes/meta" className="text-primary hover:underline">Conectar Meta Ads</Link>} />
-              <Stat label="ROAS" value={ratio(c.roas)} help="Receita confirmada ÷ investimento."
-                sub={metaOn && c.profitMinor !== null ? <span className={Number(c.profitMinor) >= 0 ? 'text-ok' : 'text-err'}>Resultado {money(c.profitMinor, cur)}</span> : undefined} />
+            {/* Destaque: receita + retorno */}
+            <div className="grid gap-6 xl:grid-cols-[1.65fr_1fr]">
+              <section className="card relative overflow-hidden p-6 lg:p-7" aria-labelledby="rev-title">
+                <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-primary/15 blur-3xl" aria-hidden />
+                <div className="relative flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <p id="rev-title" className="flex items-center gap-1.5 text-sm font-medium text-muted">
+                      Receita confirmada <Help text="Soma das vendas aprovadas no período (status atual = aprovado), convertida pela cotação do dia da aprovação." />
+                    </p>
+                    <p className="mt-2 text-[40px] font-semibold leading-none tracking-tight sm:text-[52px]">
+                      <AnimatedMoney minor={c.revenueMinor} currency={cur} className="text-gradient" />
+                    </p>
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted">
+                      <Delta cur={Number(c.revenueMinor)} prev={Number(p.revenueMinor)} />
+                      <span><span className="font-semibold text-fg">{int(c.sales)}</span> venda{c.sales === 1 ? '' : 's'}</span>
+                      {c.averageTicketMinor && <span>· ticket médio <span className="num font-medium text-fg">{money(c.averageTicketMinor, cur)}</span></span>}
+                    </div>
+                  </div>
+                  <Badge tone="primary" dot>{period.label}</Badge>
+                </div>
+                <div className="relative mt-6">
+                  {c.series.length <= 1 ? (
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <MiniStat label="Pendentes (PIX/boleto)" value={int(c.pending.count)} sub={c.pending.amountMinor && c.pending.currency ? money(c.pending.amountMinor, c.pending.currency) : 'nenhum valor em aberto'} icon={<Clock3 />} />
+                      <MiniStat label="Taxa de aprovação" value={pct(c.approvalRate)} sub={`${int(c.paymentsCreated)} pagamentos criados`} icon={<CheckCircle2 />} />
+                      <MiniStat label="Reembolsos" value={int(c.refunds.count)} sub={money(c.refunds.amountMinor, cur)} icon={<ArrowDownRight />} />
+                    </div>
+                  ) : <RevenueChart data={c.series} currency={cur} showSpend={metaOn} />}
+                </div>
+              </section>
+
+              <ReturnCard c={c} p={p} cur={cur} />
             </div>
 
+            {/* Indicadores */}
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <Stat label="Pagamentos pendentes" value={int(c.pending.count)} help="Criados no período e ainda aguardando pagamento."
+              <Kpi label="Vendas confirmadas" value={int(c.sales)} icon={<TrendingUp />} help="Pagamentos aprovados pelo gateway. PIX/boleto gerado não conta."
+                deltaEl={<Delta cur={c.sales} prev={p.sales} />} trend={salesTrend} />
+              <Kpi label="Pagamentos pendentes" value={int(c.pending.count)} icon={<Clock3 />} help="Criados no período e ainda aguardando pagamento."
                 sub={c.pending.amountMinor && c.pending.currency ? money(c.pending.amountMinor, c.pending.currency) : undefined} />
-              <Stat label="Taxa de aprovação" value={pct(c.approvalRate)} help="Aprovados (incluindo depois reembolsados) ÷ pagamentos criados no período." sub={`${int(c.paymentsCreated)} pagamentos criados`} />
-              <Stat label="Custo por compra" value={c.cpaMinor ? money(c.cpaMinor, cur) : '—'} help="Investimento ÷ vendas confirmadas." />
-              <Stat label="Reembolsos e chargebacks" value={int(c.refunds.count)} sub={money(c.refunds.amountMinor, cur)} help="Revertidos no período; já abatidos da receita." />
+              <Kpi label="Taxa de aprovação" value={pct(c.approvalRate)} icon={<CheckCircle2 />} help="Aprovados (incluindo depois reembolsados) ÷ pagamentos criados no período."
+                sub={`${int(c.paymentsCreated)} criados`} />
+              <Kpi label="Reembolsos e chargebacks" value={int(c.refunds.count)} icon={<ArrowDownRight />} help="Revertidos no período; já abatidos da receita."
+                sub={money(c.refunds.amountMinor, cur)} trend={revTrend.length > 1 ? c.series.map((x) => minorToNumber(x.refundsMinor, cur)) : undefined} />
             </div>
 
-            <div className="grid gap-6 xl:grid-cols-[1.6fr_1fr]">
-              <Card title="Evolução diária" description={`${period.label} · dados da tabela de pagamentos e da Meta`}>
-                {c.series.length <= 1
-                  ? <p className="py-10 text-center text-sm text-muted">Selecione um período com mais de um dia para ver a evolução.</p>
-                  : <RevenueChart data={c.series} currency={cur} showSpend={metaOn} />}
-              </Card>
-              <Card title="Metas de faturamento" description="Hoje e mês corrente, independentemente do filtro">
-                <div className="space-y-5">
+            <div className="grid gap-6 lg:grid-cols-2 2xl:grid-cols-3">
+              <Card title="Metas de faturamento" description="Hoje e mês corrente, independentemente do filtro" icon={<Target />}>
+                <div className="grid grid-cols-2 gap-4">
                   <Goal label="Meta diária" goal={d.goals.daily.goalMinor} achieved={d.goals.daily.achievedMinor} currency={cur} />
                   <Goal label="Meta mensal" goal={d.goals.monthly.goalMinor} achieved={d.goals.monthly.achievedMinor} currency={cur} />
                 </div>
               </Card>
-            </div>
-
-            <div className="grid gap-6 xl:grid-cols-2">
-              <Card title="Funil" description="Cliques e visualizações vêm da Meta; PageView e InitiateCheckout, do pixel">
+              <Card title="Funil de conversão" description="Cliques e visualizações vêm da Meta; PageView e InitiateCheckout, do pixel" icon={<Zap />}>
                 <Funnel f={c.funnel} />
               </Card>
-              <Card title="Eventos e entrega" description="Rastreamento do navegador e envio à Conversions API">
-                <dl className="grid grid-cols-2 gap-4 text-sm">
-                  <div><dt className="text-muted">Eventos recebidos</dt><dd className="num mt-1 text-xl font-semibold">{int(d.events.received)}</dd></div>
-                  <div><dt className="text-muted">Enviados à Meta</dt><dd className="num mt-1 text-xl font-semibold">{int(d.events.capi.sent ?? 0)}</dd></div>
-                  <div><dt className="text-muted">Na fila</dt><dd className="num mt-1 text-xl font-semibold">{int((d.events.capi.pending ?? 0) + (d.events.capi.sending ?? 0))}</dd></div>
-                  <div><dt className="text-muted">Falhas definitivas</dt><dd className="num mt-1 flex items-center gap-2 text-xl font-semibold">{int(d.events.capi.dead ?? 0)}{(d.events.capi.dead ?? 0) > 0 && <AlertTriangle className="h-4 w-4 text-err" aria-label="Há falhas" />}</dd></div>
-                </dl>
-                {metaOn && (
-                  <div className="mt-5 rounded-xl bg-surface-2 p-4 text-sm">
-                    <p className="font-medium">Atribuído pela Meta <Badge tone="neutral">referência</Badge></p>
-                    <p className="mt-1 text-muted">{int(c.meta.purchases ?? 0)} compras · {money(c.meta.revenueMinor ?? '0', cur)}. Números da Meta usam a janela de atribuição dela e incluem os Purchases que o PayTracking enviou — por isso não são somados à receita confirmada.</p>
-                  </div>
-                )}
-              </Card>
+              <RecentSales className="lg:col-span-2 2xl:col-span-1" />
             </div>
+
+            <DeliveryCard d={d} c={c} cur={cur} metaOn={metaOn} />
           </div>
         );
       })()}
@@ -177,26 +186,96 @@ export default function DashboardPage() {
   );
 }
 
+function MiniStat({ label, value, sub, icon }: { label: string; value: ReactNode; sub?: ReactNode; icon: ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-border bg-surface-2/50 p-4">
+      <p className="flex items-center gap-2 text-xs font-medium text-muted"><span className="text-subtle [&>svg]:h-3.5 [&>svg]:w-3.5" aria-hidden>{icon}</span>{label}</p>
+      <p className="num mt-2 text-xl font-semibold">{value}</p>
+      {sub && <p className="mt-0.5 text-xs text-muted">{sub}</p>}
+    </div>
+  );
+}
+
+function ReturnCard({ c, p, cur }: { c: Kpis; p: Kpis; cur: string }) {
+  if (!c.meta.connected) {
+    return (
+      <section className="card relative flex flex-col justify-between overflow-hidden p-6">
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/15 via-transparent to-accent/10" aria-hidden />
+        <div className="relative">
+          <span className="icon-tile-primary h-11 w-11 [&>svg]:h-5 [&>svg]:w-5" aria-hidden><BarChart3 /></span>
+          <h2 className="mt-4 text-lg font-semibold">Veja o retorno real dos anúncios</h2>
+          <p className="mt-1.5 text-sm text-muted">Conecte o Meta Ads para cruzar investimento com vendas confirmadas: ROAS, custo por compra e resultado, por dia e por campanha.</p>
+        </div>
+        <Link to="/integracoes/meta" className="relative mt-6"><Button variant="primary" className="w-full" icon={<ArrowRight className="h-4 w-4" />}>Conectar Meta Ads</Button></Link>
+      </section>
+    );
+  }
+  const roas = c.roas ?? 0;
+  const profit = c.profitMinor !== null ? Number(c.profitMinor) : null;
+  return (
+    <section className="card p-6" aria-labelledby="ret-title">
+      <h2 id="ret-title" className="flex items-center gap-1.5 text-sm font-medium text-muted">Retorno sobre investimento <Help text="ROAS = receita confirmada ÷ investimento. O anel completa em 3x." /></h2>
+      <div className="mt-4 flex items-center gap-6">
+        <ProgressRing value={roas / 3} size={120} stroke={10} label={`ROAS ${ratio(c.roas)}`} done={roas >= 1}>
+          <span className="num text-2xl font-semibold">{ratio(c.roas)}</span>
+          <span className="text-[11px] text-muted">ROAS</span>
+        </ProgressRing>
+        <dl className="min-w-0 flex-1 space-y-3 text-sm">
+          <div><dt className="text-muted">Investimento Meta</dt><dd className="num text-lg font-semibold">{money(c.meta.spendMinor!, cur)}</dd>
+            <Delta cur={Number(c.meta.spendMinor)} prev={Number(p.meta.spendMinor ?? 0)} invert /></div>
+          <div><dt className="text-muted">Custo por compra</dt><dd className="num font-semibold">{c.cpaMinor ? money(c.cpaMinor, cur) : '—'}</dd></div>
+        </dl>
+      </div>
+      {profit !== null && (
+        <div className={clsx('mt-5 flex items-center justify-between rounded-2xl px-4 py-3 text-sm ring-1 ring-inset', profit >= 0 ? 'bg-ok/10 ring-ok/20' : 'bg-err/10 ring-err/20')}>
+          <span className="text-muted">Resultado (receita − investimento)</span>
+          <span className={clsx('num font-semibold', profit >= 0 ? 'text-ok' : 'text-err')}>{money(c.profitMinor!, cur)}</span>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function Goal({ label, goal, achieved, currency }: { label: string; goal: string; achieved: string; currency: string }) {
+  const g = Number(goal);
+  const p = g > 0 ? Number(achieved) / g : 0;
+  return (
+    <div className="flex flex-col items-center rounded-2xl border border-border bg-surface-2/40 p-4 text-center">
+      <ProgressRing value={p} size={96} stroke={9} label={label} done={g > 0 && p >= 1}>
+        <span className="num text-lg font-semibold">{g > 0 ? pct(Math.min(p, 9.99), 0) : '—'}</span>
+      </ProgressRing>
+      <p className="mt-3 text-[13px] font-semibold">{label}</p>
+      <p className="num mt-0.5 text-xs text-muted">{money(achieved, currency)}{g > 0 && <> de {money(goal, currency)}</>}</p>
+      {g <= 0 ? <Link className="mt-1 text-xs font-semibold text-primary hover:underline" to="/configuracoes">Definir meta</Link>
+        : p >= 1 ? <p className="mt-1 text-xs font-semibold text-ok">Meta atingida 🎉</p> : null}
+    </div>
+  );
+}
+
 function Funnel({ f }: { f: Kpis['funnel'] }) {
   const stages = [
     { label: 'Cliques no link', n: f.linkClicks },
-    { label: 'Visualizações da página (Meta)', n: f.landingPageViews },
+    { label: 'Visualizações (Meta)', n: f.landingPageViews },
     { label: 'PageView (pixel)', n: f.pageViews },
     { label: 'InitiateCheckout', n: f.initiateCheckouts },
     { label: 'Vendas confirmadas', n: f.sales },
   ].filter((s) => s.n !== null) as Array<{ label: string; n: number }>;
   const max = Math.max(1, ...stages.map((s) => s.n));
   return (
-    <ol className="space-y-3">
+    <ol className="space-y-3.5">
       {stages.map((s, i) => {
         const prev = i > 0 ? stages[i - 1]!.n : null;
+        const last = i === stages.length - 1;
         return (
           <li key={s.label}>
-            <div className="mb-1 flex justify-between gap-3 text-[13px]">
-              <span>{s.label}</span>
-              <span className="num text-muted"><span className="font-medium text-fg">{int(s.n)}</span>{prev ? ` · ${pct(s.n / prev)} da etapa anterior` : ''}</span>
+            <div className="mb-1.5 flex items-baseline justify-between gap-3 text-[13px]">
+              <span className={clsx(last && 'font-semibold')}>{s.label}</span>
+              <span className="num text-muted"><span className="font-semibold text-fg">{int(s.n)}</span>{prev ? <span className="ml-1.5 text-xs">{pct(s.n / prev)}</span> : null}</span>
             </div>
-            <div className="h-2.5 overflow-hidden rounded-full bg-surface-2"><div className="h-full rounded-full bg-primary/80" style={{ width: `${(s.n / max) * 100}%` }} /></div>
+            <div className="h-2.5 overflow-hidden rounded-full bg-surface-3">
+              <div className={clsx('h-full rounded-full transition-[width] duration-700', last ? 'bg-gradient-to-r from-[#8b70ff] to-[#5b37f0]' : 'bg-primary/45')}
+                style={{ width: `${Math.max(2, (s.n / max) * 100)}%` }} />
+            </div>
           </li>
         );
       })}
@@ -204,11 +283,90 @@ function Funnel({ f }: { f: Kpis['funnel'] }) {
   );
 }
 
+function RecentSales({ className }: { className?: string }) {
+  const q = useQuery<{ payments: RecentPayment[] }>({
+    queryKey: ['recent-sales'],
+    queryFn: ({ signal }) => get(`/v1/payments${qs({ preset: 'last_30d', page: 1 })}`, signal),
+    refetchInterval: 15_000,
+  });
+  const items = (q.data?.payments ?? []).slice(0, 6);
+  return (
+    <Card className={className} title={<span className="flex items-center gap-2">Últimas vendas <span className="live-dot" aria-hidden /></span>}
+      description="Atualiza sozinho a cada 15 s" icon={<Radio />} padded={false}
+      actions={<Link to="/vendas" className="text-xs font-semibold text-primary hover:underline">Ver todas →</Link>}>
+      {!q.data ? <div className="space-y-3 p-5">{Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-10" />)}</div>
+        : items.length === 0 ? <p className="px-5 py-10 text-center text-sm text-muted">Nenhum pagamento nos últimos 30 dias.</p>
+        : (
+          <ul className="divide-y divide-border/70">
+            {items.map((p) => (
+              <li key={p.id}>
+                <Link to={`/vendas/${p.id}`} className="flex items-center gap-3 px-5 py-3 transition hover:bg-surface-2/60">
+                  <Avatar name={PROVIDER_LABEL[p.provider] ?? p.provider} className="rounded-xl" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{p.utm_campaign ?? PROVIDER_LABEL[p.provider] ?? p.provider}</p>
+                    <p className="truncate text-xs text-muted">{PROVIDER_LABEL[p.provider] ?? p.provider} · {relative(p.approved_at ?? p.created_at)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="num text-sm font-semibold">{p.amount_minor && p.currency ? money(p.amount_minor, p.currency) : '—'}</p>
+                    <Badge tone={STATUS_TONE[p.status]}>{STATUS_LABEL[p.status] ?? p.status}</Badge>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+    </Card>
+  );
+}
+
+function DeliveryCard({ d, c, cur, metaOn }: { d: Dashboard; c: Kpis; cur: string; metaOn: boolean }) {
+  const sent = d.events.capi.sent ?? 0;
+  const queued = (d.events.capi.pending ?? 0) + (d.events.capi.sending ?? 0);
+  const dead = d.events.capi.dead ?? 0;
+  const total = Math.max(1, sent + queued + dead);
+  const seg = [
+    { label: 'Enviados', n: sent, cls: 'bg-ok' },
+    { label: 'Na fila', n: queued, cls: 'bg-warn' },
+    { label: 'Falhas', n: dead, cls: 'bg-err' },
+  ];
+  return (
+    <Card title="Eventos e entrega à Meta" description="Rastreamento do navegador e envio pela Conversions API" icon={<Zap />}
+      actions={<Link to="/diagnostico" className="text-xs font-semibold text-primary hover:underline">Diagnóstico →</Link>}>
+      <div className="grid gap-6 lg:grid-cols-[1fr_1.3fr]">
+        <dl className="grid grid-cols-2 gap-4 text-sm">
+          <div><dt className="text-muted">Eventos recebidos</dt><dd className="num mt-1 text-2xl font-semibold">{int(d.events.received)}</dd></div>
+          <div><dt className="text-muted">Enviados à Meta</dt><dd className="num mt-1 text-2xl font-semibold">{int(sent)}</dd></div>
+          <div><dt className="text-muted">Na fila</dt><dd className="num mt-1 text-2xl font-semibold">{int(queued)}</dd></div>
+          <div><dt className="text-muted">Falhas definitivas</dt><dd className="num mt-1 flex items-center gap-2 text-2xl font-semibold">{int(dead)}{dead > 0 && <AlertTriangle className="h-4 w-4 text-err" aria-label="Há falhas" />}</dd></div>
+        </dl>
+        <div>
+          <p className="text-[13px] font-medium">Situação dos envios no período</p>
+          <div className="mt-3 flex h-3 gap-0.5 overflow-hidden rounded-full bg-surface-3" aria-hidden>
+            {sent + queued + dead > 0 && seg.map((x) => x.n > 0 && <div key={x.label} className={clsx('h-full first:rounded-l-full last:rounded-r-full', x.cls)} style={{ width: `${(x.n / total) * 100}%` }} />)}
+          </div>
+          <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted">
+            {seg.map((x) => <li key={x.label} className="flex items-center gap-1.5"><span className={clsx('h-2 w-2 rounded-full', x.cls)} aria-hidden />{x.label}: <span className="num font-semibold text-fg">{int(x.n)}</span></li>)}
+          </ul>
+          {metaOn && (
+            <div className="mt-4 rounded-2xl bg-surface-2/60 p-4 text-sm">
+              <p className="flex items-center gap-2 font-medium">Atribuído pela Meta <Badge tone="neutral">referência</Badge></p>
+              <p className="mt-1 text-muted">{int(c.meta.purchases ?? 0)} compras · {money(c.meta.revenueMinor ?? '0', cur)}. A Meta usa a própria janela de atribuição e inclui os Purchases que o PayTracking enviou — por isso não soma à receita confirmada.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 function DashboardSkeleton() {
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 8 }, (_, i) => <div key={i} className="card p-5"><Skeleton className="h-4 w-28" /><Skeleton className="mt-3 h-7 w-36" /><Skeleton className="mt-3 h-3 w-24" /></div>)}</div>
-      <div className="card p-5"><Skeleton className="h-[260px] w-full" /></div>
+      <div className="grid gap-6 xl:grid-cols-[1.65fr_1fr]">
+        <div className="card p-7"><Skeleton className="h-4 w-36" /><Skeleton className="mt-4 h-12 w-64" /><Skeleton className="mt-4 h-4 w-48" /><Skeleton className="mt-8 h-40 w-full" /></div>
+        <div className="card p-6"><Skeleton className="h-4 w-40" /><Skeleton className="mx-auto mt-6 h-28 w-28 rounded-full" /><Skeleton className="mt-6 h-10 w-full" /></div>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 4 }, (_, i) => <div key={i} className="card p-5"><Skeleton className="h-4 w-28" /><Skeleton className="mt-4 h-7 w-24" /><Skeleton className="mt-3 h-3 w-20" /></div>)}</div>
     </div>
   );
 }

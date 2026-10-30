@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { lazy, StrictMode, Suspense, useEffect } from 'react';
+import { lazy as reactLazy, StrictMode, Suspense, useEffect, type ComponentType } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import './styles/index.css';
@@ -9,7 +9,23 @@ import { Spinner } from './components/ui';
 import { onApiError } from './lib/api';
 import { useMe } from './lib/session';
 
-// Divisão de código por página (carregamento sob demanda)
+// Divisão de código por página (carregamento sob demanda). Se um deploy novo trocou os arquivos
+// enquanto a aba estava aberta, o chunk antigo não existe mais: recarrega a página uma vez.
+const flag = {
+  get: () => { try { return sessionStorage.getItem('pt_chunk_reload'); } catch { return '1'; } },
+  set: (v: string | null) => { try { if (v) sessionStorage.setItem('pt_chunk_reload', v); else sessionStorage.removeItem('pt_chunk_reload'); } catch { /* */ } },
+};
+function lazy<T extends ComponentType<any>>(load: () => Promise<{ default: T }>) {
+  return reactLazy(() => load().then((m) => { flag.set(null); return m; }, (e) => {
+    if (!flag.get()) {
+      flag.set('1');
+      location.reload();
+      return new Promise<{ default: T }>(() => undefined);
+    }
+    throw e;
+  }));
+}
+
 const Login = lazy(() => import('./pages/auth').then((m) => ({ default: m.LoginPage })));
 const Signup = lazy(() => import('./pages/auth').then((m) => ({ default: m.SignupPage })));
 const Forgot = lazy(() => import('./pages/auth').then((m) => ({ default: m.ForgotPage })));

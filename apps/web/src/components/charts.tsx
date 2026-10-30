@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { exponent, minorToNumber, money, shortDay } from '../lib/format';
 
@@ -74,5 +74,29 @@ export function RevenueChart({ data, currency, showSpend }: { data: SeriesPoint[
         </ResponsiveContainer>
       </div>
     </div>
+  );
+}
+
+/** Mini-gráfico de linha (tendência) — decorativo; o número principal fica sempre em texto ao lado. */
+export function Sparkline({ values, height = 40, className, color = 'var(--series-1)' }: { values: number[]; height?: number; className?: string; color?: string }) {
+  const id = useId();
+  if (values.length < 2) return null;
+  const w = 120;
+  const max = Math.max(...values);
+  const min = Math.min(...values);
+  const span = max - min || 1;
+  const pts = values.map((v, i) => [(i / (values.length - 1)) * w, height - 3 - ((v - min) / span) * (height - 6)] as const);
+  const line = pts.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+  return (
+    <svg viewBox={`0 0 ${w} ${height}`} preserveAspectRatio="none" className={className} style={{ height }} aria-hidden>
+      <defs>
+        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity={0.28} />
+          <stop offset="100%" stopColor={color} stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      <path d={`${line} L${w},${height} L0,${height} Z`} fill={`url(#${id})`} />
+      <path d={line} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+    </svg>
   );
 }

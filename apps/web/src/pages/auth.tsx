@@ -12,29 +12,72 @@ import { useMe } from '../lib/session';
 const password = z.string().min(10, 'Mínimo de 10 caracteres').max(200)
   .regex(/[A-Z]/, 'Inclua uma letra maiúscula').regex(/[a-z]/, 'Inclua uma letra minúscula').regex(/\d/, 'Inclua um número');
 
+function PreviewCards() {
+  // composição ilustrativa do produto (decorativa: aria-hidden, valores de exemplo)
+  return (
+    <div className="relative mx-auto mt-12 h-[300px] w-full max-w-[440px]" aria-hidden>
+      <div className="absolute left-0 top-4 w-[300px] animate-float rounded-2xl border border-white/10 bg-white/[0.06] p-4 shadow-2xl backdrop-blur-xl">
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-400/15 text-emerald-300"><CheckCircle2 className="h-5 w-5" /></span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-white">Venda aprovada</p>
+            <p className="text-xs text-white/60">Checkout próprio · PIX</p>
+          </div>
+          <p className="text-sm font-semibold text-white">R$ 197,00</p>
+        </div>
+        <div className="mt-3 flex items-center gap-2 rounded-xl bg-white/[0.06] px-3 py-2 text-xs text-white/75">
+          <Zap className="h-3.5 w-3.5 text-violet-300" />Purchase entregue à Meta em 0,8 s
+        </div>
+      </div>
+      <div className="absolute right-0 top-28 w-[250px] animate-float rounded-2xl border border-white/10 bg-white/[0.06] p-4 shadow-2xl backdrop-blur-xl [animation-delay:-2s]">
+        <p className="text-xs text-white/60">Receita confirmada · 30 dias</p>
+        <p className="mt-1 text-xl font-semibold text-white">R$ 48.920</p>
+        <svg viewBox="0 0 200 50" className="mt-2 h-12 w-full">
+          <defs><linearGradient id="authg" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#8b70ff" stopOpacity=".45" /><stop offset="100%" stopColor="#8b70ff" stopOpacity="0" /></linearGradient></defs>
+          <path d="M0,42 C20,40 30,30 50,32 C70,34 80,20 100,22 C120,24 130,12 150,14 C170,16 180,6 200,4 L200,50 L0,50 Z" fill="url(#authg)" />
+          <path d="M0,42 C20,40 30,30 50,32 C70,34 80,20 100,22 C120,24 130,12 150,14 C170,16 180,6 200,4" fill="none" stroke="#a78bfa" strokeWidth="2.5" strokeLinecap="round" />
+        </svg>
+      </div>
+      <div className="absolute bottom-0 left-10 animate-float rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-xs text-white/80 shadow-xl backdrop-blur-xl [animation-delay:-4s]">
+        <span className="mr-2 inline-block h-2 w-2 rounded-full bg-emerald-400" />Pixel + CAPI deduplicados pelo mesmo event_id
+      </div>
+    </div>
+  );
+}
+
 function AuthLayout({ title, subtitle, children }: { title: string; subtitle?: ReactNode; children: ReactNode }) {
   useEffect(() => { document.title = `${title} · PayTracking`; }, [title]);
   return (
-    <div className="grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
-      <aside className="relative hidden overflow-hidden bg-[#0d0b1a] p-12 text-white lg:flex lg:flex-col lg:justify-between">
-        <div className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full bg-[#6d4aff]/30 blur-3xl" aria-hidden />
-        <div className="pointer-events-none absolute -bottom-32 right-0 h-96 w-96 rounded-full bg-teal-400/10 blur-3xl" aria-hidden />
-        <div className="relative flex items-center gap-2.5"><img src="/favicon.svg" alt="" className="h-9 w-9" /><span className="text-lg font-semibold">PayTracking</span></div>
-        <div className="relative max-w-md">
-          <h2 className="text-3xl font-semibold leading-tight tracking-tight">Cada venda confirmada, atribuída e entregue à Meta — sem duplicidade.</h2>
-          <ul className="mt-8 space-y-4 text-[15px] text-white/75">
-            <li className="flex gap-3"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-teal-300" />Purchase só com pagamento aprovado pelo gateway.</li>
-            <li className="flex gap-3"><Zap className="mt-0.5 h-5 w-5 shrink-0 text-teal-300" />Pixel + Conversions API deduplicados pelo mesmo event_id.</li>
-            <li className="flex gap-3"><LineChart className="mt-0.5 h-5 w-5 shrink-0 text-teal-300" />Receita, investimento e ROAS reais, em uma moeda só.</li>
+    <div className="grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
+      <aside className="relative hidden overflow-hidden bg-[#07060f] p-12 text-white lg:flex lg:flex-col lg:justify-between">
+        <div className="pointer-events-none absolute -left-32 -top-32 h-[480px] w-[480px] animate-drift rounded-full bg-[#6d4aff]/35 blur-[120px]" aria-hidden />
+        <div className="pointer-events-none absolute -bottom-40 -right-20 h-[420px] w-[420px] animate-drift rounded-full bg-cyan-400/15 blur-[120px] [animation-delay:-7s]" aria-hidden />
+        <div className="grid-fade opacity-60 [--fg:255_255_255]" aria-hidden />
+        <div className="relative flex items-center gap-2.5">
+          <span className="relative"><span className="absolute inset-0 rounded-xl bg-violet-500/50 blur-md" aria-hidden /><img src="/favicon.svg" alt="" className="relative h-9 w-9" /></span>
+          <span className="text-lg font-semibold">PayTracking</span>
+        </div>
+        <div className="relative">
+          <h2 className="max-w-lg text-[38px] font-semibold leading-[1.1] tracking-tight">
+            Cada venda confirmada, <span className="bg-gradient-to-r from-violet-300 via-fuchsia-200 to-cyan-200 bg-clip-text text-transparent">atribuída e entregue à Meta.</span>
+          </h2>
+          <ul className="mt-7 grid max-w-lg gap-3 text-[15px] text-white/75">
+            <li className="flex gap-3"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-violet-300" />Purchase só com pagamento aprovado pelo gateway.</li>
+            <li className="flex gap-3"><Zap className="mt-0.5 h-5 w-5 shrink-0 text-violet-300" />Pixel + Conversions API sem duplicidade.</li>
+            <li className="flex gap-3"><LineChart className="mt-0.5 h-5 w-5 shrink-0 text-violet-300" />Receita, investimento e ROAS reais, em uma moeda só.</li>
           </ul>
+          <PreviewCards />
         </div>
         <p className="relative text-xs text-white/60">Dados protegidos com criptografia em trânsito e em repouso.</p>
       </aside>
-      <main className="flex items-center justify-center px-4 py-12 sm:px-8">
-        <div className="w-full max-w-[400px]">
-          <div className="mb-8 lg:hidden"><img src="/favicon.svg" alt="PayTracking" className="h-10 w-10" /></div>
-          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-          {subtitle && <p className="mt-1.5 text-sm text-muted">{subtitle}</p>}
+      <main className="relative flex items-center justify-center overflow-hidden px-4 py-12 sm:px-8">
+        <div className="aurora" aria-hidden />
+        <div className="w-full max-w-[420px] animate-slide-up">
+          <div className="mb-10 flex items-center gap-2.5 lg:hidden">
+            <img src="/favicon.svg" alt="" className="h-10 w-10" /><span className="text-lg font-semibold">PayTracking</span>
+          </div>
+          <h1 className="text-[30px] font-semibold leading-tight">{title}</h1>
+          {subtitle && <p className="mt-2 text-[15px] text-muted">{subtitle}</p>}
           <div className="mt-8">{children}</div>
         </div>
       </main>
@@ -73,7 +116,7 @@ export function LoginPage() {
           <Input id="password" type="password" autoComplete="current-password" {...f.register('password')} />
         </Field>
         <div className="flex justify-end"><Link to="/esqueci-senha" className="text-sm font-medium text-primary hover:underline">Esqueci a senha</Link></div>
-        <Button type="submit" variant="primary" className="w-full" loading={f.formState.isSubmitting}>Entrar</Button>
+        <Button type="submit" variant="primary" size="lg" className="w-full" loading={f.formState.isSubmitting}>Entrar</Button>
       </form>
       <p className="mt-6 text-center text-sm text-muted">Ainda não tem conta? <Link to="/criar-conta" className="font-medium text-primary hover:underline">Comece o teste grátis</Link></p>
     </AuthLayout>
@@ -106,7 +149,7 @@ export function SignupPage() {
           <Input id="pw" type="password" autoComplete="new-password" {...f.register('password')} />
         </Field>
         <Field label="Confirmar senha" htmlFor="pw2" error={err.confirm?.message}><Input id="pw2" type="password" autoComplete="new-password" {...f.register('confirm')} /></Field>
-        <Button type="submit" variant="primary" className="w-full" loading={f.formState.isSubmitting}>Criar conta</Button>
+        <Button type="submit" variant="primary" size="lg" className="w-full" loading={f.formState.isSubmitting}>Criar conta</Button>
       </form>
       <p className="mt-6 text-center text-sm text-muted">Já tem conta? <Link to="/entrar" className="font-medium text-primary hover:underline">Entrar</Link></p>
     </AuthLayout>
@@ -123,7 +166,7 @@ export function ForgotPage() {
       ) : (
         <form className="space-y-4" noValidate onSubmit={f.handleSubmit(async (v) => { await post('/v1/auth/forgot-password', v).catch(() => undefined); setSent(true); })}>
           <Field label="E-mail" htmlFor="email" error={f.formState.errors.email?.message as string}><Input id="email" type="email" autoFocus {...f.register('email')} /></Field>
-          <Button type="submit" variant="primary" className="w-full" loading={f.formState.isSubmitting}>Enviar link</Button>
+          <Button type="submit" variant="primary" size="lg" className="w-full" loading={f.formState.isSubmitting}>Enviar link</Button>
         </form>
       )}
       <p className="mt-6 text-center text-sm"><Link to="/entrar" className="font-medium text-primary hover:underline">Voltar para o login</Link></p>
@@ -147,7 +190,7 @@ export function ResetPage() {
         {error && <Callout tone="err" title={error} />}
         <Field label="Nova senha" htmlFor="pw" error={f.formState.errors.password?.message}><Input id="pw" type="password" autoComplete="new-password" {...f.register('password')} /></Field>
         <Field label="Confirmar" htmlFor="pw2" error={f.formState.errors.confirm?.message}><Input id="pw2" type="password" autoComplete="new-password" {...f.register('confirm')} /></Field>
-        <Button type="submit" variant="primary" className="w-full" loading={f.formState.isSubmitting}>Salvar nova senha</Button>
+        <Button type="submit" variant="primary" size="lg" className="w-full" loading={f.formState.isSubmitting}>Salvar nova senha</Button>
       </form>
     </AuthLayout>
   );

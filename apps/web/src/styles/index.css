@@ -1,77 +1,151 @@
-@import '@fontsource-variable/inter';
+@import '@fontsource-variable/inter/opsz.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* Tokens do design system (RGB para permitir opacidade no Tailwind).
-   Todo token de texto tem contraste ≥ 4,5:1 sobre bg e surface (docs/DESIGN-SYSTEM.md). */
+   Todo token de texto tem contraste ≥ 4,5:1 sobre bg e surface nos dois temas (docs/DESIGN-SYSTEM.md). */
 :root {
-  --bg: 247 248 250;
+  --bg: 247 247 251;
   --surface: 255 255 255;
-  --surface-2: 242 244 247;
-  --border: 228 231 236;
-  --fg: 16 24 40;
-  --muted: 102 112 133;
-  --subtle: 110 119 138;
-  --primary: 109 74 255;
+  --surface-2: 241 241 247;
+  --surface-3: 233 233 242;
+  --border: 228 228 238;
+  --border-strong: 208 209 224;
+  --fg: 11 13 26;
+  --muted: 93 99 120;
+  --subtle: 100 106 127;
+  --primary: 103 68 245;
   --primary-fg: 255 255 255;
   --primary-soft: 240 236 255;
-  --ok: 6 118 71;
-  --warn: 181 71 8;
-  --err: 217 45 32;
+  --accent: 8 145 178;
+  --ok: 4 120 87;
+  --warn: 170 78 8;
+  --err: 200 30 30;
   --err-fg: 255 255 255;
-  --info: 23 92 211;
+  --info: 29 78 216;
   /* séries de gráfico (validadas: CVD e contraste — docs/DESIGN-SYSTEM.md) */
   --series-1: #6d4aff;
   --series-2: #0d9488;
-  --grid: #e4e7ec;
+  --grid: #e7e7ef;
+  --aurora-1: 109 74 255;
+  --aurora-2: 6 182 212;
+  --aurora-opacity: 0.10;
+  --card-highlight: 255 255 255;
   color-scheme: light;
 }
 .dark {
-  --bg: 10 11 15;
-  --surface: 17 19 24;
-  --surface-2: 24 26 33;
-  --border: 36 39 48;
-  --fg: 236 238 243;
-  --muted: 154 160 173;
-  --subtle: 108 114 128;
-  --primary: 139 112 255;
-  --primary-fg: 10 11 15;   /* texto escuro no botão: branco sobre #8b70ff dá só 3,6:1 */
-  --primary-soft: 36 30 66;
-  --ok: 50 213 131;
-  --warn: 253 176 34;
-  --err: 249 112 102;
+  --bg: 6 7 11;
+  --surface: 13 14 20;
+  --surface-2: 20 22 30;
+  --surface-3: 28 30 40;
+  --border: 31 34 45;
+  --border-strong: 45 49 64;
+  --fg: 237 238 245;
+  --muted: 152 158 178;
+  --subtle: 124 130 152;
+  --primary: 156 136 255;
+  --primary-fg: 10 11 15;
+  --primary-soft: 33 27 66;
+  --accent: 34 211 238;
+  --ok: 52 211 153;
+  --warn: 251 191 36;
+  --err: 248 113 113;
   --err-fg: 10 11 15;
-  --info: 83 177 253;
+  --info: 96 165 250;
   --series-1: #8b70ff;
   --series-2: #0f9e8e;
-  --grid: #242730;
+  --grid: #1f2230;
+  --aurora-1: 124 92 255;
+  --aurora-2: 34 211 238;
+  --aurora-opacity: 0.16;
+  --card-highlight: 255 255 255;
   color-scheme: dark;
 }
 
 @layer base {
-  html { font-feature-settings: 'cv11', 'ss01'; -webkit-tap-highlight-color: transparent; }
-  body { @apply min-h-screen text-[15px] leading-relaxed; }
+  html { font-feature-settings: 'cv11', 'ss01', 'ss03'; -webkit-tap-highlight-color: transparent; text-rendering: optimizeLegibility; }
+  body { @apply min-h-screen bg-bg text-[15px] leading-relaxed text-fg; }
+  h1, h2, h3 { font-variation-settings: 'opsz' 32; letter-spacing: -0.02em; }
   :focus-visible { @apply outline-none ring-2 ring-primary/60 ring-offset-2 ring-offset-bg; }
-  ::selection { @apply bg-primary/20; }
+  ::selection { @apply bg-primary/25; }
+  /* barras de rolagem discretas */
+  * { scrollbar-width: thin; scrollbar-color: rgb(var(--border-strong)) transparent; }
 }
 
 @layer components {
-  .card { @apply rounded-2xl border border-border bg-surface shadow-card; }
+  /* Superfícies */
+  .card {
+    @apply relative rounded-2xl border border-border bg-surface shadow-card;
+    box-shadow: inset 0 1px 0 rgb(var(--card-highlight) / 0.04), 0 1px 2px rgb(0 0 0 / 0.04), 0 2px 8px -2px rgb(0 0 0 / 0.04);
+  }
+  .dark .card { @apply bg-surface/80 backdrop-blur-xl; }
+  .card-interactive { @apply transition duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-lift; }
+  .glass { @apply border border-border bg-surface/70 backdrop-blur-xl; }
+
+  /* Botão principal: gradiente com brilho; branco sobre #6d4aff→#5b37f0 tem ≥ 5,15:1 nos dois temas */
+  .btn-primary {
+    @apply text-white;
+    background-image: linear-gradient(180deg, #7653ff 0%, #6d4aff 45%, #5b37f0 100%);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22), 0 1px 2px rgb(40 20 120 / 0.25), 0 8px 24px -10px rgb(109 74 255 / 0.65);
+  }
+  .btn-primary:hover { filter: brightness(1.06); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 1px 2px rgb(40 20 120 / 0.25), 0 12px 32px -10px rgb(109 74 255 / 0.8); }
+
   .label { @apply mb-1.5 block text-[13px] font-medium text-fg; }
   .hint { @apply mt-1.5 text-xs text-muted; }
   .input {
-    @apply h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm text-fg placeholder:text-subtle
-      transition-colors hover:border-subtle focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20
+    @apply h-10 w-full rounded-xl border border-border bg-surface px-3.5 text-sm text-fg shadow-sm placeholder:text-subtle
+      transition hover:border-border-strong focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/15
       disabled:cursor-not-allowed disabled:opacity-60;
   }
+  .dark .input { @apply bg-surface-2/60; }
   .num { font-variant-numeric: tabular-nums; }
+  .kbd { @apply inline-flex h-5 min-w-5 items-center justify-center rounded-md border border-border bg-surface-2 px-1.5 font-sans text-[11px] font-medium text-muted; }
+
   .table-base { @apply w-full border-separate border-spacing-0 text-sm; }
-  .table-base th { @apply sticky top-0 z-10 border-b border-border bg-surface-2/80 px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wide text-muted backdrop-blur; }
-  .table-base td { @apply border-b border-border px-4 py-3 align-middle; }
-  .table-base tbody tr { @apply transition-colors hover:bg-surface-2/60; }
+  .table-base th { @apply sticky top-0 z-10 border-b border-border bg-surface-2/85 px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted backdrop-blur; }
+  .table-base td { @apply border-b border-border/70 px-4 py-3 align-middle; }
+  .table-base tbody tr { @apply transition-colors hover:bg-surface-2/70; }
+  .table-base tbody tr:last-child td { @apply border-b-0; }
+
+  /* Carregamento com brilho deslizante */
+  .skeleton {
+    @apply rounded-lg bg-surface-2;
+    background-image: linear-gradient(90deg, transparent 0%, rgb(var(--card-highlight) / 0.06) 50%, transparent 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.6s ease-in-out infinite;
+  }
+  :root:not(.dark) .skeleton { background-image: linear-gradient(90deg, transparent 0%, rgb(255 255 255 / 0.7) 50%, transparent 100%); }
+
+  /* Texto com gradiente — só decorativo/grande; o texto continua legível por ser grande e escuro/claro na base */
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(120deg, rgb(var(--fg)) 0%, rgb(var(--fg)) 40%, rgb(var(--primary)) 100%);
+  }
+  .icon-tile { @apply flex shrink-0 items-center justify-center rounded-xl border border-border bg-surface-2 text-muted; }
+  .icon-tile-primary { @apply flex shrink-0 items-center justify-center rounded-xl text-white; background-image: linear-gradient(135deg, #7653ff, #4f39e6); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 6px 18px -8px rgb(109 74 255 / 0.7); }
+
+  /* Fundo "aurora": brilho suave atrás do conteúdo (decorativo) */
+  .aurora {
+    @apply pointer-events-none fixed inset-x-0 top-0 -z-10 h-[520px] overflow-hidden;
+    background:
+      radial-gradient(600px 300px at 12% -10%, rgb(var(--aurora-1) / var(--aurora-opacity)), transparent 70%),
+      radial-gradient(520px 260px at 88% -14%, rgb(var(--aurora-2) / calc(var(--aurora-opacity) * 0.7)), transparent 70%);
+  }
+  .grid-fade {
+    @apply pointer-events-none absolute inset-0;
+    background-image: linear-gradient(rgb(var(--fg) / 0.035) 1px, transparent 1px), linear-gradient(90deg, rgb(var(--fg) / 0.035) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: radial-gradient(ellipse at 50% 0%, black 0%, transparent 70%);
+  }
+
+  .live-dot { @apply relative inline-flex h-2 w-2 rounded-full bg-ok; }
+  .live-dot::after { content: ''; @apply absolute inset-0 rounded-full bg-ok; animation: ping-soft 2s cubic-bezier(0, 0, 0.2, 1) infinite; }
 }
 
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@keyframes ping-soft { 0% { transform: scale(1); opacity: 0.6; } 80%, 100% { transform: scale(2.6); opacity: 0; } }
+
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }

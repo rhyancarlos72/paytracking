@@ -163,7 +163,10 @@ export async function buildApp(ctx: Ctx): Promise<FastifyInstance> {
     await app.register(fastifyStatic, { root: webDir, wildcard: false, maxAge: '1h', index: false });
     const indexHtml = readFileSync(path.join(webDir, 'index.html'), 'utf8');
     app.setNotFoundHandler((req, reply) => {
-      if (req.method === 'GET' && !req.url.startsWith('/v1/') && !req.url.startsWith('/api/')) {
+      // arquivo de build inexistente (ex.: aba aberta durante um deploy pedindo um chunk antigo):
+      // 404 de verdade, nunca o index.html — senão o navegador recebe HTML no lugar de JS
+      const isAsset = /^\/assets\//.test(req.url) || /\.(?:js|mjs|css|map|woff2?|png|svg|ico|webmanifest)(?:\?|$)/.test(req.url);
+      if (req.method === 'GET' && !isAsset && !req.url.startsWith('/v1/') && !req.url.startsWith('/api/')) {
         reply.header('Content-Security-Policy', [
           "default-src 'self'", "script-src 'self'", "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
           "font-src 'self' https://fonts.gstatic.com data:", "img-src 'self' data: https:", "connect-src 'self'",

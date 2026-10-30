@@ -29,8 +29,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <div className="pointer-events-none fixed bottom-4 right-4 z-[60] flex w-[min(380px,calc(100vw-2rem))] flex-col gap-2" aria-live="polite">
         {items.map((t) => (
-          <div key={t.id} className={clsx('pointer-events-auto flex gap-3 rounded-xl border border-border bg-surface p-3.5 shadow-pop animate-fade-in')}>
-            {icon[t.tone]}
+          <div key={t.id} className={clsx('glass pointer-events-auto relative flex gap-3 overflow-hidden rounded-2xl p-4 shadow-pop animate-slide-up',
+            'before:absolute before:inset-y-0 before:left-0 before:w-1', t.tone === 'ok' ? 'before:bg-ok' : t.tone === 'err' ? 'before:bg-err' : 'before:bg-info')}>
+            <span className="shrink-0">{icon[t.tone]}</span>
             <div className="min-w-0">
               <p className="text-sm font-semibold">{t.title}</p>
               {t.detail && <p className="mt-0.5 break-words text-[13px] text-muted">{t.detail}</p>}
