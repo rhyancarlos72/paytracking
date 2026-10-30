@@ -134,7 +134,44 @@ if (!class_exists(__NAMESPACE__ . '\\Checkout', false)) {
          */
         public static function enviar(array $payload): bool
         {
-            return self::guard(function () use ($payload) {
+            return self::transmit($payload, []);
+        }
+
+        /**
+         * Testa URL, token e segredo SEM registrar venda nem enviar nada à Meta.
+         *
+         * @return array{ok: bool, http: int, mensagem: string, resposta: array}
+         */
+        public static function testarConexao(): array
+        {
+            $ok = self::transmit(['event' => 'connection_test', 'transaction_id' => 'teste-de-conexao'], ['X-Paytrack-Test: 1']);
+            $r = self::$last + ['http' => 0, 'resposta' => [], 'erro' => ''];
+            $resp = is_array($r['resposta']) ? $r['resposta'] : [];
+            if ($ok) {
+                $msg = 'Conexão OK: URL e token válidos';
+                $msg .= ($resp['signature'] ?? '') === 'valid' ? ', assinatura válida' : ' (sem segredo de assinatura configurado no PayTracking)';
+                $msg .= isset($resp['sendToMeta']) && $resp['sendToMeta'] === false ? ' · integração em modo sombra' : '';
+                $msg .= '. Nenhum evento foi enviado à Meta.';
+            } elseif ((int) $r['http'] === 401) {
+                $reason = (string) ($resp['reason'] ?? '');
+                $msg = $reason === 'signature_mismatch' || $reason === 'missing_signature'
+                    ? 'Segredo de assinatura diferente do configurado no PayTracking.'
+                    : 'Token inválido ou integração pausada no PayTracking.';
+            } elseif ((int) $r['http'] === 404) {
+                $msg = 'URL não encontrada: use https://SEU-DOMINIO/api/webhook.php.';
+            } elseif ((int) $r['http'] === 0) {
+                $msg = 'Sem conexão com o PayTracking: ' . ($r['erro'] !== '' ? $r['erro'] : 'verifique a URL.');
+            } else {
+                $msg = 'O PayTracking respondeu HTTP ' . $r['http'] . '.';
+            }
+            return ['ok' => $ok, 'http' => (int) $r['http'], 'mensagem' => $msg, 'resposta' => $resp];
+        }
+
+        /** @param array<int, string> $extraHeaders */
+        private static function transmit(array $payload, array $extraHeaders): bool
+        {
+            return self::guard(function () use ($payload, $extraHeaders) {
+                self::$last = ['ok' => false, 'http' => 0, 'resposta' => [], 'erro' => 'não enviado', 'correlation_id' => null];
                 $cfg = self::cfg();
                 $tx = (string) ($payload['transaction_id'] ?? '');
                 $ev = (string) ($payload['event'] ?? '');
@@ -158,6 +195,9 @@ if (!class_exists(__NAMESPACE__ . '\\Checkout', false)) {
                     'User-Agent: PayTracking-PHP/' . self::VERSION . ' (+checkout-proprio)',
                     'Expect:',
                 ];
+                foreach ($extraHeaders as $h) {
+                    $headers[] = $h;
+                }
                 if ($cfg['secret'] !== '') {
                     $ts = (string) time();
                     $headers[] = 'X-Paytrack-Timestamp: ' . $ts;

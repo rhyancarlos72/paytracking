@@ -47,6 +47,8 @@ export function webhookRoutes(app: FastifyInstance, ctx: Ctx) {
 
   // Compatibilidade com as URLs do sistema legado (troca de DNS sem reconfigurar gateways)
   app.post('/api/webhook.php', (req, reply) => handle(req, reply, 'checkout', bearer(req)));
+  // endereço sugerido pelo painel de checkouts (ex.: Sales Studio Pro) para o checkout próprio
+  app.post('/api/webhooks/checkout_proprio', (req, reply) => handle(req, reply, 'checkout', bearer(req)));
   app.post<{ Querystring: { gateway?: string; token?: string } }>('/api/webhook_gateway.php', (req, reply) =>
     handle(req, reply, String(req.query.gateway ?? '').toLowerCase(), String(req.query.token ?? '') || bearer(req)));
   app.get('/api/webhook_gateway.php', ping);

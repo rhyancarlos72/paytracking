@@ -68,6 +68,7 @@ beforeAll(async () => {
   integrationId = integ.integration.id;
   dir = mkdtempSync(join(tmpdir(), 'paytracking-php-'));
   copyFileSync(new URL('../../../packages/checkout-php/paytracking.php', import.meta.url), join(dir, 'paytracking.php'));
+  copyFileSync(new URL('../../../packages/checkout-php/paytrack_integracao.php', import.meta.url), join(dir, 'paytrack_integracao.php'));
   // arquivo ANTIGO em produção, apontando para outro sistema (porta fechada) — não pode interferir
   writeFileSync(join(dir, 'paytrack_dispatch.php'), DISPATCH_PHP_TEMPLATE
     .split('__PAYTRACK_URL__').join('http://127.0.0.1:9/api/webhook.php')
@@ -169,5 +170,74 @@ describe('modo sombra por integração', () => {
   it('a integração do teste PHP continua enviando (padrão)', async () => {
     const list = (await client.get('/v1/integrations')).data.integrations;
     expect(list.find((i: { id: string }) => i.id === integrationId).sendToMeta).toBe(true);
+  });
+});
+
+describe.skipIf(!php)('paytrack_integracao.php (painéis com a tabela paytrack_config)', () => {
+  const cfg = () => `['webhook_url' => '${base}/api/webhook.php', 'api_token' => '${token}', 'secret' => '${SECRET}', 'eventos' => 'todos', 'ativo' => 1, 'log_dir' => __DIR__ . '/logs-int']`;
+  const venda = (status: string, tx: string) => `['status' => '${status}', 'transaction_id' => '${tx}', 'value' => '197,00', 'product_id' => '9452302',
+    'name' => 'Bruno Alves', 'email' => 'bruno@exemplo.com', 'customer' => ['city' => 'Natal', 'state' => 'RN'],
+    'tracking' => ['purchase_event_id' => 'purchase_${tx}_pixel', 'utm_campaign' => 'direct', 'utm_source' => 'facebook'],
+    'ip' => '177.9.9.9', 'user_agent' => 'Mozilla/5.0 (comprador)']`;
+
+  it('teste de conexão confere token e segredo sem registrar nada', async () => {
+    const before = (await env.db.query(`SELECT count(*)::int n FROM payments`)).rows[0].n;
+    const r = await runPhp(`<?php
+require __DIR__ . '/paytrack_integracao.php';
+$_SERVER['REMOTE_ADDR'] = '200.1.1.1';
+$c = ${cfg()};
+echo json_encode(['ok' => paytrack_integracao_testar($c), 'errado' => paytrack_integracao_testar(['secret' => 'outro'] + $c)]);
+`);
+    expect(r.ok).toMatchObject({ success: true, http_code: 200 });
+    expect(r.ok.message).toContain('assinatura válida');
+    expect(r.errado).toMatchObject({ success: false, http_code: 401 });
+    expect((await env.db.query(`SELECT count(*)::int n FROM payments`)).rows[0].n).toBe(before);
+  });
+
+  it('PIX gerado → aprovado; status desconhecido e outro produto não são enviados; IP é do comprador', async () => {
+    const r = await runPhp(`<?php
+require __DIR__ . '/paytrack_integracao.php';
+$_SERVER['REMOTE_ADDR'] = '200.1.1.1'; // servidor do gateway
+$c = ${cfg()};
+echo json_encode([
+  'pix' => paytrack_integracao_enviar($c, ${venda('pix_gerado', 'INT-1')})['success'],
+  'aprovado' => paytrack_integracao_enviar($c, ${venda('venda_aprovada', 'INT-1')})['success'],
+  'desconhecido' => paytrack_integracao_enviar($c, ${venda('compra_quase_feita', 'INT-2')}),
+  'outro_produto' => paytrack_integracao_enviar(['produto_id' => 55] + $c, ${venda('venda_aprovada', 'INT-3')})['skipped'],
+  'so_pix' => paytrack_integracao_enviar(['eventos' => 'pix_gerado'] + $c, ${venda('venda_aprovada', 'INT-4')})['skipped'],
+]);
+`);
+    expect(r).toMatchObject({ pix: true, aprovado: true, outro_produto: true, so_pix: true });
+    expect(r.desconhecido).toMatchObject({ success: true, skipped: true });
+    const p = (await env.db.query(`SELECT status, utm_campaign, utm_source FROM payments WHERE transaction_id = 'INT-1'`)).rows[0];
+    expect(p).toMatchObject({ status: 'approved', utm_campaign: null, utm_source: 'facebook' }); // "direct" não é campanha
+    expect((await env.db.query(`SELECT count(*)::int n FROM payments WHERE transaction_id IN ('INT-2','INT-3','INT-4')`)).rows[0].n).toBe(0);
+    const o = (await env.db.query(`SELECT o.payload FROM capi_outbox o JOIN payments p ON p.id = o.payment_id WHERE p.transaction_id = 'INT-1'`)).rows[0].payload;
+    expect(o.event_id).toBe('purchase_INT-1_pixel');
+    expect(o.user_data.client_ip_address).toBe('177.9.9.9');
+    expect(o.user_data.client_user_agent).toBe('Mozilla/5.0 (comprador)');
+  });
+
+  it.skipIf(!sqlite)('enviar para todas as integrações ativas da tabela paytrack_config', async () => {
+    const r = await runPhp(`<?php
+require __DIR__ . '/paytrack_integracao.php';
+$pdo = new PDO('sqlite::memory:');
+$pdo->exec("CREATE TABLE paytrack_config (id INTEGER PRIMARY KEY, webhook_url TEXT, api_token TEXT, secret TEXT, produto_id INTEGER, eventos TEXT, ativo INTEGER)");
+$pdo->exec("INSERT INTO paytrack_config VALUES (1, '${base}/api/webhooks/checkout_proprio', '${token}', '${SECRET}', NULL, 'todos', 1), (2, '${base}/api/webhook.php', 'itk_pausada', '', NULL, 'todos', 0)");
+echo json_encode(paytrack_integracao_enviar_todas($pdo, ${venda('approved', 'INT-TODAS')}));
+`);
+    expect(Object.keys(r)).toEqual(['1']); // a inativa não é chamada
+    expect(r['1']).toMatchObject({ success: true, http_code: 200 });
+  });
+});
+
+describe('servidor: compatibilidade com painéis de checkout', () => {
+  it('aceita /api/webhooks/checkout_proprio e o cabeçalho de teste não registra venda', async () => {
+    const acc = await newAccount(env);
+    const integ = await newIntegration(acc.client, 'checkout');
+    const post = (url: string, headers: Record<string, string> = {}) => env.app.inject({ method: 'POST', url, payload: JSON.stringify({ event: 'paid', transaction_id: 'T-ALIAS', value: 10 }), headers: { 'content-type': 'application/json', authorization: `Bearer ${integ.token}`, ...headers } });
+    expect((await post('/api/webhooks/checkout_proprio', { 'x-paytrack-test': '1' })).json()).toMatchObject({ success: true, test: true, signature: 'not_configured' });
+    expect((await env.db.query(`SELECT count(*)::int n FROM payments WHERE org_id = $1`, [acc.orgId])).rows[0].n).toBe(0);
+    expect((await post('/api/webhooks/checkout_proprio')).json()).toMatchObject({ processed: true, status: 'approved' });
   });
 });

@@ -154,6 +154,16 @@ export async function ingestWebhook(ctx: Ctx, input: IngestInput): Promise<Inges
     return { httpStatus: 401, body: { success: false, error: 'Invalid signature', reason: sig.reason, correlationId } };
   }
   const sigInfo = { signatureOk: true, signatureMethod: sig.method };
+
+  // Teste de conexão do painel do checkout: valida URL, token e assinatura sem registrar venda
+  // nem enviar nada à Meta (o "testar" antigo mandava um Purchase falso).
+  if (input.headers['x-paytrack-test'] === '1') {
+    await receipt(ctx.db, { ...ib, ...sigInfo, outcome: 'ignored', reason: 'connection_test', ms: ms() });
+    return {
+      httpStatus: 200,
+      body: { success: true, test: true, signature: secret ? 'valid' : 'not_configured', sendToMeta: integration.send_to_meta, correlationId },
+    };
+  }
   const bodyEnc = ctx.box.encrypt(input.rawBody);
 
   const defaultPixel = await loadPixel(ctx.db, integration.org_id, integration.default_pixel_id);

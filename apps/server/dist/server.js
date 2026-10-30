@@ -81346,6 +81346,13 @@ async function ingestWebhook(ctx, input2) {
     return { httpStatus: 401, body: { success: false, error: "Invalid signature", reason: sig.reason, correlationId } };
   }
   const sigInfo = { signatureOk: true, signatureMethod: sig.method };
+  if (input2.headers["x-paytrack-test"] === "1") {
+    await receipt(ctx.db, { ...ib, ...sigInfo, outcome: "ignored", reason: "connection_test", ms: ms() });
+    return {
+      httpStatus: 200,
+      body: { success: true, test: true, signature: secret ? "valid" : "not_configured", sendToMeta: integration.send_to_meta, correlationId }
+    };
+  }
   const bodyEnc = ctx.box.encrypt(input2.rawBody);
   const defaultPixel = await loadPixel2(ctx.db, integration.org_id, integration.default_pixel_id);
   const orgCur = await ctx.db.query("SELECT reporting_currency FROM organizations WHERE id = $1", [integration.org_id]);
@@ -81565,6 +81572,7 @@ function webhookRoutes(app, ctx) {
   app.get("/v1/webhooks/:provider/:token", ping);
   app.post("/v1/webhooks/checkout", (req, reply) => handle(req, reply, "checkout", bearer(req)));
   app.post("/api/webhook.php", (req, reply) => handle(req, reply, "checkout", bearer(req)));
+  app.post("/api/webhooks/checkout_proprio", (req, reply) => handle(req, reply, "checkout", bearer(req)));
   app.post("/api/webhook_gateway.php", (req, reply) => handle(req, reply, String(req.query.gateway ?? "").toLowerCase(), String(req.query.token ?? "") || bearer(req)));
   app.get("/api/webhook_gateway.php", ping);
 }
