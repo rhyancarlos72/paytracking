@@ -78781,6 +78781,12 @@ var schema = external_exports.object({
   MAIL_FROM: external_exports.string().default("PayTracking <no-reply@paytracking.com.br>"),
   /** contato publicado em /.well-known/security.txt (mailto: ou https:); padrão: o e-mail do MAIL_FROM */
   SECURITY_CONTACT: external_exports.string().default(""),
+  /** Páginas legais (/privacidade e /termos): quem opera o serviço e o contato de privacidade (encarregado/DPO) */
+  LEGAL_NAME: external_exports.string().default(""),
+  LEGAL_DOCUMENT: external_exports.string().default(""),
+  PRIVACY_CONTACT: external_exports.string().default(""),
+  /** Código da meta tag de verificação do Google Search Console (só o valor de content="...") */
+  GOOGLE_SITE_VERIFICATION: external_exports.string().default(""),
   WEBHOOK_BODY_RETENTION_DAYS: external_exports.coerce.number().int().min(1).default(30),
   TRACKING_RETENTION_DAYS: external_exports.coerce.number().int().min(7).default(180),
   /**
@@ -96672,6 +96678,282 @@ function saleSoundRoutes(app, ctx) {
   });
 }
 
+// src/legal/pages.ts
+var UPDATED = "30 de outubro de 2026";
+var esc3 = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+function legalInfo(ctx) {
+  const c = ctx.config;
+  const fromMailFrom = (/<([^>]+)>/.exec(c.MAIL_FROM)?.[1] ?? c.MAIL_FROM).trim();
+  const contact = (c.PRIVACY_CONTACT || c.SECURITY_CONTACT.replace(/^mailto:/i, "") || fromMailFrom).trim();
+  const operator = c.LEGAL_NAME ? `${c.LEGAL_NAME}${c.LEGAL_DOCUMENT ? `, inscrita no CNPJ/CPF sob o n\xBA ${c.LEGAL_DOCUMENT}` : ""}` : "o respons\xE1vel pelo PayTracking";
+  return {
+    operator,
+    contactEmail: contact,
+    appUrl: c.APP_URL.replace(/\/$/, ""),
+    priceMinor: c.PLAN_PRICE_MINOR,
+    trialDays: c.PLAN_TRIAL_DAYS,
+    trackingDays: c.TRACKING_RETENTION_DAYS,
+    webhookDays: c.WEBHOOK_BODY_RETENTION_DAYS
+  };
+}
+var LOGO = `<svg viewBox="0 0 100 100" width="34" height="34" aria-hidden="true"><defs><linearGradient id="f" x1=".1" y1="0" x2=".8" y2="1"><stop offset="0" stop-color="#7c5cff"/><stop offset=".45" stop-color="#a588ff"/><stop offset=".75" stop-color="#ab8cff"/><stop offset="1" stop-color="#7c3aed"/></linearGradient><linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c4a5ff"/><stop offset="1" stop-color="#6d28d9"/></linearGradient><linearGradient id="a" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#7c3aed"/><stop offset="1" stop-color="#d86bff"/></linearGradient></defs><path d="M24 27V13h36a27.5 27.5 0 0 1 0 55h-8V55h8a14.5 14.5 0 0 0 0-29H38v1Z" fill="url(#f)"/><path d="M24 27h13v57a6 6 0 0 1-6 6h-1a6 6 0 0 1-6-6Z" fill="url(#s)"/><rect x="40.5" y="43" width="8" height="14" rx="2.5" fill="#a06bff"/><rect x="51" y="36" width="8" height="16" rx="2.5" fill="#a06bff"/><rect x="61.5" y="30" width="8" height="15" rx="2.5" fill="#a06bff"/><path d="M26 88C36 66 52 63 71 44.5" fill="none" stroke="url(#a)" stroke-width="7.5" stroke-linecap="round"/><path d="M84 30l-3.5 21.5-17-14Z" fill="#d86bff"/></svg>`;
+function layout(title, lead, body, l, canonical) {
+  return `<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${esc3(title)} \xB7 PayTracking</title>
+<meta name="description" content="${esc3(lead)}">
+<link rel="canonical" href="${esc3(l.appUrl + canonical)}">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root { color-scheme: light dark; --bg:#f7f7fb; --card:#fff; --fg:#0b0d1a; --muted:#545a70; --line:#e5e4ee; --primary:#6d4aff; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#08070f; --card:#111022; --fg:#ecebf5; --muted:#a3a6bd; --line:#26243d; --primary:#a78bfa; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.7 Inter,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; -webkit-font-smoothing:antialiased; }
+  header { border-bottom:1px solid var(--line); background:var(--card); }
+  .wrap { max-width:820px; margin:0 auto; padding:0 20px; }
+  .top { display:flex; align-items:center; justify-content:space-between; gap:12px; height:64px; }
+  .brand { display:flex; align-items:center; gap:10px; color:var(--fg); text-decoration:none; font-weight:800; font-size:19px; letter-spacing:-.02em; }
+  .brand b { background:linear-gradient(180deg,#d27bff,#7c3aed); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  nav a { color:var(--muted); text-decoration:none; font-size:14px; margin-left:16px; }
+  nav a:hover, nav a[aria-current] { color:var(--primary); }
+  main.wrap { padding-top:44px; padding-bottom:64px; }
+  h1 { font-size:34px; line-height:1.15; letter-spacing:-.025em; margin:0 0 8px; }
+  .meta { color:var(--muted); font-size:14px; margin:0 0 28px; }
+  .lead { font-size:17px; color:var(--muted); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:28px; margin-top:24px; }
+  h2 { font-size:21px; letter-spacing:-.015em; margin:36px 0 10px; }
+  h2:first-child { margin-top:0; }
+  h3 { font-size:16px; margin:22px 0 6px; }
+  p, li { color:var(--fg); }
+  ul { padding-left:22px; }
+  li { margin:6px 0; }
+  a { color:var(--primary); }
+  .note { border-left:4px solid var(--primary); background:color-mix(in srgb, var(--primary) 8%, transparent); padding:14px 16px; border-radius:10px; }
+  table { width:100%; border-collapse:collapse; font-size:14px; margin:12px 0; }
+  th, td { text-align:left; padding:10px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; }
+  .toc { columns:2; column-gap:28px; font-size:14px; padding-left:18px; }
+  footer { border-top:1px solid var(--line); color:var(--muted); font-size:13px; padding:24px 0 40px; }
+  @media (max-width:600px) { main.wrap { padding-top:28px; } h1 { font-size:28px; } .card { padding:20px; } .toc { columns:1; } nav a { margin-left:12px; } table { font-size:13px; } }
+  @media (max-width:420px) { nav a.login { display:none; } .brand { font-size:17px; } }
+</style>
+</head>
+<body>
+<header><div class="wrap top">
+  <a class="brand" href="/conheca">${LOGO}<span>Pay<b>Tracking</b></span></a>
+  <nav aria-label="P\xE1ginas legais"><a href="/privacidade"${canonical === "/privacidade" ? ' aria-current="page"' : ""}>Privacidade</a><a href="/termos"${canonical === "/termos" ? ' aria-current="page"' : ""}>Termos</a><a class="login" href="/entrar">Entrar</a></nav>
+</div></header>
+<main class="wrap">
+  <h1>${esc3(title)}</h1>
+  <p class="meta">\xDAltima atualiza\xE7\xE3o: ${UPDATED}</p>
+  <p class="lead">${lead}</p>
+  <article class="card">${body}</article>
+</main>
+<footer><div class="wrap">PayTracking \u2014 rastreamento de vendas e convers\xF5es para Meta Ads \xB7 <a href="/privacidade">Pol\xEDtica de Privacidade</a> \xB7 <a href="/termos">Termos de Uso</a> \xB7 Contato: <a href="mailto:${esc3(l.contactEmail)}">${esc3(l.contactEmail)}</a></div></footer>
+</body>
+</html>`;
+}
+function privacy(l) {
+  const mail = `<a href="mailto:${esc3(l.contactEmail)}">${esc3(l.contactEmail)}</a>`;
+  return `
+<ol class="toc">
+  <li><a href="#quem">Quem somos</a></li><li><a href="#papeis">A quem esta pol\xEDtica se aplica</a></li>
+  <li><a href="#dados">Dados que coletamos</a></li><li><a href="#google">Dados do Google (login com Google)</a></li>
+  <li><a href="#uso">Para que usamos e bases legais</a></li><li><a href="#compartilhamento">Com quem compartilhamos</a></li>
+  <li><a href="#internacional">Transfer\xEAncia internacional</a></li><li><a href="#retencao">Por quanto tempo guardamos</a></li>
+  <li><a href="#cookies">Cookies e armazenamento local</a></li><li><a href="#seguranca">Seguran\xE7a</a></li>
+  <li><a href="#direitos">Seus direitos</a></li><li><a href="#criancas">Menores de idade</a></li>
+  <li><a href="#mudancas">Mudan\xE7as nesta pol\xEDtica</a></li><li><a href="#contato">Contato</a></li>
+</ol>
+
+<h2 id="quem">1. Quem somos</h2>
+<p>O PayTracking (${esc3(l.appUrl)}) \xE9 um servi\xE7o on-line que liga as vendas aprovadas nos meios de pagamento dos nossos clientes \xE0s campanhas de an\xFAncios que as originaram e envia essas convers\xF5es \xE0 Meta (Facebook e Instagram) pela API de Convers\xF5es. O servi\xE7o \xE9 operado por ${esc3(l.operator)}, que \xE9 o controlador dos dados tratados conforme esta pol\xEDtica, nos termos da Lei Geral de Prote\xE7\xE3o de Dados (Lei n\xBA 13.709/2018 \u2014 LGPD).</p>
+<p>Contato para assuntos de privacidade e com o encarregado pelo tratamento de dados (DPO): ${mail}.</p>
+
+<h2 id="papeis">2. A quem esta pol\xEDtica se aplica</h2>
+<ul>
+  <li><b>Clientes e usu\xE1rios do painel</b> (quem cria conta no PayTracking): para os dados da conta, o PayTracking \xE9 o <b>controlador</b>.</li>
+  <li><b>Compradores e visitantes das p\xE1ginas dos nossos clientes</b>: quando um cliente instala o pixel do PayTracking no site dele ou conecta o meio de pagamento, tratamos esses dados <b>em nome do cliente e conforme as instru\xE7\xF5es dele</b>. Nesse caso o cliente \xE9 o controlador e o PayTracking \xE9 o <b>operador</b>. O cliente \xE9 respons\xE1vel por informar seus visitantes, ter base legal para o tratamento e manter a pr\xF3pria pol\xEDtica de privacidade.</li>
+</ul>
+
+<h2 id="dados">3. Dados que coletamos</h2>
+<h3>3.1 Conta e uso do painel</h3>
+<ul>
+  <li>Nome, e-mail, nome da empresa, moeda e fuso hor\xE1rio, metas de faturamento.</li>
+  <li>Senha: guardamos apenas um resumo criptogr\xE1fico (bcrypt); nunca a senha em si.</li>
+  <li>Verifica\xE7\xE3o em duas etapas: segredo do aplicativo autenticador (cifrado) e c\xF3digos de recupera\xE7\xE3o (apenas o resumo criptogr\xE1fico).</li>
+  <li>Equipe: convites, e-mails convidados e o papel de cada membro.</li>
+  <li>Sess\xF5es e seguran\xE7a: endere\xE7o IP, navegador/dispositivo, data e hora de acesso, e um registro das a\xE7\xF5es importantes (auditoria).</li>
+  <li>Notifica\xE7\xF5es: a inscri\xE7\xE3o de notifica\xE7\xF5es do navegador (endere\xE7o t\xE9cnico do servi\xE7o de push e chaves p\xFAblicas do aparelho) e o nome do aparelho; se voc\xEA enviar, o arquivo de \xE1udio escolhido como som de venda.</li>
+</ul>
+<h3>3.2 Integra\xE7\xF5es configuradas por voc\xEA</h3>
+<ul>
+  <li>Identificadores dos seus pixels, produtos e integra\xE7\xF5es; tokens e segredos de webhook (cifrados).</li>
+  <li>Meta Ads: ao conectar sua conta de an\xFAncios, recebemos um token de acesso (guardado cifrado) com as permiss\xF5es <code>ads_read</code> e <code>ads_management</code>, o identificador e a moeda da conta de an\xFAncios e m\xE9tricas de desempenho (investimento, impress\xF5es, cliques, a\xE7\xF5es e valores). Usamos esses dados s\xF3 para mostrar seus resultados e o ROAS no seu painel.</li>
+  <li>Assinatura: valor, status e datas das cobran\xE7as PIX geradas pela Woovi. N\xE3o recebemos dados banc\xE1rios nem de cart\xE3o.</li>
+</ul>
+<h3>3.3 Compradores e visitantes (tratados em nome dos clientes)</h3>
+<ul>
+  <li>Eventos de navega\xE7\xE3o nas p\xE1ginas do cliente: tipo de evento, endere\xE7o da p\xE1gina, p\xE1gina de origem, par\xE2metros de campanha (UTMs), identificadores de clique de an\xFAncios (fbclid, cookie <code>_fbc</code>), cookie <code>_fbp</code> e um identificador an\xF4nimo gerado no navegador.</li>
+  <li>Endere\xE7o IP, navegador e pa\xEDs do visitante.</li>
+  <li>Quando o cliente permite, dados digitados no formul\xE1rio da p\xE1gina (e-mail, telefone, nome e CPF) s\xE3o usados para a correspond\xEAncia avan\xE7ada da Meta: <b>enviamos \xE0 Meta apenas o resumo criptogr\xE1fico (SHA-256)</b> e guardamos s\xF3 o resumo do e-mail e do telefone.</li>
+  <li>Dados das transa\xE7\xF5es enviados pelo meio de pagamento (Hotmart, Kiwify, Kirvano, Cakto ou o checkout pr\xF3prio do cliente): identificador, status, valor, moeda, produtos e campanha. O e-mail do comprador \xE9 guardado apenas como resumo criptogr\xE1fico. O conte\xFAdo original de cada notifica\xE7\xE3o recebida \xE9 guardado cifrado por at\xE9 ${l.webhookDays} dias, somente para permitir o reprocessamento em caso de falha.</li>
+</ul>
+
+<h2 id="google">4. Dados do Google (login com Google)</h2>
+<p>Se voc\xEA escolher \u201CEntrar com Google\u201D, solicitamos ao Google apenas os escopos <code>openid</code>, <code>email</code> e <code>profile</code> e recebemos: o identificador da sua conta Google, seu endere\xE7o de e-mail, a confirma\xE7\xE3o de que o e-mail \xE9 verificado e o seu nome. <b>N\xE3o temos acesso</b> ao seu Gmail, Google Drive, contatos, agenda ou a qualquer outro dado da sua conta Google.</p>
+<ul>
+  <li><b>Uso:</b> esses dados servem exclusivamente para criar sua conta no PayTracking, identificar voc\xEA no login e vincular o login com Google a uma conta existente com o mesmo e-mail verificado.</li>
+  <li><b>Compartilhamento:</b> n\xE3o vendemos, n\xE3o alugamos e n\xE3o compartilhamos dados recebidos do Google com terceiros, exceto quando necess\xE1rio para operar o pr\xF3prio servi\xE7o (hospedagem e banco de dados), por obriga\xE7\xE3o legal ou com o seu consentimento.</li>
+  <li><b>Publicidade e IA:</b> n\xE3o usamos dados do Google para publicidade, para criar perfis de marketing nem para treinar modelos de intelig\xEAncia artificial.</li>
+  <li><b>Acesso humano:</b> ningu\xE9m l\xEA esses dados, salvo para seguran\xE7a da conta, investiga\xE7\xE3o de abuso, cumprimento da lei ou com o seu pedido expresso.</li>
+  <li><b>Exclus\xE3o:</b> voc\xEA pode desvincular removendo o acesso em <a href="https://myaccount.google.com/permissions" rel="noopener">myaccount.google.com/permissions</a> e pedir a exclus\xE3o da conta pelo e-mail ${mail}.</li>
+</ul>
+<p class="note">O uso e a transfer\xEAncia, para qualquer outro aplicativo, das informa\xE7\xF5es recebidas das APIs do Google seguir\xE3o a <a href="https://developers.google.com/terms/api-services-user-data-policy" rel="noopener">Pol\xEDtica de Dados do Usu\xE1rio dos Servi\xE7os de API do Google</a>, incluindo os requisitos de Uso Limitado.</p>
+
+<h2 id="uso">5. Para que usamos os dados e bases legais (LGPD)</h2>
+<table>
+  <thead><tr><th>Finalidade</th><th>Base legal</th></tr></thead>
+  <tbody>
+    <tr><td>Criar e manter sua conta, autenticar o acesso (inclusive pelo Google) e prestar o servi\xE7o contratado</td><td>Execu\xE7\xE3o de contrato (art. 7\xBA, V)</td></tr>
+    <tr><td>Registrar vendas, atribu\xED-las \xE0s campanhas e enviar as convers\xF5es \xE0 Meta conforme configurado pelo cliente</td><td>Execu\xE7\xE3o de contrato com o cliente; como operador, segundo as instru\xE7\xF5es do cliente (controlador)</td></tr>
+    <tr><td>Seguran\xE7a: verifica\xE7\xE3o em duas etapas, alertas de acesso, limite de tentativas, preven\xE7\xE3o a fraude e abuso</td><td>Leg\xEDtimo interesse (art. 7\xBA, IX)</td></tr>
+    <tr><td>Cobran\xE7a da assinatura</td><td>Execu\xE7\xE3o de contrato</td></tr>
+    <tr><td>E-mails transacionais (confirma\xE7\xE3o de e-mail, redefini\xE7\xE3o de senha, convites e alertas de seguran\xE7a)</td><td>Execu\xE7\xE3o de contrato e leg\xEDtimo interesse</td></tr>
+    <tr><td>Guarda de registros de acesso pelo prazo legal</td><td>Cumprimento de obriga\xE7\xE3o legal (Marco Civil da Internet, art. 15)</td></tr>
+  </tbody>
+</table>
+<p>N\xE3o enviamos e-mails de marketing sem o seu consentimento e n\xE3o vendemos dados pessoais.</p>
+
+<h2 id="compartilhamento">6. Com quem compartilhamos</h2>
+<p>Compartilhamos dados apenas com prestadores necess\xE1rios para operar o servi\xE7o, que atuam sob nossas instru\xE7\xF5es:</p>
+<ul>
+  <li><b>Hospedagem da aplica\xE7\xE3o</b> e <b>Neon</b> (banco de dados PostgreSQL gerenciado), onde os dados ficam armazenados.</li>
+  <li><b>Meta Platforms</b>: recebe as convers\xF5es pela API de Convers\xF5es (com dados pessoais j\xE1 em resumo criptogr\xE1fico) e fornece as m\xE9tricas de an\xFAncios, por instru\xE7\xE3o do cliente.</li>
+  <li><b>Google</b>: autentica\xE7\xE3o, quando voc\xEA usa o login com Google; e o servi\xE7o de notifica\xE7\xF5es do Chrome/Android.</li>
+  <li><b>Apple e Mozilla</b>: servi\xE7os de notifica\xE7\xE3o dos navegadores, quando voc\xEA ativa notifica\xE7\xF5es nesses aparelhos.</li>
+  <li><b>Woovi</b>: gera\xE7\xE3o e confirma\xE7\xE3o das cobran\xE7as PIX da assinatura.</li>
+  <li><b>Provedor de e-mail</b> (servidor SMTP da hospedagem ou Resend): envio dos e-mails transacionais.</li>
+  <li><b>Autoridades p\xFAblicas</b>, quando houver obriga\xE7\xE3o legal ou ordem judicial.</li>
+</ul>
+
+<h2 id="internacional">7. Transfer\xEAncia internacional</h2>
+<p>Alguns desses prestadores (como Meta, Google e o provedor de banco de dados) podem armazenar ou processar dados fora do Brasil. Nesses casos, a transfer\xEAncia ocorre para execu\xE7\xE3o do contrato e com prestadores que adotam garantias de prote\xE7\xE3o compat\xEDveis com a LGPD (art. 33).</p>
+
+<h2 id="retencao">8. Por quanto tempo guardamos</h2>
+<ul>
+  <li>Eventos de navega\xE7\xE3o: at\xE9 ${l.trackingDays} dias.</li>
+  <li>Identidades de visitantes (cookies, IP, navegador, resumos de e-mail/telefone): apagadas ap\xF3s 120 dias sem atividade.</li>
+  <li>Conte\xFAdo original das notifica\xE7\xF5es dos meios de pagamento: at\xE9 ${l.webhookDays} dias (depois, s\xF3 os dados da venda permanecem).</li>
+  <li>Sess\xF5es de acesso: apagadas at\xE9 7 dias depois de expirar ou de serem encerradas.</li>
+  <li>Dados da conta, vendas e configura\xE7\xF5es: enquanto a conta existir. Ao receber o pedido de exclus\xE3o, apagamos os dados da organiza\xE7\xE3o em at\xE9 30 dias, exceto o que a lei nos obrigue a guardar (como registros de acesso por 6 meses).</li>
+</ul>
+
+<h2 id="cookies">9. Cookies e armazenamento local</h2>
+<h3>No painel do PayTracking</h3>
+<ul>
+  <li><code>pt_session</code> \u2014 essencial: mant\xE9m voc\xEA conectado (protegido contra leitura por scripts).</li>
+  <li><code>pt_google</code> \u2014 essencial e tempor\xE1rio (10 minutos): protege o login com Google contra falsifica\xE7\xE3o.</li>
+  <li>Armazenamento local do navegador: prefer\xEAncias como tema, som de venda e notifica\xE7\xF5es.</li>
+</ul>
+<p>O painel n\xE3o usa cookies de publicidade nem de rastreamento de terceiros.</p>
+<h3>No pixel instalado nas p\xE1ginas dos clientes</h3>
+<ul>
+  <li><code>_fbp</code> e <code>_fbc</code> \u2014 cookies da Meta usados para atribuir as convers\xF5es aos an\xFAncios.</li>
+  <li><code>pt_ua</code>, e no armazenamento do navegador <code>pt_xid</code> (identificador an\xF4nimo) e <code>pt_utms</code> (par\xE2metros da campanha).</li>
+  <li><code>pt_pii</code> no armazenamento da sess\xE3o \u2014 dados do formul\xE1rio, apagados quando a aba \xE9 fechada.</li>
+</ul>
+<p>Cabe ao cliente informar esses cookies aos visitantes do site dele e obter o consentimento quando exigido.</p>
+
+<h2 id="seguranca">10. Seguran\xE7a</h2>
+<ul>
+  <li>Conex\xF5es protegidas por HTTPS (TLS).</li>
+  <li>Tokens, segredos e chaves guardados cifrados com AES-256-GCM; senhas com bcrypt.</li>
+  <li>Verifica\xE7\xE3o em duas etapas opcional, alertas por e-mail em mudan\xE7as sens\xEDveis, limite de tentativas de acesso e permiss\xF5es por papel na equipe.</li>
+  <li>Dados pessoais de compradores enviados \xE0 Meta apenas em resumo criptogr\xE1fico (SHA-256).</li>
+</ul>
+<p>Nenhum sistema \xE9 totalmente imune a incidentes. Se ocorrer um incidente que possa trazer risco relevante, comunicaremos os afetados e a ANPD conforme a LGPD.</p>
+
+<h2 id="direitos">11. Seus direitos</h2>
+<p>Pela LGPD (art. 18) voc\xEA pode pedir: confirma\xE7\xE3o de que tratamos seus dados; acesso; corre\xE7\xE3o; anonimiza\xE7\xE3o, bloqueio ou elimina\xE7\xE3o de dados desnecess\xE1rios; portabilidade; elimina\xE7\xE3o dos dados tratados com consentimento; informa\xE7\xE3o sobre compartilhamentos; e revoga\xE7\xE3o do consentimento. Tamb\xE9m pode se opor a tratamentos feitos com base em leg\xEDtimo interesse.</p>
+<p>Para exercer esses direitos, escreva para ${mail}. Respondemos em at\xE9 15 dias. Se voc\xEA \xE9 comprador ou visitante do site de um de nossos clientes, fa\xE7a o pedido tamb\xE9m ao vendedor (o controlador); n\xF3s o apoiaremos no atendimento. Voc\xEA tamb\xE9m pode reclamar \xE0 Autoridade Nacional de Prote\xE7\xE3o de Dados (ANPD).</p>
+
+<h2 id="criancas">12. Menores de idade</h2>
+<p>O PayTracking \xE9 uma ferramenta profissional destinada a maiores de 18 anos e n\xE3o \xE9 direcionado a crian\xE7as ou adolescentes.</p>
+
+<h2 id="mudancas">13. Mudan\xE7as nesta pol\xEDtica</h2>
+<p>Podemos atualizar esta pol\xEDtica para refletir mudan\xE7as no servi\xE7o ou na lei. A data de atualiza\xE7\xE3o fica no topo da p\xE1gina. Mudan\xE7as relevantes ser\xE3o avisadas por e-mail ou no painel.</p>
+
+<h2 id="contato">14. Contato</h2>
+<p>Encarregado pelo tratamento de dados (DPO) e assuntos de privacidade: ${mail}.</p>`;
+}
+function terms(l) {
+  const mail = `<a href="mailto:${esc3(l.contactEmail)}">${esc3(l.contactEmail)}</a>`;
+  const price = (l.priceMinor / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  return `
+<h2>1. O servi\xE7o</h2>
+<p>O PayTracking \xE9 uma ferramenta on-line, operada por ${esc3(l.operator)}, que recebe as vendas dos meios de pagamento do cliente, as associa \xE0s campanhas de an\xFAncios e envia as convers\xF5es \xE0 Meta, al\xE9m de exibir relat\xF3rios no painel. Ao criar uma conta, voc\xEA concorda com estes Termos e com a <a href="/privacidade">Pol\xEDtica de Privacidade</a>.</p>
+
+<h2>2. Conta</h2>
+<ul>
+  <li>Voc\xEA deve ter 18 anos ou mais e fornecer informa\xE7\xF5es verdadeiras.</li>
+  <li>Voc\xEA \xE9 respons\xE1vel pelo sigilo da sua senha e pelas a\xE7\xF5es feitas na sua conta e pelos membros que convidar. Recomendamos ativar a verifica\xE7\xE3o em duas etapas.</li>
+</ul>
+
+<h2>3. Teste gr\xE1tis, pre\xE7o e pagamento</h2>
+<ul>
+  <li>Novas contas t\xEAm ${l.trialDays} dias de teste gr\xE1tis, sem cadastro de cart\xE3o.</li>
+  <li>Depois do teste, o acesso ao painel custa ${price} por m\xEAs, pago por PIX dentro do painel. N\xE3o h\xE1 cobran\xE7a autom\xE1tica nem fidelidade: se o pagamento n\xE3o for feito, o acesso ao painel \xE9 pausado (o recebimento de vendas e o envio de convers\xF5es continuam funcionando enquanto isso).</li>
+  <li>N\xE3o cobramos taxa ou porcentagem sobre as vendas, e n\xE3o h\xE1 limite de vendas.</li>
+  <li>Altera\xE7\xF5es de pre\xE7o ser\xE3o avisadas com anteced\xEAncia e valem a partir do per\xEDodo seguinte.</li>
+</ul>
+
+<h2>4. Responsabilidades do cliente</h2>
+<ul>
+  <li>Usar o servi\xE7o de acordo com a lei, incluindo a LGPD e as pol\xEDticas da Meta e dos meios de pagamento.</li>
+  <li>Informar aos visitantes e compradores do seu site, na sua pol\xEDtica de privacidade, o uso do pixel, dos cookies e o envio de convers\xF5es \xE0 Meta, e obter consentimento quando exigido. Para esses dados voc\xEA \xE9 o controlador e o PayTracking atua como operador.</li>
+  <li>Manter seguros os tokens e segredos das integra\xE7\xF5es.</li>
+</ul>
+
+<h2>5. Uso proibido</h2>
+<p>\xC9 proibido usar o PayTracking para atividades ilegais, para enviar dados sem base legal, tentar acessar dados de outras contas, sobrecarregar ou atacar o servi\xE7o, ou fazer engenharia reversa para burlar limites e prote\xE7\xF5es.</p>
+
+<h2>6. Servi\xE7os de terceiros</h2>
+<p>O funcionamento depende de servi\xE7os de terceiros (Meta, meios de pagamento, Google, hospedagem). N\xE3o controlamos esses servi\xE7os nem suas mudan\xE7as. O PayTracking melhora a qualidade dos dados enviados, mas <b>n\xE3o garante resultados de an\xFAncios</b>, vendas ou desempenho de campanhas.</p>
+
+<h2>7. Disponibilidade</h2>
+<p>Trabalhamos para manter o servi\xE7o dispon\xEDvel e seguro, mas podem ocorrer interrup\xE7\xF5es para manuten\xE7\xE3o ou por falhas fora do nosso controle. Eventos recebidos s\xE3o enfileirados e reenviados automaticamente sempre que poss\xEDvel.</p>
+
+<h2>8. Limita\xE7\xE3o de responsabilidade</h2>
+<p>Na m\xE1xima extens\xE3o permitida pela lei, o PayTracking n\xE3o responde por lucros cessantes ou danos indiretos. A responsabilidade total fica limitada ao valor pago pelo cliente nos 12 meses anteriores ao fato. Nada nestes Termos limita direitos garantidos pelo C\xF3digo de Defesa do Consumidor quando aplic\xE1vel.</p>
+
+<h2>9. Cancelamento e exclus\xE3o</h2>
+<p>Voc\xEA pode parar de usar o servi\xE7o a qualquer momento, sem multa. Para excluir a conta e os dados, escreva para ${mail}. Podemos suspender contas que violem estes Termos, avisando sempre que poss\xEDvel.</p>
+
+<h2>10. Lei aplic\xE1vel</h2>
+<p>Estes Termos seguem as leis brasileiras. Fica eleito o foro do domic\xEDlio do cliente para resolver eventuais conflitos.</p>
+
+<h2>11. Contato</h2>
+<p>D\xFAvidas sobre estes Termos: ${mail}.</p>`;
+}
+function legalRoutes(app, ctx) {
+  const send = (html) => (_req, reply) => reply.type("text/html; charset=utf-8").header("Cache-Control", "public, max-age=3600").header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'").send(html);
+  const l = legalInfo(ctx);
+  const privacyHtml = layout(
+    "Pol\xEDtica de Privacidade",
+    "Como o PayTracking coleta, usa, compartilha e protege dados pessoais \u2014 incluindo os dados recebidos pelo login com Google \u2014 e como voc\xEA exerce seus direitos pela LGPD.",
+    privacy(l),
+    l,
+    "/privacidade"
+  );
+  const termsHtml = layout("Termos de Uso", "As regras de uso do PayTracking: teste gr\xE1tis, pre\xE7o mensal fixo sem taxa por venda, responsabilidades e cancelamento.", terms(l), l, "/termos");
+  for (const p of ["/privacidade", "/politica-de-privacidade", "/privacy"]) app.get(p, send(privacyHtml));
+  for (const p of ["/termos", "/termos-de-uso", "/terms"]) app.get(p, send(termsHtml));
+}
+
 // src/lib/flood.ts
 var FloodGuard = class {
   constructor(windowMs = 6e4, maxKeys = 5e4) {
@@ -96827,6 +97109,7 @@ Canonical: ${ctx.config.APP_URL.replace(/\/$/, "")}/.well-known/security.txt
   adminRoutes(app, ctx);
   pushRoutes(app, ctx);
   saleSoundRoutes(app, ctx);
+  legalRoutes(app, ctx);
   const here2 = path4.dirname(fileURLToPath2(import.meta.url));
   const firstDir = (...dirs) => dirs.find((d) => existsSync2(d)) ?? dirs[dirs.length - 1];
   const pixelDir = ctx.config.PIXEL_DIST_DIR || firstDir(path4.join(here2, "pixel"), path4.resolve(here2, "../../../packages/pixel/dist"));
@@ -96882,7 +97165,9 @@ Canonical: ${ctx.config.APP_URL.replace(/\/$/, "")}/.well-known/security.txt
         else if (/[\\/]assets[\\/]/.test(filePath)) res.header("Cache-Control", "public, max-age=31536000, immutable");
       }
     });
-    const indexHtml = readFileSync(path4.join(webDir, "index.html"), "utf8");
+    const gsv = ctx.config.GOOGLE_SITE_VERIFICATION.replace(/[^\w-]/g, "");
+    const indexHtml = readFileSync(path4.join(webDir, "index.html"), "utf8").replace("</head>", gsv ? `  <meta name="google-site-verification" content="${gsv}" />
+  </head>` : "</head>");
     app.setNotFoundHandler((req, reply) => {
       const isAsset = /^\/assets\//.test(req.url) || /\.(?:js|mjs|css|map|woff2?|png|svg|ico|webmanifest)(?:\?|$)/.test(req.url);
       if (req.method === "GET" && !isAsset && !req.url.startsWith("/v1/") && !req.url.startsWith("/api/")) {

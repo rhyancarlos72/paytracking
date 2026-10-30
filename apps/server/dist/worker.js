@@ -24594,6 +24594,12 @@ var schema = external_exports.object({
   MAIL_FROM: external_exports.string().default("PayTracking <no-reply@paytracking.com.br>"),
   /** contato publicado em /.well-known/security.txt (mailto: ou https:); padrão: o e-mail do MAIL_FROM */
   SECURITY_CONTACT: external_exports.string().default(""),
+  /** Páginas legais (/privacidade e /termos): quem opera o serviço e o contato de privacidade (encarregado/DPO) */
+  LEGAL_NAME: external_exports.string().default(""),
+  LEGAL_DOCUMENT: external_exports.string().default(""),
+  PRIVACY_CONTACT: external_exports.string().default(""),
+  /** Código da meta tag de verificação do Google Search Console (só o valor de content="...") */
+  GOOGLE_SITE_VERIFICATION: external_exports.string().default(""),
   WEBHOOK_BODY_RETENTION_DAYS: external_exports.coerce.number().int().min(1).default(30),
   TRACKING_RETENTION_DAYS: external_exports.coerce.number().int().min(7).default(180),
   /**

@@ -333,7 +333,7 @@ export function SignupPage() {
         </div>
         <Field label="Confirmar senha" htmlFor="pw2" error={err.confirm?.message}><PasswordInput id="pw2" autoComplete="new-password" {...f.register('confirm')} /></Field>
         <Button type="submit" variant="primary" size="lg" className="w-full" loading={f.formState.isSubmitting}>Criar minha conta</Button>
-        <p className="text-center text-xs text-subtle"><Lock className="mr-1 inline h-3 w-3" aria-hidden />Seus dados ficam criptografados. Nunca compartilhamos seu e-mail.</p>
+        <p className="text-center text-xs text-subtle"><Lock className="mr-1 inline h-3 w-3" aria-hidden />Ao criar a conta você concorda com os <a href="/termos" className="underline hover:text-fg">Termos de Uso</a> e a <a href="/privacidade" className="underline hover:text-fg">Política de Privacidade</a>.</p>
       </form>
       <p className="mt-8 text-center text-sm text-muted">Já tem conta? <Link to="/entrar" className="font-semibold text-primary hover:underline">Entrar</Link></p>
     </AuthLayout>

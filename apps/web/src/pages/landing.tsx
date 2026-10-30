@@ -501,6 +501,8 @@ function Footer() {
         <nav className="flex flex-wrap items-center gap-5" aria-label="Rodapé">
           <a href="#preco" className="hover:text-fg">Preço</a>
           <a href="#duvidas" className="hover:text-fg">Dúvidas</a>
+          <a href="/privacidade" className="hover:text-fg">Privacidade</a>
+          <a href="/termos" className="hover:text-fg">Termos</a>
           <Link to="/entrar" className="hover:text-fg">Entrar</Link>
           <Link to="/criar-conta" className="font-semibold text-primary hover:underline">Teste grátis</Link>
         </nav>

@@ -63,6 +63,12 @@ const schema = z.object({
   MAIL_FROM: z.string().default('PayTracking <no-reply@paytracking.com.br>'),
   /** contato publicado em /.well-known/security.txt (mailto: ou https:); padrão: o e-mail do MAIL_FROM */
   SECURITY_CONTACT: z.string().default(''),
+  /** Páginas legais (/privacidade e /termos): quem opera o serviço e o contato de privacidade (encarregado/DPO) */
+  LEGAL_NAME: z.string().default(''),
+  LEGAL_DOCUMENT: z.string().default(''),
+  PRIVACY_CONTACT: z.string().default(''),
+  /** Código da meta tag de verificação do Google Search Console (só o valor de content="...") */
+  GOOGLE_SITE_VERIFICATION: z.string().default(''),
 
   WEBHOOK_BODY_RETENTION_DAYS: z.coerce.number().int().min(1).default(30),
   TRACKING_RETENTION_DAYS: z.coerce.number().int().min(7).default(180),

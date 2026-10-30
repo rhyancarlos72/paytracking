@@ -24,6 +24,7 @@ import { billingRoutes } from './billing/routes.js';
 import { adminRoutes } from './admin/routes.js';
 import { pushRoutes } from './notifications/routes.js';
 import { saleSoundRoutes } from './notifications/sound.js';
+import { legalRoutes } from './legal/pages.js';
 import { AppError } from './lib/errors.js';
 import { FLOOD_LIMITS, FloodGuard } from './lib/flood.js';
 import { SESSION_COOKIE } from './lib/http.js';
@@ -156,6 +157,7 @@ export async function buildApp(ctx: Ctx): Promise<FastifyInstance> {
   adminRoutes(app, ctx);
   pushRoutes(app, ctx);
   saleSoundRoutes(app, ctx);
+  legalRoutes(app, ctx);
 
   // Scripts do navegador (pixel.js e loaders), com cache curto e CORS aberto.
   // padrões relativos a apps/server/{src,dist}: funcionam sem configurar nada fora do Docker
@@ -218,7 +220,10 @@ export async function buildApp(ctx: Ctx): Promise<FastifyInstance> {
         else if (/[\\/]assets[\\/]/.test(filePath)) res.header('Cache-Control', 'public, max-age=31536000, immutable');
       },
     });
-    const indexHtml = readFileSync(path.join(webDir, 'index.html'), 'utf8');
+    // verificação de propriedade do Google Search Console (meta tag na página inicial)
+    const gsv = ctx.config.GOOGLE_SITE_VERIFICATION.replace(/[^\w-]/g, '');
+    const indexHtml = readFileSync(path.join(webDir, 'index.html'), 'utf8')
+      .replace('</head>', gsv ? `  <meta name="google-site-verification" content="${gsv}" />\n  </head>` : '</head>');
     app.setNotFoundHandler((req, reply) => {
       // arquivo de build inexistente (ex.: aba aberta durante um deploy pedindo um chunk antigo):
       // 404 de verdade, nunca o index.html — senão o navegador recebe HTML no lugar de JS
