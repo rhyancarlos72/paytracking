@@ -24422,14 +24422,14 @@ var require_connection3 = __commonJS({
       for (let i = 0; functionsToWrap && i < functionsToWrap.length; i++) {
         const func = functionsToWrap[i];
         if (typeof BaseConnection.prototype[func] === "function" && PromiseConnection.prototype[func] === void 0) {
-          PromiseConnection.prototype[func] = /* @__PURE__ */ function factory(funcName) {
+          PromiseConnection.prototype[func] = /* @__PURE__ */ (function factory(funcName) {
             return function() {
               return BaseConnection.prototype[funcName].apply(
                 this.connection,
                 arguments
               );
             };
-          }(func);
+          })(func);
         }
       }
     })([
@@ -24967,11 +24967,11 @@ var require_pool2 = __commonJS({
       for (let i = 0; functionsToWrap && i < functionsToWrap.length; i++) {
         const func = functionsToWrap[i];
         if (typeof BasePool.prototype[func] === "function" && PromisePool.prototype[func] === void 0) {
-          PromisePool.prototype[func] = /* @__PURE__ */ function factory(funcName) {
+          PromisePool.prototype[func] = /* @__PURE__ */ (function factory(funcName) {
             return function() {
               return BasePool.prototype[funcName].apply(this.pool, arguments);
             };
-          }(func);
+          })(func);
         }
       }
     })([
@@ -25566,14 +25566,14 @@ var require_promise = __commonJS({
       for (let i = 0; functionsToWrap && i < functionsToWrap.length; i++) {
         const func = functionsToWrap[i];
         if (typeof PoolCluster.prototype[func] === "function" && PromisePoolCluster.prototype[func] === void 0) {
-          PromisePoolCluster.prototype[func] = /* @__PURE__ */ function factory(funcName) {
+          PromisePoolCluster.prototype[func] = /* @__PURE__ */ (function factory(funcName) {
             return function() {
               return PoolCluster.prototype[funcName].apply(
                 this.poolCluster,
                 arguments
               );
             };
-          }(func);
+          })(func);
         }
       }
     })(["add", "remove"]);

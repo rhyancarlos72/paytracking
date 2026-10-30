@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { Logo, LogoMark } from '../components/logo';
 import { get } from '../lib/api';
 
 /**
@@ -41,7 +42,7 @@ function SectionTitle({ eyebrow, title, sub }: { eyebrow: string; title: ReactNo
   return (
     <Reveal className="mx-auto max-w-2xl text-center">
       <p className="text-sm font-semibold uppercase tracking-[0.14em] text-primary">{eyebrow}</p>
-      <h2 className="mt-3 text-[32px] font-semibold leading-[1.12] tracking-tight sm:text-[42px]">{title}</h2>
+      <h2 className="mt-3 text-[32px] font-bold leading-[1.1] sm:text-[44px]">{title}</h2>
       {sub && <p className="mt-4 text-[17px] leading-relaxed text-muted">{sub}</p>}
     </Reveal>
   );
@@ -73,7 +74,7 @@ function Header() {
   return (
     <header className={clsx('fixed inset-x-0 top-0 z-50 transition-all duration-300', open ? 'border-b border-white/10 bg-[#07060f]' : scrolled ? 'border-b border-white/10 bg-[#07060f]/85 backdrop-blur-xl' : 'bg-transparent')}>
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-        <a href="#topo" className="flex items-center gap-2.5 text-white"><img src="/favicon.svg" alt="" className="h-8 w-8" /><span className="text-[17px] font-semibold">PayTracking</span></a>
+        <a href="#topo" aria-label="PayTracking, início"><Logo onDark glow markClassName="h-9 w-9" textClassName="text-[20px]" /></a>
         <nav className="hidden items-center gap-7 text-sm text-white/70 lg:flex" aria-label="Seções">
           {NAV.map(([href, label]) => <a key={href} href={href} className="transition hover:text-white">{label}</a>)}
         </nav>
@@ -102,41 +103,74 @@ function Header() {
 
 /* ---------------- herói ---------------- */
 
-function HeroMock() {
-  // composição ilustrativa do painel (valores de exemplo, decorativa)
-  const bars = [38, 52, 44, 63, 58, 72, 66, 84, 78, 92, 88, 100];
+/** Peça visual do herói: a marca em vidro, com brilho e os avisos do produto em órbita. */
+function BrandMock() {
   return (
-    <div className="relative mx-auto w-full max-w-[560px]" aria-hidden>
-      <div className="absolute -inset-6 rounded-[36px] bg-gradient-to-tr from-[#6d4aff]/40 via-fuchsia-500/10 to-cyan-400/30 blur-3xl" />
-      <div className="relative rounded-[24px] border border-white/10 bg-white/[0.05] p-2 shadow-2xl backdrop-blur-xl">
-        <div className="rounded-[18px] border border-white/10 bg-[#0d0b1d]/90 p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-white/55">Receita confirmada · hoje</p>
-              <p className="mt-1 text-[28px] font-semibold tracking-tight text-white">R$ 3.546,00</p>
-            </div>
-            <span className="rounded-full bg-emerald-400/15 px-2.5 py-1 text-xs font-semibold text-emerald-300">ROAS 4,2</span>
-          </div>
-          <div className="mt-5 flex h-28 items-end gap-1.5">
-            {bars.map((h, i) => (
-              <div key={i} className="flex-1 rounded-t-md bg-gradient-to-t from-[#6d4aff]/60 to-[#a78bfa]" style={{ height: `${h}%`, opacity: 0.45 + i * 0.045 }} />
-            ))}
-          </div>
-          <div className="mt-5 grid grid-cols-3 gap-2 text-center">
-            {[['Vendas', '18'], ['Investido', 'R$ 842'], ['Purchase na Meta', '18/18']].map(([k, v]) => (
-              <div key={k} className="rounded-xl bg-white/[0.04] px-2 py-2.5"><p className="text-[11px] text-white/50">{k}</p><p className="mt-0.5 text-sm font-semibold text-white">{v}</p></div>
-            ))}
-          </div>
-        </div>
+    <div className="relative mx-auto aspect-square w-full max-w-[500px]" aria-hidden>
+      <div className="absolute inset-[8%] rounded-full bg-[radial-gradient(circle,rgba(139,92,246,.55),rgba(109,40,217,.12)_55%,transparent_70%)] blur-2xl" />
+      <div className="absolute inset-[4%] rounded-full border border-white/[0.07]" />
+      <div className="absolute inset-[16%] animate-[spin_40s_linear_infinite] rounded-full border border-dashed border-violet-300/20" />
+      <div className="absolute inset-[22%] rounded-[34%] border border-white/15 bg-gradient-to-b from-white/[0.10] to-white/[0.02] shadow-[0_30px_80px_-20px_rgba(109,74,255,.65),inset_0_1px_0_rgba(255,255,255,.18)] backdrop-blur-xl">
+        <LogoMark onDark className="absolute inset-[14%] h-[72%] w-[72%] drop-shadow-[0_0_30px_rgba(167,139,250,.65)]" />
       </div>
-      <div className="absolute -top-16 left-0 w-[264px] animate-float rounded-2xl border border-white/10 bg-[#121027]/95 p-3.5 shadow-2xl backdrop-blur-xl sm:-left-10">
+      <div className="absolute left-0 top-[6%] w-[236px] animate-float rounded-2xl border border-white/10 bg-[#121027]/90 p-3 shadow-2xl backdrop-blur-xl sm:-left-6">
         <div className="flex items-center gap-3">
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-400/15 text-emerald-300"><Bell className="h-4 w-4" /></span>
           <div className="min-w-0"><p className="whitespace-nowrap text-[13px] font-semibold text-white">Venda aprovada! R$ 197,00</p><p className="text-[11px] text-white/55">Campanha Black · PIX</p></div>
         </div>
       </div>
-      <div className="absolute -bottom-5 -right-2 animate-float rounded-full border border-white/10 bg-[#121027]/90 px-4 py-2 text-xs text-white/85 shadow-xl backdrop-blur-xl [animation-delay:-3s] sm:-right-8">
+      <div className="absolute right-0 top-[44%] animate-float rounded-2xl border border-white/10 bg-[#121027]/90 px-4 py-3 shadow-2xl backdrop-blur-xl [animation-delay:-2s] sm:-right-4">
+        <p className="text-[11px] text-white/55">ROAS hoje</p>
+        <p className="font-display text-xl font-extrabold text-white">4,2<span className="ml-1 text-sm font-semibold text-emerald-300">▲</span></p>
+      </div>
+      <div className="absolute bottom-[6%] left-[8%] animate-float rounded-full border border-white/10 bg-[#121027]/90 px-4 py-2 text-xs text-white/85 shadow-xl backdrop-blur-xl [animation-delay:-4s]">
         <Zap className="mr-1.5 inline h-3.5 w-3.5 text-violet-300" />Purchase entregue à Meta
+      </div>
+    </div>
+  );
+}
+
+/** Mockup do painel (valores de exemplo). */
+function DashboardMock() {
+  const bars = [38, 52, 44, 63, 58, 72, 66, 84, 78, 92, 88, 100];
+  const rows: Array<[string, string, string]> = [['Campanha Black · Criativo 03', 'R$ 1.182,00', '5,1'], ['Remarketing 7 dias', 'R$ 985,00', '4,4'], ['Lookalike compradores', 'R$ 591,00', '3,2']];
+  return (
+    <div className="relative mx-auto w-full max-w-5xl" aria-hidden>
+      <div className="absolute -inset-8 rounded-[40px] bg-gradient-to-tr from-[#6d4aff]/35 via-fuchsia-500/10 to-cyan-400/25 blur-3xl" />
+      <div className="relative overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.05] p-2 shadow-2xl backdrop-blur-xl">
+        <div className="rounded-[20px] border border-white/10 bg-[#0d0b1d]/95">
+          <div className="flex items-center justify-between border-b border-white/10 px-5 py-3.5">
+            <Logo onDark markClassName="h-6 w-6" textClassName="text-[14px]" />
+            <div className="flex gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-white/15" /><span className="h-2.5 w-2.5 rounded-full bg-white/15" /><span className="h-2.5 w-2.5 rounded-full bg-white/15" /></div>
+          </div>
+          <div className="grid gap-4 p-5 md:grid-cols-[1.4fr_1fr]">
+            <div className="rounded-2xl bg-white/[0.03] p-5">
+              <div className="flex items-start justify-between">
+                <div><p className="text-xs text-white/55">Receita confirmada · hoje</p><p className="mt-1 font-display text-[30px] font-extrabold tracking-tight text-white">R$ 3.546,00</p></div>
+                <span className="rounded-full bg-emerald-400/15 px-2.5 py-1 text-xs font-semibold text-emerald-300">ROAS 4,2</span>
+              </div>
+              <div className="mt-5 flex h-32 items-end gap-1.5">
+                {bars.map((h, i) => <div key={i} className="flex-1 rounded-t-md bg-gradient-to-t from-[#6d4aff]/60 to-[#c084fc]" style={{ height: `${h}%`, opacity: 0.45 + i * 0.045 }} />)}
+              </div>
+              <div className="mt-5 grid grid-cols-3 gap-2 text-center">
+                {[['Vendas', '18'], ['Investido', 'R$ 842'], ['Purchase na Meta', '18/18']].map(([k, v]) => (
+                  <div key={k} className="rounded-xl bg-white/[0.04] px-2 py-2.5"><p className="text-[11px] text-white/50">{k}</p><p className="mt-0.5 text-sm font-semibold text-white">{v}</p></div>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-2xl bg-white/[0.03] p-5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-white/45">Campanhas que mais venderam</p>
+              <ul className="mt-4 space-y-3">
+                {rows.map(([n, v, r]) => (
+                  <li key={n} className="flex items-center justify-between gap-3 rounded-xl bg-white/[0.04] px-3.5 py-3">
+                    <div className="min-w-0"><p className="truncate text-[13px] font-medium text-white">{n}</p><p className="text-[11px] text-white/50">{v}</p></div>
+                    <span className="shrink-0 rounded-lg bg-violet-400/15 px-2 py-1 text-xs font-bold text-violet-200">ROAS {r}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -156,7 +190,7 @@ function Hero({ plan }: { plan?: Plan }) {
             </span>
           </Reveal>
           <Reveal delay={80}>
-            <h1 className="mt-6 text-[40px] font-semibold leading-[1.05] tracking-tight sm:text-[58px]">
+            <h1 className="mt-6 text-[42px] font-extrabold leading-[1.02] tracking-[-0.035em] sm:text-[62px]">
               Saiba qual anúncio{' '}
               <span className="bg-gradient-to-r from-violet-300 via-fuchsia-200 to-cyan-200 bg-clip-text text-transparent">realmente vende.</span>
             </h1>
@@ -181,10 +215,7 @@ function Hero({ plan }: { plan?: Plan }) {
             </ul>
           </Reveal>
         </div>
-        <Reveal delay={200} className="pt-14 lg:pt-0">
-          <HeroMock />
-          <p className="mt-10 text-center text-[11px] text-white/35">Imagem ilustrativa, com valores de exemplo</p>
-        </Reveal>
+        <Reveal delay={200}><BrandMock /></Reveal>
       </div>
       <Reveal className="relative mx-auto mt-24 max-w-5xl px-4 sm:px-6">
         <p className="text-center text-xs font-semibold uppercase tracking-[0.16em] text-white/45">Funciona com</p>
@@ -194,6 +225,15 @@ function Hero({ plan }: { plan?: Plan }) {
           ))}
         </ul>
       </Reveal>
+      <div className="relative mx-auto mt-28 max-w-6xl px-4 sm:px-6">
+        <Reveal className="mx-auto mb-14 max-w-2xl text-center">
+          <p className="text-sm font-semibold uppercase tracking-[0.14em] text-violet-300">Seu painel</p>
+          <h2 className="mt-3 text-[32px] font-bold leading-[1.1] sm:text-[44px]">Receita, campanha e ROAS na mesma tela</h2>
+          <p className="mt-4 text-[17px] leading-relaxed text-white/65">Cada venda aprovada aparece com a campanha de origem, e a Meta recebe a mesma venda pelo servidor.</p>
+        </Reveal>
+        <Reveal><DashboardMock /></Reveal>
+        <p className="mt-6 text-center text-[11px] text-white/35">Imagem ilustrativa, com valores de exemplo</p>
+      </div>
     </section>
   );
 }
@@ -215,7 +255,7 @@ function Problem() {
           <Reveal key={x.t} delay={i * 90}>
             <div className="h-full rounded-3xl border border-border bg-surface p-7 shadow-sm">
               <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-err/10 text-err">{x.icon}</span>
-              <h3 className="mt-5 text-[19px] font-semibold">{x.t}</h3>
+              <h3 className="mt-5 text-[19px] font-bold">{x.t}</h3>
               <p className="mt-2.5 leading-relaxed text-muted">{x.d}</p>
             </div>
           </Reveal>
@@ -250,7 +290,7 @@ function Benefits() {
             <div className={clsx('group h-full rounded-3xl border p-7 transition duration-300 hover:-translate-y-1 hover:shadow-xl',
               b.big ? 'border-primary/25 bg-gradient-to-b from-primary/[0.08] to-surface' : 'border-border bg-surface')}>
               <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary transition group-hover:scale-110">{b.icon}</span>
-              <h3 className="mt-5 text-[18px] font-semibold">{b.t}</h3>
+              <h3 className="mt-5 text-[18px] font-bold">{b.t}</h3>
               <p className="mt-2.5 leading-relaxed text-muted">{b.d}</p>
             </div>
           </Reveal>
@@ -273,7 +313,7 @@ function HowItWorks() {
       <div className="pointer-events-none absolute left-1/2 top-0 h-[400px] w-[800px] -translate-x-1/2 rounded-full bg-[#6d4aff]/25 blur-[140px]" aria-hidden />
       <Reveal className="relative mx-auto max-w-2xl px-4 text-center">
         <p className="text-sm font-semibold uppercase tracking-[0.14em] text-violet-300">Como funciona</p>
-        <h2 className="mt-3 text-[32px] font-semibold leading-[1.12] tracking-tight sm:text-[42px]">Pronto em minutos</h2>
+        <h2 className="mt-3 text-[32px] font-bold leading-[1.1] sm:text-[44px]">Pronto em minutos</h2>
       </Reveal>
       <ol className="relative mx-auto mt-16 grid max-w-6xl gap-5 px-4 sm:px-6 md:grid-cols-3">
         {steps.map((s, i) => (
@@ -283,7 +323,7 @@ function HowItWorks() {
                 <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-violet-400/15 text-violet-200">{s.icon}</span>
                 <span className="text-[44px] font-semibold leading-none text-white/10">0{i + 1}</span>
               </div>
-              <h3 className="mt-6 text-[19px] font-semibold">{s.t}</h3>
+              <h3 className="mt-6 text-[19px] font-bold">{s.t}</h3>
               <p className="mt-2.5 leading-relaxed text-white/65">{s.d}</p>
             </li>
           </Reveal>
@@ -326,7 +366,7 @@ function Comparison() {
                 <tr className="border-b border-border">
                   <th className="w-[38%] px-6 py-5 font-medium text-muted" scope="col">Recurso</th>
                   <th className="bg-primary/[0.06] px-4 py-5 text-center" scope="col">
-                    <span className="inline-flex items-center gap-2 font-semibold"><img src="/favicon.svg" alt="" className="h-5 w-5" />PayTracking</span>
+                    <Logo markClassName="h-6 w-6" textClassName="text-[15px]" />
                   </th>
                   <th className="px-4 py-5 text-center font-semibold" scope="col">Só o Pixel da Meta</th>
                   <th className="px-4 py-5 text-center font-semibold" scope="col">Outras ferramentas de rastreio</th>
@@ -373,7 +413,7 @@ function Pricing({ plan }: { plan?: Plan }) {
             <p className="relative inline-flex items-center gap-2 rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-semibold text-emerald-300"><Sparkles className="h-3.5 w-3.5" />{days} dias grátis</p>
             <h3 className="relative mt-6 text-lg font-semibold text-white/80">PayTracking completo</h3>
             <p className="relative mt-3 flex items-baseline gap-2">
-              <span className="text-[54px] font-semibold leading-none tracking-tight">{price}</span><span className="text-white/60">/mês</span>
+              <span className="font-display text-[60px] font-extrabold leading-none tracking-[-0.04em]">{price}</span><span className="text-white/60">/mês</span>
             </p>
             <p className="relative mt-4 leading-relaxed text-white/65">Pagamento único mensal por PIX. Sem fidelidade e sem cobrança automática no cartão: você só paga se quiser continuar.</p>
             <CTA className="relative mt-8 w-full">Começar teste grátis</CTA>
@@ -443,7 +483,7 @@ function FinalCta({ plan }: { plan?: Plan }) {
       <Reveal className="relative mx-auto max-w-6xl overflow-hidden rounded-[32px] bg-[#07060f] px-6 py-16 text-center text-white sm:px-12 sm:py-20">
         <div className="pointer-events-none absolute -left-20 -top-24 h-80 w-80 rounded-full bg-[#6d4aff]/45 blur-[110px]" aria-hidden />
         <div className="pointer-events-none absolute -bottom-24 -right-10 h-80 w-80 rounded-full bg-cyan-400/20 blur-[110px]" aria-hidden />
-        <h2 className="relative mx-auto max-w-2xl text-[32px] font-semibold leading-[1.1] tracking-tight sm:text-[46px]">Comece hoje. Veja a primeira venda rastreada ainda nesta semana.</h2>
+        <h2 className="relative mx-auto max-w-2xl text-[32px] font-extrabold leading-[1.08] sm:text-[48px]">Comece hoje. Veja a primeira venda rastreada ainda nesta semana.</h2>
         <p className="relative mx-auto mt-5 max-w-xl text-[17px] text-white/70">
           {plan?.trialDays ?? 7} dias grátis, depois {plan ? brl(plan.priceMinor) : 'um valor fixo'} por mês. Vendas ilimitadas, sem taxa por venda.
         </p>
@@ -457,7 +497,7 @@ function Footer() {
   return (
     <footer className="border-t border-border bg-bg">
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 py-10 text-sm text-muted sm:flex-row sm:px-6">
-        <div className="flex items-center gap-2.5"><img src="/favicon.svg" alt="" className="h-6 w-6" /><span className="font-semibold text-fg">PayTracking</span><span>© {new Date().getFullYear()}</span></div>
+        <div className="flex items-center gap-3"><Logo markClassName="h-7 w-7" textClassName="text-[16px]" /><span>© {new Date().getFullYear()}</span></div>
         <nav className="flex flex-wrap items-center gap-5" aria-label="Rodapé">
           <a href="#preco" className="hover:text-fg">Preço</a>
           <a href="#duvidas" className="hover:text-fg">Dúvidas</a>

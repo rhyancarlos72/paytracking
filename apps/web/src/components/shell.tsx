@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import { Logo as BrandLogo, LogoMark } from './logo';
 import {
   Activity, BarChart3, BellRing, BookOpen, ChevronsUpDown, CreditCard, GitBranch, LayoutDashboard, LogOut, Megaphone, Menu, Moon,
   Plug, Plus, Receipt, Search, Settings, Shield, Sparkles, Stethoscope, Sun, Target, X,
@@ -50,15 +51,7 @@ export function useTheme() {
 }
 
 function Logo({ compact }: { compact?: boolean }) {
-  return (
-    <div className="flex items-center gap-2.5">
-      <span className="relative">
-        <span className="absolute inset-0 rounded-xl bg-primary/40 blur-md" aria-hidden />
-        <img src="/favicon.svg" alt="" className="relative h-8 w-8" />
-      </span>
-      {!compact && <span className="text-[15px] font-semibold tracking-tight">PayTracking</span>}
-    </div>
-  );
+  return compact ? <LogoMark className="h-8 w-8" /> : <BrandLogo markClassName="h-8 w-8" textClassName="text-[18px]" />;
 }
 
 function useOpenAlerts() {

@@ -9,5 +9,5 @@
     "lint": "tsc -p tsconfig.json",
     "test": "vitest run"
   },
-  "devDependencies": { "esbuild": "0.24.2" }
+  "devDependencies": { "esbuild": "0.25.12" }
 }

@@ -1,4 +1,5 @@
 @import '@fontsource-variable/inter/opsz.css';
+@import '@fontsource-variable/plus-jakarta-sans/wght.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -6,6 +7,9 @@
 /* Tokens do design system (RGB para permitir opacidade no Tailwind).
    Todo token de texto tem contraste ≥ 4,5:1 sobre bg e surface nos dois temas (docs/DESIGN-SYSTEM.md). */
 :root {
+  /* topo do "P" do logo: roxo em fundo claro, branco em fundo escuro */
+  --logo-hi: #7c5cff;
+  --logo-mid: #a588ff;
   --bg: 247 247 251;
   --surface: 255 255 255;
   --surface-2: 241 241 247;
@@ -35,6 +39,8 @@
   color-scheme: light;
 }
 .dark {
+  --logo-hi: #ffffff;
+  --logo-mid: #e6ddff;
   --bg: 6 7 11;
   --surface: 13 14 20;
   --surface-2: 20 22 30;
@@ -66,7 +72,8 @@
 @layer base {
   html { font-feature-settings: 'cv11', 'ss01', 'ss03'; -webkit-tap-highlight-color: transparent; text-rendering: optimizeLegibility; }
   body { @apply min-h-screen bg-bg text-[15px] leading-relaxed text-fg; }
-  h1, h2, h3 { font-variation-settings: 'opsz' 32; letter-spacing: -0.02em; }
+  /* títulos na fonte da marca (Plus Jakarta Sans, a mesma família geométrica do logo) */
+  h1, h2, h3 { @apply font-display; letter-spacing: -0.025em; }
   :focus-visible { @apply outline-none ring-2 ring-primary/60 ring-offset-2 ring-offset-bg; }
   ::selection { @apply bg-primary/25; }
   /* barras de rolagem discretas */

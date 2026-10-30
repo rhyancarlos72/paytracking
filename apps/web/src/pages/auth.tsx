@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { Button, Callout, Field, Input, Spinner } from '../components/ui';
+import { Logo } from '../components/logo';
 import { get, post } from '../lib/api';
 import { useMe } from '../lib/session';
 
@@ -55,8 +56,7 @@ function AuthLayout({ title, subtitle, children }: { title: string; subtitle?: R
         <div className="pointer-events-none absolute -bottom-40 -right-20 h-[420px] w-[420px] animate-drift rounded-full bg-cyan-400/15 blur-[120px] [animation-delay:-7s]" aria-hidden />
         <div className="grid-fade opacity-60 [--fg:255_255_255]" aria-hidden />
         <Link to="/conheca" className="relative flex w-fit items-center gap-2.5">
-          <span className="relative"><span className="absolute inset-0 rounded-xl bg-violet-500/50 blur-md" aria-hidden /><img src="/favicon.svg" alt="" className="relative h-9 w-9" /></span>
-          <span className="text-lg font-semibold">PayTracking</span>
+          <Logo onDark glow markClassName="h-10 w-10" textClassName="text-[21px]" />
         </Link>
         <div className="relative">
           <h2 className="max-w-lg text-[38px] font-semibold leading-[1.1] tracking-tight">
@@ -75,7 +75,7 @@ function AuthLayout({ title, subtitle, children }: { title: string; subtitle?: R
         <div className="aurora" aria-hidden />
         <div className="w-full max-w-[420px] animate-slide-up">
           <Link to="/conheca" className="mb-10 flex w-fit items-center gap-2.5 lg:hidden">
-            <img src="/favicon.svg" alt="" className="h-10 w-10" /><span className="text-lg font-semibold">PayTracking</span>
+            <Logo markClassName="h-10 w-10" textClassName="text-[21px]" />
           </Link>
           <h1 className="text-[30px] font-semibold leading-tight">{title}</h1>
           {subtitle && <p className="mt-2 text-[15px] text-muted">{subtitle}</p>}

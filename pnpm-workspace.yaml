@@ -8,3 +8,9 @@ allowBuilds:
 
 # Só instala versões publicadas há pelo menos 1 dia (padrão do pnpm 11; protege contra pacote comprometido recém-publicado)
 minimumReleaseAge: 1440
+
+# versões mínimas seguras de dependências indiretas (alertas de segurança do vite/postcss usados pelo vitest)
+overrides:
+  vite: 6.4.5
+  postcss: 8.5.32
+  esbuild: 0.25.12
