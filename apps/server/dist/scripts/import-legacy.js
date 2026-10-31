@@ -25871,7 +25871,7 @@ function parseTrackingCode(raw) {
   if (!s) return {};
   const out = {};
   if (s.includes("=")) {
-    for (const part of s.split(/[&|;]/)) {
+    for (const part of s.split(/&|[|;](?=[\w.-]+=)/)) {
       const i = part.indexOf("=");
       if (i <= 0) continue;
       const k = safeDecode(part.slice(0, i)).trim();

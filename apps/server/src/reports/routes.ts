@@ -9,6 +9,8 @@ import { jsonSafe, parse, requireRole } from '../lib/http.js';
 import { periodQuery } from '../meta/routes.js';
 import { audit } from '../orgs/routes.js';
 import { dashboard } from './dashboard.js';
+import { hit } from '../lib/rate-limit.js';
+import { recoverPaymentUtms } from '../webhooks/recover-utms.js';
 
 const uuidOpt = z.string().uuid().optional();
 
@@ -50,6 +52,13 @@ export function reportRoutes(app: FastifyInstance, ctx: Ctx) {
       [a.org.id, q.after, now, q.floor ?? null],
     );
     return jsonSafe({ cursor: now.toISOString(), sales: r.rows });
+  });
+
+  // vendas sem campanha (ex.: Hotmart): relê os webhooks guardados e preenche as UTMs pela ponte de identidade
+  app.post('/v1/payments/recover-utms', async (req) => {
+    const a = requireRole(req, 'admin');
+    await hit(ctx.db, `recover-utms:org:${a.org.id}`, 6, 3600);
+    return recoverPaymentUtms(ctx, a.org.id);
   });
 
   app.get('/v1/payments', async (req) => {

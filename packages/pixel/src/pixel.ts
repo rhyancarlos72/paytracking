@@ -135,15 +135,18 @@ import {
       const utms = getUtms();
       for (const [k, v] of Object.entries(utms)) if (v && !u.searchParams.get(k)) u.searchParams.set(k, v);
       if (utms.utm_source && !u.searchParams.get('src')) u.searchParams.set('src', utms.utm_source);
+      // ordem de prioridade (o código tem no máximo 240 caracteres): primeiro o external_id (ponte de
+      // identidade: o servidor recupera UTMs, fbp e fbc do visitante), depois a campanha/conjunto/anúncio;
+      // fbp e o fbclid (que costuma ser enorme) por último — o servidor também os recupera pela ponte
       const parts: string[] = [];
       const xid = getExternalId();
       if (xid) parts.push('external_id=' + encodeURIComponent(xid));
+      for (const k of ['utm_campaign', 'utm_medium', 'utm_content', 'utm_source', 'utm_term', 'utm_id']) {
+        if (utms[k]) parts.push(k + '=' + encodeURIComponent(utms[k]!));
+      }
       const fbp = getCookie('_fbp');
       if (fbp) parts.push('fbp=' + encodeURIComponent(fbp));
       if (fbclid) parts.push('fbclid=' + encodeURIComponent(fbclid));
-      for (const k of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'utm_id']) {
-        if (utms[k]) parts.push(k + '=' + encodeURIComponent(utms[k]!));
-      }
       // nunca corta um valor no meio: descarta partes inteiras ao estourar o limite
       const kept: string[] = [];
       let used = 0;

@@ -1,11 +1,12 @@
-import { useQuery } from '@tanstack/react-query';
-import { Search } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Search, Wand2 } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { PeriodPicker, usePeriod } from '../components/period';
 import { PageHeader } from '../components/shell';
-import { Badge, Card, EmptyState, ErrorState, Input, Pager, Select, Skeleton, STATUS_TONE } from '../components/ui';
-import { get, qs } from '../lib/api';
+import { useToast } from '../components/toast';
+import { Badge, Button, Card, EmptyState, ErrorState, Input, Pager, Select, Skeleton, STATUS_TONE } from '../components/ui';
+import { get, post, qs } from '../lib/api';
 import { dateTime, money, PROVIDER_LABEL, STATUS_LABEL } from '../lib/format';
 import { useSession } from '../lib/session';
 import { mask, Name, useNamesHidden } from '../lib/privacy';
@@ -19,6 +20,20 @@ export default function SalesPage() {
   const provider = sp.get('origem') ?? '';
   const [search, setSearch] = useState(sp.get('busca') ?? '');
   const page = Number(sp.get('pagina') ?? 1);
+  const toast = useToast();
+  const qc = useQueryClient();
+  const recover = useMutation({
+    mutationFn: () => post<{ checked: number; recovered: number }>('/v1/payments/recover-utms'),
+    onSuccess: (r) => {
+      if (r.recovered > 0) toast.ok(`Campanha recuperada em ${r.recovered} venda(s)`, `${r.checked} venda(s) sem campanha verificadas.`);
+      else toast.info(r.checked ? 'Nenhuma campanha encontrada para as vendas sem UTM' : 'Nenhuma venda sem campanha nos últimos 30 dias',
+        r.checked ? 'Essas vendas não passaram pela página com o pixel (ex.: anúncio direto para o checkout).' : undefined);
+      void qc.invalidateQueries({ queryKey: ['payments'] });
+      void qc.invalidateQueries({ queryKey: ['campaigns'] });
+      void qc.invalidateQueries({ queryKey: ['top-campaigns'] });
+    },
+    onError: (e) => toast.err(e),
+  });
   const q = useQuery({
     queryKey: ['payments', period.query, status, provider, sp.get('busca'), page],
     queryFn: ({ signal }) => get(`/v1/payments${qs({ ...period.query, status, provider, search: sp.get('busca'), page })}`, signal),
@@ -26,7 +41,16 @@ export default function SalesPage() {
   });
   return (
     <>
-      <PageHeader title="Vendas" description="Todos os pagamentos recebidos dos gateways, com status real e envio à Meta." actions={<PeriodPicker period={period} />} />
+      <PageHeader title="Vendas" description="Todos os pagamentos recebidos dos gateways, com status real e envio à Meta."
+        actions={<>
+          <PeriodPicker period={period} />
+          {s.can('admin') && (
+            <Button icon={<Wand2 className="h-4 w-4" />} loading={recover.isPending} onClick={() => recover.mutate()}
+              title="Relê os webhooks dos últimos 30 dias e preenche a campanha das vendas que chegaram sem UTM (ex.: Hotmart)">
+              Recuperar campanhas
+            </Button>
+          )}
+        </>} />
       <Card padded={false}>
         <div className="flex flex-wrap gap-2 border-b border-border p-4">
           <form className="relative min-w-[220px] flex-1" onSubmit={(e) => { e.preventDefault(); period.set({ busca: search, pagina: null }); }}>

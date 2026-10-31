@@ -17,7 +17,9 @@ export function parseTrackingCode(raw: unknown): Record<string, string> {
   if (!s) return {};
   const out: Record<string, string> = {};
   if (s.includes('=')) {
-    for (const part of s.split(/[&|;]/)) {
+    // separa em & e, para o formato legado "a=1|b=2", em | ou ; só quando vem outra chave= em seguida —
+    // assim "utm_campaign=Nome|120210…" (parâmetros recomendados nome|id) não é quebrado
+    for (const part of s.split(/&|[|;](?=[\w.-]+=)/)) {
       const i = part.indexOf('=');
       if (i <= 0) continue;
       const k = safeDecode(part.slice(0, i)).trim();

@@ -93230,7 +93230,7 @@ function parseTrackingCode(raw) {
   if (!s) return {};
   const out = {};
   if (s.includes("=")) {
-    for (const part of s.split(/[&|;]/)) {
+    for (const part of s.split(/&|[|;](?=[\w.-]+=)/)) {
       const i = part.indexOf("=");
       if (i <= 0) continue;
       const k = safeDecode4(part.slice(0, i)).trim();
@@ -95037,7 +95037,8 @@ async function applyPayment(ctx, c, integration, n, productIds, rb, ms) {
   }
   const pixel = await resolvePixel(c, orgId, productIds, integration.default_pixel_id);
   const t = n.tracking;
-  const utm = (k) => t[k] ?? null;
+  const identity = await findIdentity(c, orgId, { xid: t.externalId ?? n.customer.externalId, email: n.customer.email, phone: n.customer.phone });
+  const utm = (k) => t[k] ?? identity?.[k] ?? null;
   const ins = await c.query(
     `INSERT INTO payments(org_id, provider, transaction_id, status, integration_id)
      VALUES ($1, $2, $3, $4, $5) ON CONFLICT (org_id, provider, transaction_id) DO NOTHING RETURNING id`,
@@ -96271,6 +96272,46 @@ async function dashboard(ctx, org, q) {
   };
 }
 
+// src/webhooks/recover-utms.ts
+async function recoverPaymentUtms(ctx, orgId) {
+  const r = await ctx.db.query(
+    `SELECT DISTINCT ON (p.id) p.id, p.provider, w.body_enc, i.default_pixel_id, i.amount_unit
+       FROM payments p
+       JOIN webhook_receipts w ON w.payment_id = p.id AND w.body_enc IS NOT NULL
+       LEFT JOIN integrations i ON i.id = w.integration_id
+      WHERE p.org_id = $1 AND p.utm_campaign IS NULL AND p.utm_content IS NULL AND p.utm_medium IS NULL
+      ORDER BY p.id, w.received_at DESC
+      LIMIT 2000`,
+    [orgId]
+  );
+  let recovered = 0;
+  for (const row of r.rows) {
+    const adapter = ADAPTERS[row.provider];
+    if (!adapter) continue;
+    let payload = null;
+    try {
+      payload = parsePayload(ctx.box.decrypt(row.body_enc));
+    } catch {
+      continue;
+    }
+    if (!payload) continue;
+    const n = adapter.normalize(payload, { defaultCurrency: "BRL", amountUnit: row.amount_unit ?? void 0, now: ctx.now });
+    if (n.kind === "ignored") continue;
+    const t = n.tracking;
+    const identity = await findIdentity(ctx.db, orgId, { xid: t.externalId ?? n.customer.externalId, email: n.customer.email, phone: n.customer.phone });
+    const utms = UTM_KEYS.map((k) => t[k] ?? identity?.[k] ?? null);
+    if (!utms.some(Boolean) || !utms[1] && !utms[2] && !utms[3]) continue;
+    const u = await ctx.db.query(
+      `UPDATE payments SET utm_source = COALESCE(utm_source, $2), utm_medium = COALESCE(utm_medium, $3), utm_campaign = COALESCE(utm_campaign, $4),
+              utm_content = COALESCE(utm_content, $5), utm_term = COALESCE(utm_term, $6), utm_id = COALESCE(utm_id, $7), updated_at = now()
+        WHERE id = $1 AND org_id = $8`,
+      [row.id, ...utms, orgId]
+    );
+    recovered += u.rowCount ?? 0;
+  }
+  return { checked: r.rows.length, recovered };
+}
+
 // src/reports/routes.ts
 var uuidOpt = external_exports.string().uuid().optional();
 function reportRoutes(app, ctx) {
@@ -96302,6 +96343,11 @@ function reportRoutes(app, ctx) {
       [a.org.id, q.after, now, q.floor ?? null]
     );
     return jsonSafe({ cursor: now.toISOString(), sales: r.rows });
+  });
+  app.post("/v1/payments/recover-utms", async (req) => {
+    const a = requireRole(req, "admin");
+    await hit(ctx.db, `recover-utms:org:${a.org.id}`, 6, 3600);
+    return recoverPaymentUtms(ctx, a.org.id);
   });
   app.get("/v1/payments", async (req) => {
     const a = requireRole(req, "viewer");

@@ -192,6 +192,10 @@ describe('UTM', () => {
     expect(parseTrackingCode('external_id=abc&fbp=fb.1.2.3&utm_source=fb')).toEqual({ external_id: 'abc', fbp: 'fb.1.2.3', utm_source: 'fb' });
     expect(parseTrackingCode('fb|cpc|black')).toEqual({ utm_source: 'fb', utm_medium: 'cpc', utm_campaign: 'black' });
   });
+  it('"nome|id" dentro do valor não é quebrado; formato antigo "a=1|b=2" continua valendo', () => {
+    expect(parseTrackingCode('external_id=x1&utm_campaign=Black Friday|120210000000001&utm_medium=Conj|9')).toEqual({ external_id: 'x1', utm_campaign: 'Black Friday|120210000000001', utm_medium: 'Conj|9' });
+    expect(parseTrackingCode('external_id=x1|utm_source=fb;utm_campaign=c1')).toEqual({ external_id: 'x1', utm_source: 'fb', utm_campaign: 'c1' });
+  });
   it('casa por nome exato ou por ID contido', () => {
     const rows = [{ id: '120210000000001', name: 'Campanha A' }, { id: '120210000000002', name: 'Campanha B' }];
     expect(matchUtmToRow(['campanha b'], rows)).toBe(1);

@@ -60,7 +60,7 @@ interface Pixel {
 
 const MAX_EVENT_AGE_S = 6 * 24 * 3600; // a Meta rejeita eventos com mais de 7 dias
 
-function parsePayload(raw: string, form?: Record<string, unknown> | null): Record<string, unknown> | null {
+export function parsePayload(raw: string, form?: Record<string, unknown> | null): Record<string, unknown> | null {
   if (form && Object.keys(form).length) return form;
   const t = raw.trim();
   if (!t) return null;
@@ -234,7 +234,10 @@ async function applyPayment(
 
   const pixel = await resolvePixel(c, orgId, productIds, integration.default_pixel_id);
   const t = n.tracking;
-  const utm = (k: (typeof UTM_KEYS)[number]) => t[k] ?? null;
+  // UTMs da venda: as que vieram no webhook e, na falta, as do visitante (ponte de identidade:
+  // external_id levado no xcod/sck, ou e-mail/telefone). Hotmart só devolve xcod/sck/src.
+  const identity = await findIdentity(c, orgId, { xid: t.externalId ?? n.customer.externalId, email: n.customer.email, phone: n.customer.phone });
+  const utm = (k: (typeof UTM_KEYS)[number]) => t[k] ?? identity?.[k] ?? null;
 
   // upsert + lock da linha do pagamento
   const ins = await c.query(
