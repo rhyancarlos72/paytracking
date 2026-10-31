@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { ArrowDown, ArrowUp, CircleDollarSign, Copy, Flame, Megaphone, MousePointerClick, Pause, Pencil, Play, RefreshCw, Search, ShoppingBag, Target, TrendingDown, TrendingUp, Trophy, Wallet, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, CircleDollarSign, Copy, Flame, Info, Megaphone, MousePointerClick, Pause, Pencil, Play, RefreshCw, Search, ShoppingBag, Target, TrendingDown, TrendingUp, Trophy, Wallet, X } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { PeriodPicker, usePeriod } from '../components/period';
@@ -216,6 +216,10 @@ export default function CampaignsPage() {
                   <Input aria-label={`Buscar ${kind}`} placeholder={`Buscar ${kind}…`} className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
                 </div>
                 <Segmented label="Fonte de vendas" value={source} onChange={setSource} options={[{ value: 'tracked', label: 'Rastreadas' }, { value: 'meta', label: 'Meta' }]} />
+                <span className="cursor-help text-subtle transition hover:text-muted" tabIndex={0}
+                  title={'Rastreadas: vendas aprovadas pelo gateway no período (dia da aprovação), ligadas à campanha pelas UTMs. Reembolsos saem. É o dinheiro que entrou.\n\nMeta: compras que a Meta atribui ao anúncio pelo modelo dela — janela de 7 dias após o clique e 1 dia após a visualização (inclui quem viu e não clicou), contadas no dia do clique/impressão, com estimativas para iPhone e outros aparelhos. Reembolsos não saem.\n\nPor isso os números não batem 1 a 1: use Rastreadas para o resultado real e Meta para ver o que o algoritmo está otimizando.'}>
+                  <Info className="h-4 w-4" aria-label="Diferença entre vendas rastreadas e da Meta" />
+                </span>
               </div>
             </div>
 
