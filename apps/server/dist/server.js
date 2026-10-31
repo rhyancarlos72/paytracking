@@ -95576,8 +95576,45 @@ async function storeRate(db, date5, base2, quote, rate, source, overwrite = true
   );
   return r.rowCount ?? 0;
 }
+var recentHistoryFetch = /* @__PURE__ */ new Map();
+async function ensureFxRates(ctx, currencies, since, until) {
+  const list = [...new Set(currencies.map((c) => String(c ?? "").trim().toUpperCase()).filter((c) => /^[A-Z]{3}$/.test(c) && c !== "EUR"))];
+  if (!list.length) return;
+  const covered = await ctx.db.query(
+    `SELECT quote FROM fx_rates WHERE base = 'EUR' AND quote = ANY($1) AND rate_date BETWEEN ($2::date - $3::int) AND $2::date GROUP BY quote`,
+    [list, since, LOOKBACK_DAYS]
+  );
+  const have = new Set(covered.rows.map((r) => r.quote));
+  const missing = list.filter((c) => !have.has(c));
+  if (!missing.length) return;
+  const key = `${missing.sort().join(",")}:${since}:${until}`;
+  const last = recentHistoryFetch.get(key) ?? 0;
+  if (Date.now() - last < 30 * 6e4) return;
+  recentHistoryFetch.set(key, Date.now());
+  const start = new Date(Date.parse(since) - LOOKBACK_DAYS * 864e5).toISOString().slice(0, 10);
+  try {
+    const r = await ctx.fetch(`https://api.frankfurter.dev/v1/${start}..${until}?base=EUR&symbols=${missing.join(",")}`, { signal: AbortSignal.timeout(1e4) });
+    if (!r.ok) {
+      ctx.log.warn({ status: r.status, missing }, "c\xE2mbio hist\xF3rico indispon\xEDvel");
+      return;
+    }
+    const j = await r.json();
+    let stored = 0;
+    for (const [date5, rates] of Object.entries(j.rates ?? {})) {
+      for (const [quote, rate] of Object.entries(rates)) stored += await storeRate(ctx.db, date5, "EUR", quote, rate, "ecb-frankfurter", false);
+    }
+    ctx.log.info({ missing, since: start, until, stored }, "c\xE2mbio hist\xF3rico gravado");
+  } catch (e) {
+    ctx.log.warn({ err: String(e), missing }, "c\xE2mbio hist\xF3rico falhou");
+  }
+}
 var FxTable = class _FxTable {
   byQuote = /* @__PURE__ */ new Map();
+  /** Carrega as cotações do período, buscando o histórico que faltar (use nos relatórios). */
+  static async loadFor(ctx, currencies, since, until) {
+    await ensureFxRates(ctx, currencies, since, until);
+    return _FxTable.load(ctx.db, currencies, since, until);
+  }
   static async load(db, currencies, since, until) {
     const t = new _FxTable();
     const list = [...new Set(currencies.filter((c) => c && c !== "EUR"))];
@@ -96018,7 +96055,7 @@ function metaRoutes(app, ctx) {
          FROM payments WHERE org_id = $1 AND status = 'approved' AND approved_at >= $2 AND approved_at < $3`,
       [a.org.id, w.startUtc, w.endUtc]
     );
-    const fx = await FxTable.load(ctx.db, [rep, data.currency, ...pays.rows.map((p) => String(p.currency ?? "").trim())], w.since, w.until);
+    const fx = await FxTable.loadFor(ctx, [rep, data.currency, ...pays.rows.map((p) => String(p.currency ?? "").trim())], w.since, w.until);
     const acc = data.rows.map(() => ({ sales: 0, revenue: 0n, unconverted: 0 }));
     const rows = data.rows.map((r) => ({ id: r.id, name: r.name }));
     for (const p of pays.rows) {
@@ -96165,7 +96202,7 @@ async function currenciesInUse(ctx, orgId) {
 }
 async function windowKpis(ctx, org, w, f, withMeta) {
   const meta3 = withMeta && !f.pixelId && !f.provider ? await accountDaily(ctx, org.id, w.since, w.until).catch(() => null) : null;
-  const fx = await FxTable.load(ctx.db, [org.reporting_currency, ...await currenciesInUse(ctx, org.id), meta3?.currency ?? ""], w.since, w.until);
+  const fx = await FxTable.loadFor(ctx, [org.reporting_currency, ...await currenciesInUse(ctx, org.id), meta3?.currency ?? ""], w.since, w.until);
   const confirmed = await salesBuckets(ctx, org, w, f, fx, "approved_at", `status = 'approved'`);
   const reversed = await salesBuckets(ctx, org, w, f, fx, "reversed_at", `status IN ('refunded', 'chargeback') AND approved_at IS NOT NULL`);
   const created = await ctx.db.query(
@@ -96242,7 +96279,7 @@ async function dashboard(ctx, org, q) {
     windowKpis(ctx, org, w, filters, true),
     windowKpis(ctx, org, previousWindow(w), filters, true)
   ]);
-  const fxToday = await FxTable.load(ctx.db, [org.reporting_currency, ...await currenciesInUse(ctx, org.id)], reportWindow("this_month", org.timezone, { now: ctx.now() }).since, reportWindow("today", org.timezone, { now: ctx.now() }).until);
+  const fxToday = await FxTable.loadFor(ctx, [org.reporting_currency, ...await currenciesInUse(ctx, org.id)], reportWindow("this_month", org.timezone, { now: ctx.now() }).since, reportWindow("today", org.timezone, { now: ctx.now() }).until);
   const today = await salesBuckets(ctx, org, reportWindow("today", org.timezone, { now: ctx.now() }), {}, fxToday, "approved_at", `status = 'approved'`);
   const month = await salesBuckets(ctx, org, reportWindow("this_month", org.timezone, { now: ctx.now() }), {}, fxToday, "approved_at", `status = 'approved'`);
   const capi = await ctx.db.query(
@@ -96522,7 +96559,7 @@ function reportRoutes(app, ctx) {
          FROM payments WHERE org_id = $1 AND status = 'approved' AND approved_at >= $2 AND approved_at < $3 GROUP BY 1, 2, 3, 4`,
       [a.org.id, w.startUtc, w.endUtc, a.org.timezone]
     );
-    const fx = await FxTable.load(ctx.db, [a.org.reporting_currency, ...sales.rows.map((r) => String(r.currency ?? "").trim())], w.since, w.until);
+    const fx = await FxTable.loadFor(ctx, [a.org.reporting_currency, ...sales.rows.map((r) => String(r.currency ?? "").trim())], w.since, w.until);
     const rows = /* @__PURE__ */ new Map();
     const get = (s, k) => {
       const id = `${s}\0${k}`;

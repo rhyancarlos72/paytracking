@@ -89,6 +89,7 @@ export default function CampaignsPage() {
   const tot = rows.reduce((t, x) => ({ spend: t.spend + x.spend, revenue: t.revenue + x.revenue, sales: t.sales + x.sales, clicks: t.clicks + x.r.linkClicks, lpv: t.lpv + x.r.landingPageViews }), { spend: 0, revenue: 0, sales: 0, clicks: 0, lpv: 0 });
   const totRoas = tot.spend > 0 ? tot.revenue / tot.spend : null;
   const profit = tot.revenue - tot.spend;
+  const unconverted = (q.data?.rows ?? []).reduce((n, r) => n + (r.tracked.unconverted ?? 0), 0);
   const maxSpend = Math.max(1, ...rows.map((x) => x.spend));
   const counts = { active: all.filter((x) => x.active).length, paused: all.filter((x) => !x.active).length };
 
@@ -143,6 +144,12 @@ export default function CampaignsPage() {
                 {q.data.fx.converted
                   ? `Cotação de ${q.data.fx.date} (1 ${q.data.accountCurrency} = ${Number(q.data.fx.rate).toFixed(4).replace('.', ',')} ${cur}). Orçamentos são exibidos e editados na moeda da conta.`
                   : 'Os valores monetários da Meta não puderam ser convertidos e foram omitidos.'}
+              </Callout>
+            )}
+
+            {source === 'tracked' && unconverted > 0 && (
+              <Callout tone="warn" title={`${unconverted} venda(s) rastreada(s) em outra moeda ainda sem cotação`}>
+                Elas contam nas vendas, mas ainda não somam na receita (nenhuma conversão é estimada). O PayTracking busca a cotação oficial do dia da venda automaticamente; atualize em alguns minutos.
               </Callout>
             )}
 

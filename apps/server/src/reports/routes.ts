@@ -240,7 +240,7 @@ export function reportRoutes(app: FastifyInstance, ctx: Ctx) {
          FROM payments WHERE org_id = $1 AND status = 'approved' AND approved_at >= $2 AND approved_at < $3 GROUP BY 1, 2, 3, 4`,
       [a.org.id, w.startUtc, w.endUtc, a.org.timezone],
     );
-    const fx = await FxTable.load(ctx.db, [a.org.reporting_currency, ...sales.rows.map((r) => String(r.currency ?? '').trim())], w.since, w.until);
+    const fx = await FxTable.loadFor(ctx, [a.org.reporting_currency, ...sales.rows.map((r) => String(r.currency ?? '').trim())], w.since, w.until);
     const rows = new Map<string, { source: string; key: string; pageViews: number; initiateCheckouts: number; sales: number; revenueMinor: bigint; unconverted: number }>();
     const get = (s: string, k: string) => {
       const id = `${s}\u0000${k}`;

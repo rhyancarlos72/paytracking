@@ -56,8 +56,52 @@ async function storeRate(db: Q, date: string, base: string, quote: string, rate:
 }
 
 /** Tabela de cotações EUR→X em memória para um intervalo — evita consulta por linha. */
+/** Tentativas recentes de buscar histórico (evita martelar a fonte se ela estiver fora). */
+const recentHistoryFetch = new Map<string, number>();
+
+/**
+ * Garante cotações do BCE para o PERÍODO consultado. O worker só grava a cotação do dia; vendas
+ * de dias anteriores (ou de quando o app ficou dormindo na hospedagem) ficavam sem cotação e
+ * entravam com receita zero. Aqui, se faltar cotação para alguma moeda no início da janela,
+ * busca a série histórica do período (Frankfurter/BCE) e grava antes de converter.
+ */
+export async function ensureFxRates(ctx: Ctx, currencies: string[], since: string, until: string): Promise<void> {
+  const list = [...new Set(currencies.map((c) => String(c ?? '').trim().toUpperCase()).filter((c) => /^[A-Z]{3}$/.test(c) && c !== 'EUR'))];
+  if (!list.length) return;
+  const covered = await ctx.db.query<{ quote: string }>(
+    `SELECT quote FROM fx_rates WHERE base = 'EUR' AND quote = ANY($1) AND rate_date BETWEEN ($2::date - $3::int) AND $2::date GROUP BY quote`,
+    [list, since, LOOKBACK_DAYS],
+  );
+  const have = new Set(covered.rows.map((r) => r.quote));
+  const missing = list.filter((c) => !have.has(c));
+  if (!missing.length) return;
+  const key = `${missing.sort().join(',')}:${since}:${until}`;
+  const last = recentHistoryFetch.get(key) ?? 0;
+  if (Date.now() - last < 30 * 60_000) return;
+  recentHistoryFetch.set(key, Date.now());
+  const start = new Date(Date.parse(since) - LOOKBACK_DAYS * 86_400_000).toISOString().slice(0, 10);
+  try {
+    const r = await ctx.fetch(`https://api.frankfurter.dev/v1/${start}..${until}?base=EUR&symbols=${missing.join(',')}`, { signal: AbortSignal.timeout(10_000) });
+    if (!r.ok) { ctx.log.warn({ status: r.status, missing }, 'câmbio histórico indisponível'); return; }
+    const j = (await r.json()) as { rates?: Record<string, Record<string, number>> };
+    let stored = 0;
+    for (const [date, rates] of Object.entries(j.rates ?? {})) {
+      for (const [quote, rate] of Object.entries(rates)) stored += await storeRate(ctx.db, date, 'EUR', quote, rate, 'ecb-frankfurter', false);
+    }
+    ctx.log.info({ missing, since: start, until, stored }, 'câmbio histórico gravado');
+  } catch (e) {
+    ctx.log.warn({ err: String(e), missing }, 'câmbio histórico falhou');
+  }
+}
+
 export class FxTable {
   private byQuote = new Map<string, Array<{ date: string; rate: string; source: string }>>();
+
+  /** Carrega as cotações do período, buscando o histórico que faltar (use nos relatórios). */
+  static async loadFor(ctx: Ctx, currencies: string[], since: string, until: string): Promise<FxTable> {
+    await ensureFxRates(ctx, currencies, since, until);
+    return FxTable.load(ctx.db, currencies, since, until);
+  }
 
   static async load(db: Q, currencies: string[], since: string, until: string): Promise<FxTable> {
     const t = new FxTable();

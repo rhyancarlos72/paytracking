@@ -153,7 +153,7 @@ export function metaRoutes(app: FastifyInstance, ctx: Ctx) {
          FROM payments WHERE org_id = $1 AND status = 'approved' AND approved_at >= $2 AND approved_at < $3`,
       [a.org.id, w.startUtc, w.endUtc],
     );
-    const fx = await FxTable.load(ctx.db, [rep, data.currency, ...pays.rows.map((p) => String(p.currency ?? '').trim())], w.since, w.until);
+    const fx = await FxTable.loadFor(ctx, [rep, data.currency, ...pays.rows.map((p) => String(p.currency ?? '').trim())], w.since, w.until);
     const acc = data.rows.map(() => ({ sales: 0, revenue: 0n, unconverted: 0 }));
     const rows = data.rows.map((r) => ({ id: r.id, name: r.name }));
     for (const p of pays.rows) {

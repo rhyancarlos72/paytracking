@@ -57,7 +57,7 @@ async function currenciesInUse(ctx: Ctx, orgId: string): Promise<string[]> {
 
 async function windowKpis(ctx: Ctx, org: OrgSummary, w: ReportWindow, f: DashboardFilters, withMeta: boolean) {
   const meta = withMeta && !f.pixelId && !f.provider ? await accountDaily(ctx, org.id, w.since, w.until).catch(() => null) : null;
-  const fx = await FxTable.load(ctx.db, [org.reporting_currency, ...(await currenciesInUse(ctx, org.id)), meta?.currency ?? ''], w.since, w.until);
+  const fx = await FxTable.loadFor(ctx, [org.reporting_currency, ...(await currenciesInUse(ctx, org.id)), meta?.currency ?? ''], w.since, w.until);
   const confirmed = await salesBuckets(ctx, org, w, f, fx, 'approved_at', `status = 'approved'`);
   const reversed = await salesBuckets(ctx, org, w, f, fx, 'reversed_at', `status IN ('refunded', 'chargeback') AND approved_at IS NOT NULL`);
 
@@ -140,7 +140,7 @@ export async function dashboard(ctx: Ctx, org: OrgSummary, q: { preset: PeriodPr
   ]);
 
   // Metas: SEMPRE hoje vs meta diária e mês corrente vs meta mensal (corrige P-23)
-  const fxToday = await FxTable.load(ctx.db, [org.reporting_currency, ...(await currenciesInUse(ctx, org.id))], reportWindow('this_month', org.timezone, { now: ctx.now() }).since, reportWindow('today', org.timezone, { now: ctx.now() }).until);
+  const fxToday = await FxTable.loadFor(ctx, [org.reporting_currency, ...(await currenciesInUse(ctx, org.id))], reportWindow('this_month', org.timezone, { now: ctx.now() }).since, reportWindow('today', org.timezone, { now: ctx.now() }).until);
   const today = await salesBuckets(ctx, org, reportWindow('today', org.timezone, { now: ctx.now() }), {}, fxToday, 'approved_at', `status = 'approved'`);
   const month = await salesBuckets(ctx, org, reportWindow('this_month', org.timezone, { now: ctx.now() }), {}, fxToday, 'approved_at', `status = 'approved'`);
 

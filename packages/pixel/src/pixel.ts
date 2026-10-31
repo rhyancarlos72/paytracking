@@ -42,7 +42,7 @@ import {
   const CONTENT_NAME = attr('data-content-name');
   let IC_URL_RE: RegExp;
   try {
-    IC_URL_RE = new RegExp(attr('data-ic-url-pattern') || '([?&](ref|aff|afid|src|xcod)=|/checkout|/pay|/c/|produto_id=|product_id=|/pagamento)', 'i');
+    IC_URL_RE = new RegExp(attr('data-ic-url-pattern') || '([?&](ref|aff|afid|src|xcod|sck|off)=|/checkout|/pay|/c/|produto_id=|product_id=|/pagamento|hotmart\\.com|kiwify\\.|kirvano\\.|cakto\\.|eduzz\\.|monetizze\\.|ticto\\.|perfectpay\\.|braip\\.|greenn\\.|lastlink\\.|pepper\\.|yampi\\.|appmax\\.)', 'i');
   } catch {
     IC_URL_RE = /([?&]ref=|\/checkout|\/pay)/i;
   }
@@ -241,7 +241,8 @@ import {
       if (target !== MANUAL) forward(t, ''); // só enriquece o link (sem evento extra)
       return;
     }
-    if (IC_RULE !== 'none' && IC_VALUE && target !== MANUAL && !matchesRule(target)) return;
+    // não casou com a regra do InitiateCheckout: sem evento, mas o link ainda leva o rastreamento
+    if (IC_RULE !== 'none' && IC_VALUE && target !== MANUAL && !matchesRule(target)) { if (IC_URL_RE.test(target)) forward(t, getStoredIc(PIXEL_ID)?.id ?? ''); return; }
     const now = Date.now();
     if (now - lastClick < 1200) return; // pointerdown + click do mesmo toque
     lastClick = now;
