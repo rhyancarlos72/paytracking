@@ -93134,6 +93134,7 @@ function backoffDelayMs(attempt, opts = {}) {
 }
 
 // ../../packages/domain/src/time.ts
+var PERIOD_PRESETS = ["today", "yesterday", "last_3d", "last_7d", "last_14d", "last_30d", "last_90d", "this_month", "last_month", "custom"];
 function partsInTz(date5, tz) {
   const f = new Intl.DateTimeFormat("en-US", {
     timeZone: tz,
@@ -93179,8 +93180,15 @@ function reportWindow(preset, tz, opts = {}) {
     case "yesterday":
       since = until = addDays(today, -1);
       break;
+    case "last_3d":
+      since = addDays(today, -2);
+      break;
+    // hoje + 2 dias anteriores
     case "last_7d":
       since = addDays(today, -6);
+      break;
+    case "last_14d":
+      since = addDays(today, -13);
       break;
     case "last_30d":
       since = addDays(today, -29);
@@ -93191,6 +93199,12 @@ function reportWindow(preset, tz, opts = {}) {
     case "this_month":
       since = today.slice(0, 8) + "01";
       break;
+    case "last_month": {
+      const first = today.slice(0, 8) + "01";
+      until = addDays(first, -1);
+      since = until.slice(0, 8) + "01";
+      break;
+    }
     case "custom": {
       const re = /^\d{4}-\d{2}-\d{2}$/;
       if (!opts.since || !opts.until || !re.test(opts.since) || !re.test(opts.until)) throw new Error("Per\xEDodo personalizado inv\xE1lido");
@@ -95933,7 +95947,7 @@ async function invalidateCache(ctx, orgId) {
 
 // src/meta/routes.ts
 var periodQuery = external_exports.object({
-  preset: external_exports.enum(["today", "yesterday", "last_7d", "last_30d", "last_90d", "this_month", "custom"]).default("today"),
+  preset: external_exports.enum(PERIOD_PRESETS).default("today"),
   since: external_exports.string().optional(),
   until: external_exports.string().optional()
 });

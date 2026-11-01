@@ -209,3 +209,18 @@ describe('UTM', () => {
     expect(matchUtmToRow(['Outra|999999999999999'], rows)).toBe(-1);
   });
 });
+
+describe('períodos novos', () => {
+  const now = new Date('2026-11-01T15:00:00Z'); // 12h em São Paulo
+  it('últimos 3 dias inclui hoje (hoje + 2 anteriores)', () => {
+    const w = reportWindow('last_3d', 'America/Sao_Paulo', { now });
+    expect([w.since, w.until, w.days]).toEqual(['2026-10-30', '2026-11-01', 3]);
+  });
+  it('últimos 14 dias e mês passado (inclusive na virada do ano)', () => {
+    expect(reportWindow('last_14d', 'America/Sao_Paulo', { now }).since).toBe('2026-10-19');
+    const lm = reportWindow('last_month', 'America/Sao_Paulo', { now });
+    expect([lm.since, lm.until]).toEqual(['2026-10-01', '2026-10-31']);
+    const jan = reportWindow('last_month', 'America/Sao_Paulo', { now: new Date('2027-01-10T15:00:00Z') });
+    expect([jan.since, jan.until]).toEqual(['2026-12-01', '2026-12-31']);
+  });
+});

@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { matchUtmToRow, parseAmount, reportWindow, currencyExponent, type PeriodPreset } from '@pt/domain';
+import { matchUtmToRow, parseAmount, PERIOD_PRESETS, reportWindow, currencyExponent, type PeriodPreset } from '@pt/domain';
 import type { Ctx } from '../context.js';
 import { randomToken } from '../lib/crypto.js';
 import { AppError, badRequest } from '../lib/errors.js';
@@ -12,7 +12,7 @@ import { exchangeCode, MetaApiError, MetaClient, metaAuthUrl, metaRedirectUri, n
 import { entities, getConnection, handleMetaError, invalidateCache, metaMoneyToMinor } from './service.js';
 
 export const periodQuery = z.object({
-  preset: z.enum(['today', 'yesterday', 'last_7d', 'last_30d', 'last_90d', 'this_month', 'custom']).default('today'),
+  preset: z.enum(PERIOD_PRESETS as unknown as [PeriodPreset, ...PeriodPreset[]]).default('today'),
   since: z.string().optional(),
   until: z.string().optional(),
 });

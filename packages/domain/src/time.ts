@@ -4,7 +4,8 @@
  * depender do fuso do servidor (corrige P-30).
  */
 
-export type PeriodPreset = 'today' | 'yesterday' | 'last_7d' | 'last_30d' | 'last_90d' | 'this_month' | 'custom';
+export type PeriodPreset = 'today' | 'yesterday' | 'last_3d' | 'last_7d' | 'last_14d' | 'last_30d' | 'last_90d' | 'this_month' | 'last_month' | 'custom';
+export const PERIOD_PRESETS: readonly PeriodPreset[] = ['today', 'yesterday', 'last_3d', 'last_7d', 'last_14d', 'last_30d', 'last_90d', 'this_month', 'last_month', 'custom'];
 
 export interface ReportWindow {
   preset: PeriodPreset;
@@ -68,10 +69,18 @@ export function reportWindow(
   let until = today;
   switch (preset) {
     case 'yesterday': since = until = addDays(today, -1); break;
+    case 'last_3d': since = addDays(today, -2); break; // hoje + 2 dias anteriores
     case 'last_7d': since = addDays(today, -6); break;
+    case 'last_14d': since = addDays(today, -13); break;
     case 'last_30d': since = addDays(today, -29); break;
     case 'last_90d': since = addDays(today, -89); break;
     case 'this_month': since = today.slice(0, 8) + '01'; break;
+    case 'last_month': {
+      const first = today.slice(0, 8) + '01';
+      until = addDays(first, -1);
+      since = until.slice(0, 8) + '01';
+      break;
+    }
     case 'custom': {
       const re = /^\d{4}-\d{2}-\d{2}$/;
       if (!opts.since || !opts.until || !re.test(opts.since) || !re.test(opts.until)) throw new Error('Período personalizado inválido');

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { ArrowDown, ArrowUp, CircleDollarSign, Copy, Flame, Info, Megaphone, MousePointerClick, Pause, Pencil, Play, RefreshCw, Search, ShoppingBag, Target, TrendingDown, TrendingUp, Trophy, Wallet, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, CircleDollarSign, Copy, Flame, Info, Megaphone, MousePointerClick, Pause, Pencil, Play, RefreshCw, Search, ShoppingBag, Target, TrendingDown, TrendingUp, Trophy, Wallet, X } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { PeriodPicker, usePeriod } from '../components/period';
@@ -56,6 +56,7 @@ export default function CampaignsPage() {
   const [budgetRow, setBudgetRow] = useState<Row | null>(null);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<'all' | 'active' | 'paused'>('all');
+  const [onlySales, setOnlySales] = useState(false);
   const kind = level === 'campaign' ? 'campanha' : 'conjunto';
 
   const key = ['campaigns', period.query, level, campaignIds];
@@ -81,10 +82,10 @@ export default function CampaignsPage() {
 
   const rows = useMemo(() => {
     const term = search.trim().toLowerCase();
-    const list = all.filter((x) => (status === 'all' || (status === 'active') === x.active) && (!term || x.r.name.toLowerCase().includes(term) || (x.r.campaignName ?? '').toLowerCase().includes(term)));
+    const list = all.filter((x) => (status === 'all' || (status === 'active') === x.active) && (!onlySales || x.sales > 0) && (!term || x.r.name.toLowerCase().includes(term) || (x.r.campaignName ?? '').toLowerCase().includes(term)));
     const val = (x: (typeof list)[number]) => ({ name: x.r.name.toLowerCase(), spend: x.spend, sales: x.sales, revenue: x.revenue, roas: x.roas ?? -1, cpa: x.cpa ?? Infinity, ctr: x.r.ctr })[sort.key];
     return [...list].sort((a, b) => (val(a) > val(b) ? 1 : val(a) < val(b) ? -1 : 0) * sort.dir);
-  }, [all, sort, search, status]);
+  }, [all, sort, search, status, onlySales]);
 
   const tot = rows.reduce((t, x) => ({ spend: t.spend + x.spend, revenue: t.revenue + x.revenue, sales: t.sales + x.sales, clicks: t.clicks + x.r.linkClicks, lpv: t.lpv + x.r.landingPageViews }), { spend: 0, revenue: 0, sales: 0, clicks: 0, lpv: 0 });
   const totRoas = tot.spend > 0 ? tot.revenue / tot.spend : null;
@@ -205,6 +206,25 @@ export default function CampaignsPage() {
                   options={[{ value: 'campaign', label: 'Campanhas' }, { value: 'adset', label: 'Conjuntos' }]} />
                 <Segmented label="Status" value={status} onChange={setStatus}
                   options={[{ value: 'all', label: `Todas (${all.length})` }, { value: 'active', label: `Ativas (${counts.active})` }, { value: 'paused', label: `Pausadas (${counts.paused})` }]} />
+                <button type="button" onClick={() => setOnlySales((v) => !v)} aria-pressed={onlySales}
+                  className={clsx('inline-flex h-10 items-center gap-1.5 rounded-xl border px-3 text-[13px] font-medium transition',
+                    onlySales ? 'border-primary/40 bg-primary/10 text-primary' : 'border-border bg-surface-2 text-muted hover:text-fg')}>
+                  <ShoppingBag className="h-3.5 w-3.5" aria-hidden />Só com vendas
+                </button>
+                {/* celular: sem cabeçalho de tabela, ordenação por aqui */}
+                <div className="relative md:hidden">
+                  <ArrowUpDown className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
+                  <select aria-label="Ordenar por" className="input h-10 w-auto cursor-pointer pl-9 pr-8"
+                    value={`${sort.key}:${sort.dir}`} onChange={(e) => { const [k, d] = e.target.value.split(':'); setSort({ key: k as SortKey, dir: Number(d) as 1 | -1 }); }}>
+                    <option value="sales:-1">Mais vendas</option>
+                    <option value="revenue:-1">Maior receita</option>
+                    <option value="roas:-1">Maior ROAS</option>
+                    <option value="cpa:1">Menor CPA</option>
+                    <option value="spend:-1">Maior gasto</option>
+                    <option value="ctr:-1">Maior CTR</option>
+                    <option value="name:1">Nome (A–Z)</option>
+                  </select>
+                </div>
                 {campaignIds && (
                   <button className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary ring-1 ring-inset ring-primary/25 hover:bg-primary/15"
                     onClick={() => { const n = new URLSearchParams(sp); n.delete('campanhas'); n.set('nivel', 'campaign'); setSp(n); }}>
