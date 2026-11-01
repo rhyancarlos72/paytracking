@@ -34,7 +34,7 @@ function pushService(status = 201) {
     return new Response(null, { status });
   });
 }
-const waitFor = async (cond: () => boolean) => { for (let i = 0; i < 100 && !cond(); i++) await new Promise((r) => setTimeout(r, 20)); };
+const waitFor = async (cond: () => boolean) => { for (let i = 0; i < 400 && !cond(); i++) await new Promise((r) => setTimeout(r, 25)); }; // até 10 s (CI lenta)
 
 describe('Web Push (notificações no celular)', () => {
   it('chaves VAPID geradas uma vez, guardadas cifradas e estáveis', async () => {
