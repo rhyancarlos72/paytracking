@@ -247,7 +247,7 @@ async function applyPayment(
   );
   const isNew = !!ins.rowCount;
   const cur = await c.query(
-    'SELECT id, status, pixel_id, amount_minor, currency, approved_at FROM payments WHERE org_id = $1 AND provider = $2 AND transaction_id = $3 FOR UPDATE',
+    'SELECT id, status, pixel_id, amount_minor, currency, approved_at, purchase_capi_status FROM payments WHERE org_id = $1 AND provider = $2 AND transaction_id = $3 FOR UPDATE',
     [orgId, n.provider, n.transactionId],
   );
   const payment = cur.rows[0];
@@ -299,6 +299,8 @@ async function applyPayment(
         kind: 'purchase_without_value', severity: 'warning', dedupKey: `purchase_without_value:${integration.id}`,
         title: 'Venda aprovada sem valor', detail: `Transação ${n.transactionId}: o gateway não informou o valor; Purchase não enviado à Meta.`,
       });
+    } else if (payment.purchase_capi_status) {
+      // Purchase desta venda já foi entregue (o registro da fila foi limpo depois de 6 dias): nunca reenvia
     } else {
       const event = await buildPaymentEvent(c, orgId, n, 'Purchase', purchaseEventId(n), amountMinor, currency, at, ctx.now());
       await c.query('UPDATE payments SET purchase_event_id = $2 WHERE id = $1', [payment.id, event.event_id]);

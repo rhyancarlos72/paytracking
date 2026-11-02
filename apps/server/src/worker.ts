@@ -3,6 +3,7 @@ import { dispatchBatch } from './capi/dispatcher.js';
 import { refreshRates } from './fx/service.js';
 import { raiseAlert } from './capi/outbox.js';
 import { onWake } from './capi/wake.js';
+import { cleanupEvents } from './maintenance/events.js';
 
 /**
  * Worker: entrega da CAPI (loop curto), câmbio (a cada 6h), retenção e manutenção (a cada hora).
@@ -11,8 +12,11 @@ import { onWake } from './capi/wake.js';
 
 export async function maintenance(ctx: Ctx): Promise<Record<string, number>> {
   const q = (sql: string, p: unknown[] = []) => ctx.db.query(sql, p).then((r) => r.rowCount ?? 0);
+  const events = await cleanupEvents(ctx);
   const out = {
-    trackingEvents: await q(`DELETE FROM tracking_events WHERE received_at < now() - make_interval(days => $1)`, [ctx.config.TRACKING_RETENTION_DAYS]),
+    ...events,
+    trackingRollup: await q(`DELETE FROM tracking_rollup WHERE hour < now() - make_interval(days => $1)`, [ctx.config.TRACKING_RETENTION_DAYS]),
+    capiRollup: await q(`DELETE FROM capi_rollup WHERE hour < now() - make_interval(days => $1)`, [ctx.config.TRACKING_RETENTION_DAYS]),
     webhookBodies: await q(`UPDATE webhook_receipts SET body_enc = NULL WHERE body_enc IS NOT NULL AND received_at < now() - make_interval(days => $1)`, [ctx.config.WEBHOOK_BODY_RETENTION_DAYS]),
     identities: await q(`DELETE FROM visitor_identities WHERE updated_at < now() - interval '120 days'`),
     sessions: await q(`DELETE FROM sessions WHERE expires_at < now() - interval '7 days' OR revoked_at < now() - interval '7 days'`),

@@ -11,7 +11,7 @@ const UPDATED = '30 de outubro de 2026';
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 
-interface Legal { operator: string; contactEmail: string; appUrl: string; priceMinor: number; trialDays: number; trackingDays: number; webhookDays: number }
+interface Legal { operator: string; contactEmail: string; appUrl: string; priceMinor: number; trialDays: number; trackingDays: number; webhookDays: number; eventDays: number; purchaseDays: number }
 
 function legalInfo(ctx: Ctx): Legal {
   const c = ctx.config;
@@ -20,7 +20,7 @@ function legalInfo(ctx: Ctx): Legal {
   const operator = c.LEGAL_NAME ? `${c.LEGAL_NAME}${c.LEGAL_DOCUMENT ? `, inscrita no CNPJ/CPF sob o nº ${c.LEGAL_DOCUMENT}` : ''}` : 'o responsável pelo PayTracking';
   return {
     operator, contactEmail: contact, appUrl: c.APP_URL.replace(/\/$/, ''), priceMinor: c.PLAN_PRICE_MINOR, trialDays: c.PLAN_TRIAL_DAYS,
-    trackingDays: c.TRACKING_RETENTION_DAYS, webhookDays: c.WEBHOOK_BODY_RETENTION_DAYS,
+    trackingDays: c.TRACKING_RETENTION_DAYS, webhookDays: c.WEBHOOK_BODY_RETENTION_DAYS, eventDays: c.EVENT_RETENTION_DAYS, purchaseDays: c.PURCHASE_EVENT_RETENTION_DAYS,
   };
 }
 
@@ -182,7 +182,7 @@ function privacy(l: Legal): string {
 
 <h2 id="retencao">8. Por quanto tempo guardamos</h2>
 <ul>
-  <li>Eventos de navegação: até ${l.trackingDays} dias.</li>
+  <li>Eventos de navegação e o registro de envio à Meta: até ${l.eventDays} dias (eventos de compra: até ${l.purchaseDays} dias). Depois disso ficam apenas contagens agregadas por hora, sem dados pessoais, por até ${l.trackingDays} dias.</li>
   <li>Identidades de visitantes (cookies, IP, navegador, resumos de e-mail/telefone): apagadas após 120 dias sem atividade.</li>
   <li>Conteúdo original das notificações dos meios de pagamento: até ${l.webhookDays} dias (depois, só os dados da venda permanecem).</li>
   <li>Sessões de acesso: apagadas até 7 dias depois de expirar ou de serem encerradas.</li>

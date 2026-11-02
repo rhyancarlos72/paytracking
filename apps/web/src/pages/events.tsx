@@ -35,7 +35,7 @@ export default function EventsPage() {
   const counts = q.data?.counts ?? {};
   return (
     <>
-      <PageHeader title="Eventos" description="Tudo o que foi enfileirado para a Meta Conversions API — com resposta, tentativas e payload."
+      <PageHeader title="Eventos" description="Tudo o que foi enfileirado para a Meta Conversions API — com resposta, tentativas e payload. Os registros ficam aqui por 3 dias (Purchase: 6 dias); depois só as contagens são guardadas, e vendas, faturamento e campanhas não mudam."
         actions={<>
           <PeriodPicker period={period} />
           {s.can('analyst') && (counts.dead ?? 0) > 0 && (

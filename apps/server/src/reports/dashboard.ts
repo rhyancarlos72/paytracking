@@ -120,8 +120,8 @@ async function windowKpis(ctx: Ctx, org: OrgSummary, w: ReportWindow, f: Dashboa
   }
 
   const funnel = await ctx.db.query(
-    `SELECT event_name, count(*)::int AS n FROM tracking_events
-      WHERE org_id = $1 AND received_at >= $2 AND received_at < $3 AND ($4::uuid IS NULL OR pixel_id = $4)
+    `SELECT event_name, sum(n)::int AS n FROM tracking_counts
+      WHERE org_id = $1 AND at >= $2 AND at < $3 AND ($4::uuid IS NULL OR pixel_id = $4)
         AND event_name IN ('PageView', 'InitiateCheckout') GROUP BY event_name`,
     [org.id, w.startUtc, w.endUtc, f.pixelId ?? null],
   );
@@ -182,12 +182,12 @@ export async function dashboard(ctx: Ctx, org: OrgSummary, q: { preset: PeriodPr
   const month = await salesBuckets(ctx, org, reportWindow('this_month', org.timezone, { now: ctx.now() }), {}, fxToday, 'approved_at', `status = 'approved'`);
 
   const capi = await ctx.db.query(
-    `SELECT status, count(*)::int AS n FROM capi_outbox WHERE org_id = $1 AND created_at >= $2 AND created_at < $3
+    `SELECT status, sum(n)::int AS n FROM capi_counts WHERE org_id = $1 AND at >= $2 AND at < $3
         AND ($4::uuid IS NULL OR pixel_id = $4) GROUP BY status`,
     [org.id, w.startUtc, w.endUtc, q.pixelId ?? null],
   );
   const tracked = await ctx.db.query(
-    'SELECT count(*)::int AS n FROM tracking_events WHERE org_id = $1 AND received_at >= $2 AND received_at < $3 AND ($4::uuid IS NULL OR pixel_id = $4)',
+    'SELECT COALESCE(sum(n), 0)::int AS n FROM tracking_counts WHERE org_id = $1 AND at >= $2 AND at < $3 AND ($4::uuid IS NULL OR pixel_id = $4)',
     [org.id, w.startUtc, w.endUtc, q.pixelId ?? null],
   );
   const alerts = await ctx.db.query(`SELECT count(*)::int AS n FROM alerts WHERE org_id = $1 AND resolved_at IS NULL`, [org.id]);

@@ -79,7 +79,12 @@ const schema = z.object({
   PLATFORM_PIXEL_BROWSER: z.enum(['auto', 'on', 'off']).default('auto'),
 
   WEBHOOK_BODY_RETENTION_DAYS: z.coerce.number().int().min(1).default(30),
+  /** resumo por hora dos eventos (sem dados pessoais) — base dos relatórios de períodos longos */
   TRACKING_RETENTION_DAYS: z.coerce.number().int().min(7).default(180),
+  /** eventos brutos (PageView, InitiateCheckout, …) e a fila da Meta já entregue: apagados depois de N dias */
+  EVENT_RETENTION_DAYS: z.coerce.number().int().min(1).max(30).default(3),
+  /** Purchase fica mais tempo (a Meta aceita eventos de até 7 dias para reenvio) */
+  PURCHASE_EVENT_RETENTION_DAYS: z.coerce.number().int().min(1).max(30).default(6),
   /**
    * "paused" = modo sombra da migração: tudo é recebido, gravado e enfileirado, mas nada sai
    * para a Meta (o sistema antigo continua enviando). Ver docs/PLANO-MIGRACAO.md.

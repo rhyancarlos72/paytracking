@@ -24613,7 +24613,12 @@ var schema = external_exports.object({
   PLATFORM_PIXEL_ID: external_exports.string().default("2215202246010798"),
   PLATFORM_PIXEL_BROWSER: external_exports.enum(["auto", "on", "off"]).default("auto"),
   WEBHOOK_BODY_RETENTION_DAYS: external_exports.coerce.number().int().min(1).default(30),
+  /** resumo por hora dos eventos (sem dados pessoais) — base dos relatórios de períodos longos */
   TRACKING_RETENTION_DAYS: external_exports.coerce.number().int().min(7).default(180),
+  /** eventos brutos (PageView, InitiateCheckout, …) e a fila da Meta já entregue: apagados depois de N dias */
+  EVENT_RETENTION_DAYS: external_exports.coerce.number().int().min(1).max(30).default(3),
+  /** Purchase fica mais tempo (a Meta aceita eventos de até 7 dias para reenvio) */
+  PURCHASE_EVENT_RETENTION_DAYS: external_exports.coerce.number().int().min(1).max(30).default(6),
   /**
    * "paused" = modo sombra da migração: tudo é recebido, gravado e enfileirado, mas nada sai
    * para a Meta (o sistema antigo continua enviando). Ver docs/PLANO-MIGRACAO.md.
@@ -38095,11 +38100,74 @@ function onWake(fn) {
   return () => listeners.delete(fn);
 }
 
+// src/maintenance/events.ts
+var HOUR = `date_trunc('hour', %s AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'`;
+async function cleanupEvents(ctx2) {
+  const days = ctx2.config.EVENT_RETENTION_DAYS;
+  const purchaseDays = ctx2.config.PURCHASE_EVENT_RETENTION_DAYS;
+  const expired = (col) => `${col} < now() - make_interval(days => CASE WHEN event_name = 'Purchase' THEN $2::int ELSE $1::int END)`;
+  const c = await ctx2.db.connect();
+  try {
+    await c.query("BEGIN");
+    const archived = await c.query(
+      `UPDATE payments p SET purchase_capi_status = o.status, purchase_capi_sent_at = o.sent_at
+         FROM capi_outbox o
+        WHERE o.payment_id = p.id AND o.event_name = 'Purchase' AND o.status IN ('sent', 'dead') AND ${expired("o.created_at")}`,
+      [days, purchaseDays]
+    );
+    const capi = await c.query(
+      `WITH del AS (
+         DELETE FROM capi_outbox WHERE status IN ('sent', 'dead') AND ${expired("created_at")}
+         RETURNING org_id, pixel_id, ${HOUR.replace("%s", "created_at")} AS hour, event_name, status
+       ), agg AS (
+         SELECT org_id, pixel_id, hour, event_name, status, count(*)::int AS n FROM del GROUP BY 1, 2, 3, 4, 5
+       ), ins AS (
+         INSERT INTO capi_rollup(key, org_id, pixel_id, hour, event_name, status, n)
+         SELECT md5(concat_ws('|', org_id, pixel_id, extract(epoch FROM hour), event_name, status)), org_id, pixel_id, hour, event_name, status, n FROM agg
+         ON CONFLICT (key) DO UPDATE SET n = capi_rollup.n + EXCLUDED.n RETURNING 1
+       )
+       SELECT (SELECT count(*) FROM del)::int AS deleted, (SELECT count(*) FROM ins)::int AS buckets`,
+      [days, purchaseDays]
+    );
+    const tracking = await c.query(
+      `WITH del AS (
+         DELETE FROM tracking_events WHERE ${expired("received_at")}
+         RETURNING org_id, pixel_id, ${HOUR.replace("%s", "received_at")} AS hour, event_name, source,
+                   utm_source, utm_medium, utm_campaign, utm_content, utm_term, utm_id,
+                   ARRAY(SELECT DISTINCT k FROM unnest(match_keys) k ORDER BY 1) AS match_keys
+       ), agg AS (
+         SELECT org_id, pixel_id, hour, event_name, source, utm_source, utm_medium, utm_campaign, utm_content, utm_term, utm_id, match_keys, count(*)::int AS n
+           FROM del GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
+       ), ins AS (
+       INSERT INTO tracking_rollup(key, org_id, pixel_id, hour, event_name, source, utm_source, utm_medium, utm_campaign, utm_content, utm_term, utm_id, match_keys, n)
+       SELECT md5(concat_ws('|', org_id, pixel_id, extract(epoch FROM hour), event_name, source,
+                  coalesce(utm_source, E'\\x01'), coalesce(utm_medium, E'\\x01'), coalesce(utm_campaign, E'\\x01'), coalesce(utm_content, E'\\x01'),
+                  coalesce(utm_term, E'\\x01'), coalesce(utm_id, E'\\x01'), array_to_string(match_keys, ','))),
+              org_id, pixel_id, hour, event_name, source, utm_source, utm_medium, utm_campaign, utm_content, utm_term, utm_id, match_keys, n
+         FROM agg
+       ON CONFLICT (key) DO UPDATE SET n = tracking_rollup.n + EXCLUDED.n RETURNING 1
+       )
+       SELECT (SELECT count(*) FROM del)::int AS deleted, (SELECT count(*) FROM ins)::int AS buckets`,
+      [days, purchaseDays]
+    );
+    await c.query("COMMIT");
+    return { trackingEvents: tracking.rows[0]?.deleted ?? 0, capiEvents: capi.rows[0]?.deleted ?? 0, purchasesArchived: archived.rowCount ?? 0 };
+  } catch (e) {
+    await c.query("ROLLBACK").catch(() => void 0);
+    throw e;
+  } finally {
+    c.release();
+  }
+}
+
 // src/worker.ts
 async function maintenance(ctx2) {
   const q = (sql, p = []) => ctx2.db.query(sql, p).then((r) => r.rowCount ?? 0);
+  const events = await cleanupEvents(ctx2);
   const out = {
-    trackingEvents: await q(`DELETE FROM tracking_events WHERE received_at < now() - make_interval(days => $1)`, [ctx2.config.TRACKING_RETENTION_DAYS]),
+    ...events,
+    trackingRollup: await q(`DELETE FROM tracking_rollup WHERE hour < now() - make_interval(days => $1)`, [ctx2.config.TRACKING_RETENTION_DAYS]),
+    capiRollup: await q(`DELETE FROM capi_rollup WHERE hour < now() - make_interval(days => $1)`, [ctx2.config.TRACKING_RETENTION_DAYS]),
     webhookBodies: await q(`UPDATE webhook_receipts SET body_enc = NULL WHERE body_enc IS NOT NULL AND received_at < now() - make_interval(days => $1)`, [ctx2.config.WEBHOOK_BODY_RETENTION_DAYS]),
     identities: await q(`DELETE FROM visitor_identities WHERE updated_at < now() - interval '120 days'`),
     sessions: await q(`DELETE FROM sessions WHERE expires_at < now() - interval '7 days' OR revoked_at < now() - interval '7 days'`),

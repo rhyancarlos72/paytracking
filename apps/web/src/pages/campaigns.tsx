@@ -217,7 +217,16 @@ export default function CampaignsPage() {
                     onlySales ? 'border-primary/40 bg-primary/10 text-primary' : 'border-border bg-surface-2 text-muted hover:text-fg')}>
                   <ShoppingBag className="h-3.5 w-3.5" aria-hidden />Só com vendas
                 </button>
-                {/* celular: sem cabeçalho de tabela, ordenação por aqui */}
+                {/* celular: ordenar rápido por vendas ou gasto (e as demais opções no seletor ao lado) */}
+                <div role="radiogroup" aria-label="Ordenar campanhas" className="flex w-full gap-1 rounded-xl border border-border bg-surface p-1 md:hidden">
+                  {([['sales', 'Mais vendas', ShoppingBag], ['spend', 'Maior gasto', Wallet]] as const).map(([k, label, Icon]) => (
+                    <button key={k} type="button" role="radio" aria-checked={sort.key === k && sort.dir === -1} onClick={() => setSort({ key: k, dir: -1 })}
+                      className={clsx('inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg text-[13px] font-semibold transition',
+                        sort.key === k && sort.dir === -1 ? 'bg-[#2563eb] text-white shadow-[0_6px_16px_-8px_rgb(37_99_235/0.9)]' : 'text-muted hover:bg-surface-2 hover:text-fg')}>
+                      <Icon className="h-4 w-4" aria-hidden />{label}
+                    </button>
+                  ))}
+                </div>
                 <div className="relative md:hidden">
                   <ArrowUpDown className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
                   <select aria-label="Ordenar por" className="input h-10 w-auto cursor-pointer pl-9 pr-8"
@@ -278,13 +287,13 @@ export default function CampaignsPage() {
                             </div>
                             <RoasPill roas={roas} />
                           </div>
-                          <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
-                            {[['Gasto', money(spend, cur)], ['Vendas', int(sales)], ['Receita', money(revenue, cur)]].map(([l, v]) => (
-                              <div key={l} className="rounded-xl bg-surface-2/60 px-2 py-2"><dt className="text-[11px] text-muted">{l}</dt><dd className="num mt-0.5 text-sm font-semibold">{v}</dd></div>
+                          <dl className="mt-3 grid grid-cols-2 gap-2 text-center min-[400px]:grid-cols-4">
+                            {[['Gasto', money(spend, cur)], ['CPA', cpa !== null ? money(Math.round(cpa), cur) : '—'], ['Vendas', int(sales)], ['Receita', money(revenue, cur)]].map(([l, v]) => (
+                              <div key={l} className="min-w-0 rounded-xl bg-surface-2/60 px-1.5 py-2"><dt className="text-[11px] text-muted">{l}</dt><dd className="num mt-0.5 truncate text-[13px] font-semibold">{v}</dd></div>
                             ))}
                           </dl>
                           <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted">
-                            <span>CPA {cpa !== null ? money(Math.round(cpa), cur) : '—'} · CTR {pct(r.ctr / 100, 2)}</span>
+                            <span>CTR {pct(r.ctr / 100, 2)}</span>
                             <span className="flex items-center gap-1">{budget(r)}</span>
                           </div>
                         </li>
@@ -298,7 +307,7 @@ export default function CampaignsPage() {
                           {level === 'campaign' && <th className="w-10"><span className="sr-only">Selecionar</span></th>}
                           {header('name', level === 'campaign' ? 'Campanha' : 'Conjunto', false)}
                           <th>Orçamento</th>
-                          {header('spend', 'Gasto')}{header('sales', 'Vendas')}{header('revenue', 'Receita')}{header('roas', 'ROAS')}{header('cpa', 'CPA')}
+                          {header('spend', 'Gasto')}{header('cpa', 'CPA')}{header('sales', 'Vendas')}{header('revenue', 'Receita')}{header('roas', 'ROAS')}
                           {header('ctr', 'CTR')}<th className="text-right">Connect</th>
                         </tr></thead>
                         <tbody>
@@ -332,10 +341,10 @@ export default function CampaignsPage() {
                                   <div className="h-full rounded-full bg-primary/60" style={{ width: `${(spend / maxSpend) * 100}%` }} />
                                 </div>
                               </td>
+                              <td className="num text-right">{cpa !== null ? money(Math.round(cpa), cur) : '—'}</td>
                               <td className="num text-right font-semibold">{int(sales)}</td>
                               <td className="num text-right">{money(revenue, cur)}</td>
                               <td className="text-right"><RoasPill roas={roas} /></td>
-                              <td className="num text-right">{cpa !== null ? money(Math.round(cpa), cur) : '—'}</td>
                               <td className="num text-right">{pct(r.ctr / 100, 2)}</td>
                               <td className="num text-right">{r.linkClicks > 0 ? pct(r.landingPageViews / r.linkClicks) : '—'}</td>
                             </tr>
@@ -347,13 +356,12 @@ export default function CampaignsPage() {
                             <td className="border-t border-border px-4 py-3">Total ({int(rows.length)})</td>
                             <td className="border-t border-border px-4 py-3" />
                             <td className="num border-t border-border px-4 py-3 text-right">{money(tot.spend, cur)}</td>
+                            <td className="num border-t border-border px-4 py-3 text-right">{tot.sales > 0 ? money(Math.round(tot.spend / tot.sales), cur) : '—'}</td>
                             <td className="num border-t border-border px-4 py-3 text-right">{int(tot.sales)}</td>
                             <td className="num border-t border-border px-4 py-3 text-right">{money(tot.revenue, cur)}</td>
                             <td className="border-t border-border px-4 py-3 text-right"><RoasPill roas={totRoas} /></td>
-                            <td className="num border-t border-border px-4 py-3 text-right">{tot.sales > 0 ? money(Math.round(tot.spend / tot.sales), cur) : '—'}</td>
                             <td className="border-t border-border px-4 py-3" />
                             <td className="num border-t border-border px-4 py-3 text-right">{tot.clicks > 0 ? pct(tot.lpv / tot.clicks) : '—'}</td>
-                            <td className="border-t border-border px-4 py-3" />
                           </tr>
                         </tfoot>
                       </table>

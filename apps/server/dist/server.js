@@ -47484,15 +47484,15 @@ var require_dist5 = __commonJS({
     var RGX = /^(-?(?:\d+)?\.?\d+) *(m(?:illiseconds?|s(?:ecs?)?))?(s(?:ec(?:onds?|s)?)?)?(m(?:in(?:utes?|s)?)?)?(h(?:ours?|rs?)?)?(d(?:ays?)?)?(w(?:eeks?|ks?)?)?(y(?:ears?|rs?)?)?$/;
     var SEC = 1e3;
     var MIN = SEC * 60;
-    var HOUR = MIN * 60;
-    var DAY = HOUR * 24;
+    var HOUR2 = MIN * 60;
+    var DAY = HOUR2 * 24;
     var YEAR = DAY * 365.25;
     function parse6(val) {
       var num, arr = val.toLowerCase().match(RGX);
       if (arr != null && (num = parseFloat(arr[1]))) {
         if (arr[3] != null) return num * SEC;
         if (arr[4] != null) return num * MIN;
-        if (arr[5] != null) return num * HOUR;
+        if (arr[5] != null) return num * HOUR2;
         if (arr[6] != null) return num * DAY;
         if (arr[7] != null) return num * DAY * 7;
         if (arr[8] != null) return num * YEAR;
@@ -47507,8 +47507,8 @@ var require_dist5 = __commonJS({
       var pfx = num < 0 ? "-" : "", abs = num < 0 ? -num : num;
       if (abs < SEC) return num + (long ? " ms" : "ms");
       if (abs < MIN) return fmt(abs / SEC, pfx, "second", long);
-      if (abs < HOUR) return fmt(abs / MIN, pfx, "minute", long);
-      if (abs < DAY) return fmt(abs / HOUR, pfx, "hour", long);
+      if (abs < HOUR2) return fmt(abs / MIN, pfx, "minute", long);
+      if (abs < DAY) return fmt(abs / HOUR2, pfx, "hour", long);
       if (abs < YEAR) return fmt(abs / DAY, pfx, "day", long);
       return fmt(abs / YEAR, pfx, "year", long);
     }
@@ -79293,7 +79293,12 @@ var schema = external_exports.object({
   PLATFORM_PIXEL_ID: external_exports.string().default("2215202246010798"),
   PLATFORM_PIXEL_BROWSER: external_exports.enum(["auto", "on", "off"]).default("auto"),
   WEBHOOK_BODY_RETENTION_DAYS: external_exports.coerce.number().int().min(1).default(30),
+  /** resumo por hora dos eventos (sem dados pessoais) — base dos relatórios de períodos longos */
   TRACKING_RETENTION_DAYS: external_exports.coerce.number().int().min(7).default(180),
+  /** eventos brutos (PageView, InitiateCheckout, …) e a fila da Meta já entregue: apagados depois de N dias */
+  EVENT_RETENTION_DAYS: external_exports.coerce.number().int().min(1).max(30).default(3),
+  /** Purchase fica mais tempo (a Meta aceita eventos de até 7 dias para reenvio) */
+  PURCHASE_EVENT_RETENTION_DAYS: external_exports.coerce.number().int().min(1).max(30).default(6),
   /**
    * "paused" = modo sombra da migração: tudo é recebido, gravado e enfileirado, mas nada sai
    * para a Meta (o sistema antigo continua enviando). Ver docs/PLANO-MIGRACAO.md.
@@ -95573,7 +95578,7 @@ async function applyPayment(ctx, c, integration, n, productIds, rb, ms) {
   );
   const isNew = !!ins.rowCount;
   const cur = await c.query(
-    "SELECT id, status, pixel_id, amount_minor, currency, approved_at FROM payments WHERE org_id = $1 AND provider = $2 AND transaction_id = $3 FOR UPDATE",
+    "SELECT id, status, pixel_id, amount_minor, currency, approved_at, purchase_capi_status FROM payments WHERE org_id = $1 AND provider = $2 AND transaction_id = $3 FOR UPDATE",
     [orgId, n.provider, n.transactionId]
   );
   const payment = cur.rows[0];
@@ -95638,6 +95643,7 @@ async function applyPayment(ctx, c, integration, n, productIds, rb, ms) {
         title: "Venda aprovada sem valor",
         detail: `Transa\xE7\xE3o ${n.transactionId}: o gateway n\xE3o informou o valor; Purchase n\xE3o enviado \xE0 Meta.`
       });
+    } else if (payment.purchase_capi_status) {
     } else {
       const event = await buildPaymentEvent(c, orgId, n, "Purchase", purchaseEventId(n), amountMinor, currency, at, ctx.now());
       await c.query("UPDATE payments SET purchase_event_id = $2 WHERE id = $1", [payment.id, event.event_id]);
@@ -96797,8 +96803,8 @@ async function windowKpis(ctx, org, w, f, withMeta, breakdown = false) {
     }
   }
   const funnel = await ctx.db.query(
-    `SELECT event_name, count(*)::int AS n FROM tracking_events
-      WHERE org_id = $1 AND received_at >= $2 AND received_at < $3 AND ($4::uuid IS NULL OR pixel_id = $4)
+    `SELECT event_name, sum(n)::int AS n FROM tracking_counts
+      WHERE org_id = $1 AND at >= $2 AND at < $3 AND ($4::uuid IS NULL OR pixel_id = $4)
         AND event_name IN ('PageView', 'InitiateCheckout') GROUP BY event_name`,
     [org.id, w.startUtc, w.endUtc, f.pixelId ?? null]
   );
@@ -96850,12 +96856,12 @@ async function dashboard(ctx, org, q) {
   const today = await salesBuckets(ctx, org, reportWindow("today", org.timezone, { now: ctx.now() }), {}, fxToday, "approved_at", `status = 'approved'`);
   const month = await salesBuckets(ctx, org, reportWindow("this_month", org.timezone, { now: ctx.now() }), {}, fxToday, "approved_at", `status = 'approved'`);
   const capi = await ctx.db.query(
-    `SELECT status, count(*)::int AS n FROM capi_outbox WHERE org_id = $1 AND created_at >= $2 AND created_at < $3
+    `SELECT status, sum(n)::int AS n FROM capi_counts WHERE org_id = $1 AND at >= $2 AND at < $3
         AND ($4::uuid IS NULL OR pixel_id = $4) GROUP BY status`,
     [org.id, w.startUtc, w.endUtc, q.pixelId ?? null]
   );
   const tracked = await ctx.db.query(
-    "SELECT count(*)::int AS n FROM tracking_events WHERE org_id = $1 AND received_at >= $2 AND received_at < $3 AND ($4::uuid IS NULL OR pixel_id = $4)",
+    "SELECT COALESCE(sum(n), 0)::int AS n FROM tracking_counts WHERE org_id = $1 AND at >= $2 AND at < $3 AND ($4::uuid IS NULL OR pixel_id = $4)",
     [org.id, w.startUtc, w.endUtc, q.pixelId ?? null]
   );
   const alerts = await ctx.db.query(`SELECT count(*)::int AS n FROM alerts WHERE org_id = $1 AND resolved_at IS NULL`, [org.id]);
@@ -96975,7 +96981,7 @@ function reportRoutes(app, ctx) {
     const rows = await ctx.db.query(
       `SELECT p.id, p.provider, p.transaction_id, p.status, p.amount_minor, p.currency, p.utm_source, p.utm_campaign, p.utm_content,
               p.created_at, p.approved_at, p.reversed_at, px.name AS pixel_name,
-              (SELECT status FROM capi_outbox o WHERE o.payment_id = p.id AND o.event_name = 'Purchase' LIMIT 1) AS purchase_capi_status
+              COALESCE((SELECT status FROM capi_outbox o WHERE o.payment_id = p.id AND o.event_name = 'Purchase' LIMIT 1), p.purchase_capi_status) AS purchase_capi_status
          FROM payments p LEFT JOIN pixels px ON px.id = p.pixel_id
         WHERE ${where} ORDER BY p.created_at DESC LIMIT 50 OFFSET $8`,
       [...params, (q.page - 1) * 50]
@@ -97042,11 +97048,11 @@ function reportRoutes(app, ctx) {
     const [byPixel, failures, latency, receipts] = await Promise.all([
       ctx.db.query(
         `SELECT px.id AS pixel_id, px.name AS pixel_name, px.meta_pixel_id, o.event_name,
-                count(*)::int AS total, count(*) FILTER (WHERE o.status = 'sent')::int AS sent,
-                count(*) FILTER (WHERE o.status IN ('pending', 'sending'))::int AS pending,
-                count(*) FILTER (WHERE o.status = 'dead')::int AS dead
-           FROM capi_outbox o JOIN pixels px ON px.id = o.pixel_id
-          WHERE o.org_id = $1 AND o.created_at >= $2 AND o.created_at < $3
+                sum(o.n)::int AS total, COALESCE(sum(o.n) FILTER (WHERE o.status = 'sent'), 0)::int AS sent,
+                COALESCE(sum(o.n) FILTER (WHERE o.status IN ('pending', 'sending')), 0)::int AS pending,
+                COALESCE(sum(o.n) FILTER (WHERE o.status = 'dead'), 0)::int AS dead
+           FROM capi_counts o JOIN pixels px ON px.id = o.pixel_id
+          WHERE o.org_id = $1 AND o.at >= $2 AND o.at < $3
           GROUP BY 1, 2, 3, 4 ORDER BY 2, 4`,
         [a.org.id, w.startUtc, w.endUtc]
       ),
@@ -97082,22 +97088,22 @@ function reportRoutes(app, ctx) {
     const a = requireRole(req, "viewer");
     const q = parse5(periodQuery.extend({ pixelId: uuidOpt, group: external_exports.enum(["day", "week", "month"]).default("day") }), req.query);
     const w = reportWindow(q.preset, a.org.timezone, { since: q.since, until: q.until });
-    const presence = MATCH_KEYS.map((k, i) => `count(*) FILTER (WHERE '${k}' = ANY(match_keys))::int AS k${i}`).join(", ");
-    const base2 = `FROM tracking_events WHERE org_id = $1 AND received_at >= $2 AND received_at < $3 AND ($4::uuid IS NULL OR pixel_id = $4)`;
+    const presence = MATCH_KEYS.map((k, i) => `COALESCE(sum(n) FILTER (WHERE '${k}' = ANY(match_keys)), 0)::int AS k${i}`).join(", ");
+    const base2 = `FROM tracking_counts WHERE org_id = $1 AND at >= $2 AND at < $3 AND ($4::uuid IS NULL OR pixel_id = $4)`;
     const params = [a.org.id, w.startUtc, w.endUtc, q.pixelId ?? null, a.org.timezone];
     const [totals, periods, byEvent] = await Promise.all([
-      ctx.db.query(`SELECT count(*)::int AS total, ${presence} ${base2}`, params.slice(0, 4)),
+      ctx.db.query(`SELECT COALESCE(sum(n), 0)::int AS total, ${presence} ${base2}`, params.slice(0, 4)),
       ctx.db.query(
-        `SELECT to_char(date_trunc('${q.group}', received_at AT TIME ZONE $5), 'YYYY-MM-DD') AS period, count(*)::int AS total,
-                avg(cardinality(match_keys))::float AS avg_params,
-                count(*) FILTER (WHERE match_keys && ARRAY['fbp','fbc','external_id'])::int AS dedup_ready,
-                count(*) FILTER (WHERE source = 'browser')::int AS browser, count(*) FILTER (WHERE source = 'server')::int AS server
+        `SELECT to_char(date_trunc('${q.group}', at AT TIME ZONE $5), 'YYYY-MM-DD') AS period, sum(n)::int AS total,
+                (sum(n * cardinality(match_keys))::float / NULLIF(sum(n), 0)) AS avg_params,
+                COALESCE(sum(n) FILTER (WHERE match_keys && ARRAY['fbp','fbc','external_id']), 0)::int AS dedup_ready,
+                COALESCE(sum(n) FILTER (WHERE source = 'browser'), 0)::int AS browser, COALESCE(sum(n) FILTER (WHERE source = 'server'), 0)::int AS server
            ${base2} GROUP BY 1 ORDER BY 1 DESC`,
         params
       ),
       ctx.db.query(
-        `SELECT event_name, count(*)::int AS total, avg(cardinality(match_keys))::float AS avg_params,
-                count(*) FILTER (WHERE match_keys && ARRAY['fbp','fbc','external_id'])::int AS dedup_ready
+        `SELECT event_name, sum(n)::int AS total, (sum(n * cardinality(match_keys))::float / NULLIF(sum(n), 0)) AS avg_params,
+                COALESCE(sum(n) FILTER (WHERE match_keys && ARRAY['fbp','fbc','external_id']), 0)::int AS dedup_ready
            ${base2} GROUP BY 1 ORDER BY 2 DESC`,
         params.slice(0, 4)
       )
@@ -97119,9 +97125,9 @@ function reportRoutes(app, ctx) {
     if (!UTM_KEYS.includes(dim)) throw notFound();
     const events = await ctx.db.query(
       `SELECT COALESCE(utm_source, '(direto)') AS source, COALESCE(${dim}, '\u2014') AS key,
-              count(*) FILTER (WHERE event_name = 'PageView')::int AS page_views,
-              count(*) FILTER (WHERE event_name = 'InitiateCheckout')::int AS initiate_checkouts
-         FROM tracking_events WHERE org_id = $1 AND received_at >= $2 AND received_at < $3 GROUP BY 1, 2`,
+              COALESCE(sum(n) FILTER (WHERE event_name = 'PageView'), 0)::int AS page_views,
+              COALESCE(sum(n) FILTER (WHERE event_name = 'InitiateCheckout'), 0)::int AS initiate_checkouts
+         FROM tracking_counts WHERE org_id = $1 AND at >= $2 AND at < $3 GROUP BY 1, 2`,
       [a.org.id, w.startUtc, w.endUtc]
     );
     const sales = await ctx.db.query(
@@ -97172,11 +97178,11 @@ function reportRoutes(app, ctx) {
     const r = await ctx.db.query(
       `SELECT
          count(*)::int AS approved,
-         count(*) FILTER (WHERE o.status = 'sent')::int AS purchase_sent,
+         count(*) FILTER (WHERE COALESCE(o.status, p.purchase_capi_status) = 'sent')::int AS purchase_sent,
          count(*) FILTER (WHERE o.status IN ('pending', 'sending'))::int AS purchase_pending,
-         count(*) FILTER (WHERE o.status = 'dead')::int AS purchase_dead,
-         count(*) FILTER (WHERE o.id IS NULL AND p.pixel_id IS NULL)::int AS without_pixel,
-         count(*) FILTER (WHERE o.id IS NULL AND p.pixel_id IS NOT NULL)::int AS not_queued
+         count(*) FILTER (WHERE COALESCE(o.status, p.purchase_capi_status) = 'dead')::int AS purchase_dead,
+         count(*) FILTER (WHERE o.id IS NULL AND p.purchase_capi_status IS NULL AND p.pixel_id IS NULL)::int AS without_pixel,
+         count(*) FILTER (WHERE o.id IS NULL AND p.purchase_capi_status IS NULL AND p.pixel_id IS NOT NULL)::int AS not_queued
        FROM payments p LEFT JOIN capi_outbox o ON o.payment_id = p.id AND o.event_name = 'Purchase'
       WHERE p.org_id = $1 AND p.approved_at >= $2 AND p.approved_at < $3`,
       [a.org.id, w.startUtc, w.endUtc]
@@ -97463,7 +97469,9 @@ function legalInfo(ctx) {
     priceMinor: c.PLAN_PRICE_MINOR,
     trialDays: c.PLAN_TRIAL_DAYS,
     trackingDays: c.TRACKING_RETENTION_DAYS,
-    webhookDays: c.WEBHOOK_BODY_RETENTION_DAYS
+    webhookDays: c.WEBHOOK_BODY_RETENTION_DAYS,
+    eventDays: c.EVENT_RETENTION_DAYS,
+    purchaseDays: c.PURCHASE_EVENT_RETENTION_DAYS
   };
 }
 var LOGO = `<svg viewBox="0 0 100 100" width="34" height="34" aria-hidden="true"><defs><linearGradient id="f" x1=".1" y1="0" x2=".8" y2="1"><stop offset="0" stop-color="#7c5cff"/><stop offset=".45" stop-color="#a588ff"/><stop offset=".75" stop-color="#ab8cff"/><stop offset="1" stop-color="#7c3aed"/></linearGradient><linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c4a5ff"/><stop offset="1" stop-color="#6d28d9"/></linearGradient><linearGradient id="a" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#7c3aed"/><stop offset="1" stop-color="#d86bff"/></linearGradient></defs><path d="M24 27V13h36a27.5 27.5 0 0 1 0 55h-8V55h8a14.5 14.5 0 0 0 0-29H38v1Z" fill="url(#f)"/><path d="M24 27h13v57a6 6 0 0 1-6 6h-1a6 6 0 0 1-6-6Z" fill="url(#s)"/><rect x="40.5" y="43" width="8" height="14" rx="2.5" fill="#a06bff"/><rect x="51" y="36" width="8" height="16" rx="2.5" fill="#a06bff"/><rect x="61.5" y="30" width="8" height="15" rx="2.5" fill="#a06bff"/><path d="M26 88C36 66 52 63 71 44.5" fill="none" stroke="url(#a)" stroke-width="7.5" stroke-linecap="round"/><path d="M84 30l-3.5 21.5-17-14Z" fill="#d86bff"/></svg>`;
@@ -97622,7 +97630,7 @@ function privacy(l) {
 
 <h2 id="retencao">8. Por quanto tempo guardamos</h2>
 <ul>
-  <li>Eventos de navega\xE7\xE3o: at\xE9 ${l.trackingDays} dias.</li>
+  <li>Eventos de navega\xE7\xE3o e o registro de envio \xE0 Meta: at\xE9 ${l.eventDays} dias (eventos de compra: at\xE9 ${l.purchaseDays} dias). Depois disso ficam apenas contagens agregadas por hora, sem dados pessoais, por at\xE9 ${l.trackingDays} dias.</li>
   <li>Identidades de visitantes (cookies, IP, navegador, resumos de e-mail/telefone): apagadas ap\xF3s 120 dias sem atividade.</li>
   <li>Conte\xFAdo original das notifica\xE7\xF5es dos meios de pagamento: at\xE9 ${l.webhookDays} dias (depois, s\xF3 os dados da venda permanecem).</li>
   <li>Sess\xF5es de acesso: apagadas at\xE9 7 dias depois de expirar ou de serem encerradas.</li>
@@ -97979,11 +97987,74 @@ Canonical: ${ctx.config.APP_URL.replace(/\/$/, "")}/.well-known/security.txt
   return app;
 }
 
+// src/maintenance/events.ts
+var HOUR = `date_trunc('hour', %s AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'`;
+async function cleanupEvents(ctx) {
+  const days = ctx.config.EVENT_RETENTION_DAYS;
+  const purchaseDays = ctx.config.PURCHASE_EVENT_RETENTION_DAYS;
+  const expired = (col) => `${col} < now() - make_interval(days => CASE WHEN event_name = 'Purchase' THEN $2::int ELSE $1::int END)`;
+  const c = await ctx.db.connect();
+  try {
+    await c.query("BEGIN");
+    const archived = await c.query(
+      `UPDATE payments p SET purchase_capi_status = o.status, purchase_capi_sent_at = o.sent_at
+         FROM capi_outbox o
+        WHERE o.payment_id = p.id AND o.event_name = 'Purchase' AND o.status IN ('sent', 'dead') AND ${expired("o.created_at")}`,
+      [days, purchaseDays]
+    );
+    const capi = await c.query(
+      `WITH del AS (
+         DELETE FROM capi_outbox WHERE status IN ('sent', 'dead') AND ${expired("created_at")}
+         RETURNING org_id, pixel_id, ${HOUR.replace("%s", "created_at")} AS hour, event_name, status
+       ), agg AS (
+         SELECT org_id, pixel_id, hour, event_name, status, count(*)::int AS n FROM del GROUP BY 1, 2, 3, 4, 5
+       ), ins AS (
+         INSERT INTO capi_rollup(key, org_id, pixel_id, hour, event_name, status, n)
+         SELECT md5(concat_ws('|', org_id, pixel_id, extract(epoch FROM hour), event_name, status)), org_id, pixel_id, hour, event_name, status, n FROM agg
+         ON CONFLICT (key) DO UPDATE SET n = capi_rollup.n + EXCLUDED.n RETURNING 1
+       )
+       SELECT (SELECT count(*) FROM del)::int AS deleted, (SELECT count(*) FROM ins)::int AS buckets`,
+      [days, purchaseDays]
+    );
+    const tracking = await c.query(
+      `WITH del AS (
+         DELETE FROM tracking_events WHERE ${expired("received_at")}
+         RETURNING org_id, pixel_id, ${HOUR.replace("%s", "received_at")} AS hour, event_name, source,
+                   utm_source, utm_medium, utm_campaign, utm_content, utm_term, utm_id,
+                   ARRAY(SELECT DISTINCT k FROM unnest(match_keys) k ORDER BY 1) AS match_keys
+       ), agg AS (
+         SELECT org_id, pixel_id, hour, event_name, source, utm_source, utm_medium, utm_campaign, utm_content, utm_term, utm_id, match_keys, count(*)::int AS n
+           FROM del GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
+       ), ins AS (
+       INSERT INTO tracking_rollup(key, org_id, pixel_id, hour, event_name, source, utm_source, utm_medium, utm_campaign, utm_content, utm_term, utm_id, match_keys, n)
+       SELECT md5(concat_ws('|', org_id, pixel_id, extract(epoch FROM hour), event_name, source,
+                  coalesce(utm_source, E'\\x01'), coalesce(utm_medium, E'\\x01'), coalesce(utm_campaign, E'\\x01'), coalesce(utm_content, E'\\x01'),
+                  coalesce(utm_term, E'\\x01'), coalesce(utm_id, E'\\x01'), array_to_string(match_keys, ','))),
+              org_id, pixel_id, hour, event_name, source, utm_source, utm_medium, utm_campaign, utm_content, utm_term, utm_id, match_keys, n
+         FROM agg
+       ON CONFLICT (key) DO UPDATE SET n = tracking_rollup.n + EXCLUDED.n RETURNING 1
+       )
+       SELECT (SELECT count(*) FROM del)::int AS deleted, (SELECT count(*) FROM ins)::int AS buckets`,
+      [days, purchaseDays]
+    );
+    await c.query("COMMIT");
+    return { trackingEvents: tracking.rows[0]?.deleted ?? 0, capiEvents: capi.rows[0]?.deleted ?? 0, purchasesArchived: archived.rowCount ?? 0 };
+  } catch (e) {
+    await c.query("ROLLBACK").catch(() => void 0);
+    throw e;
+  } finally {
+    c.release();
+  }
+}
+
 // src/worker.ts
 async function maintenance(ctx) {
   const q = (sql, p = []) => ctx.db.query(sql, p).then((r) => r.rowCount ?? 0);
+  const events = await cleanupEvents(ctx);
   const out = {
-    trackingEvents: await q(`DELETE FROM tracking_events WHERE received_at < now() - make_interval(days => $1)`, [ctx.config.TRACKING_RETENTION_DAYS]),
+    ...events,
+    trackingRollup: await q(`DELETE FROM tracking_rollup WHERE hour < now() - make_interval(days => $1)`, [ctx.config.TRACKING_RETENTION_DAYS]),
+    capiRollup: await q(`DELETE FROM capi_rollup WHERE hour < now() - make_interval(days => $1)`, [ctx.config.TRACKING_RETENTION_DAYS]),
     webhookBodies: await q(`UPDATE webhook_receipts SET body_enc = NULL WHERE body_enc IS NOT NULL AND received_at < now() - make_interval(days => $1)`, [ctx.config.WEBHOOK_BODY_RETENTION_DAYS]),
     identities: await q(`DELETE FROM visitor_identities WHERE updated_at < now() - interval '120 days'`),
     sessions: await q(`DELETE FROM sessions WHERE expires_at < now() - interval '7 days' OR revoked_at < now() - interval '7 days'`),

@@ -82,7 +82,7 @@ export function reportRoutes(app: FastifyInstance, ctx: Ctx) {
     const rows = await ctx.db.query(
       `SELECT p.id, p.provider, p.transaction_id, p.status, p.amount_minor, p.currency, p.utm_source, p.utm_campaign, p.utm_content,
               p.created_at, p.approved_at, p.reversed_at, px.name AS pixel_name,
-              (SELECT status FROM capi_outbox o WHERE o.payment_id = p.id AND o.event_name = 'Purchase' LIMIT 1) AS purchase_capi_status
+              COALESCE((SELECT status FROM capi_outbox o WHERE o.payment_id = p.id AND o.event_name = 'Purchase' LIMIT 1), p.purchase_capi_status) AS purchase_capi_status
          FROM payments p LEFT JOIN pixels px ON px.id = p.pixel_id
         WHERE ${where} ORDER BY p.created_at DESC LIMIT 50 OFFSET $8`,
       [...params, (q.page - 1) * 50],
@@ -154,11 +154,11 @@ export function reportRoutes(app: FastifyInstance, ctx: Ctx) {
     const [byPixel, failures, latency, receipts] = await Promise.all([
       ctx.db.query(
         `SELECT px.id AS pixel_id, px.name AS pixel_name, px.meta_pixel_id, o.event_name,
-                count(*)::int AS total, count(*) FILTER (WHERE o.status = 'sent')::int AS sent,
-                count(*) FILTER (WHERE o.status IN ('pending', 'sending'))::int AS pending,
-                count(*) FILTER (WHERE o.status = 'dead')::int AS dead
-           FROM capi_outbox o JOIN pixels px ON px.id = o.pixel_id
-          WHERE o.org_id = $1 AND o.created_at >= $2 AND o.created_at < $3
+                sum(o.n)::int AS total, COALESCE(sum(o.n) FILTER (WHERE o.status = 'sent'), 0)::int AS sent,
+                COALESCE(sum(o.n) FILTER (WHERE o.status IN ('pending', 'sending')), 0)::int AS pending,
+                COALESCE(sum(o.n) FILTER (WHERE o.status = 'dead'), 0)::int AS dead
+           FROM capi_counts o JOIN pixels px ON px.id = o.pixel_id
+          WHERE o.org_id = $1 AND o.at >= $2 AND o.at < $3
           GROUP BY 1, 2, 3, 4 ORDER BY 2, 4`,
         [a.org.id, w.startUtc, w.endUtc],
       ),
@@ -195,22 +195,23 @@ export function reportRoutes(app: FastifyInstance, ctx: Ctx) {
     const a = requireRole(req, 'viewer');
     const q = parse(periodQuery.extend({ pixelId: uuidOpt, group: z.enum(['day', 'week', 'month']).default('day') }), req.query);
     const w = reportWindow(q.preset as PeriodPreset, a.org.timezone, { since: q.since, until: q.until });
-    const presence = MATCH_KEYS.map((k, i) => `count(*) FILTER (WHERE '${k}' = ANY(match_keys))::int AS k${i}`).join(', ');
-    const base = `FROM tracking_events WHERE org_id = $1 AND received_at >= $2 AND received_at < $3 AND ($4::uuid IS NULL OR pixel_id = $4)`;
+    // tracking_counts = eventos recentes (n = 1) + resumo por hora dos antigos (n = quantidade)
+    const presence = MATCH_KEYS.map((k, i) => `COALESCE(sum(n) FILTER (WHERE '${k}' = ANY(match_keys)), 0)::int AS k${i}`).join(', ');
+    const base = `FROM tracking_counts WHERE org_id = $1 AND at >= $2 AND at < $3 AND ($4::uuid IS NULL OR pixel_id = $4)`;
     const params = [a.org.id, w.startUtc, w.endUtc, q.pixelId ?? null, a.org.timezone];
     const [totals, periods, byEvent] = await Promise.all([
-      ctx.db.query(`SELECT count(*)::int AS total, ${presence} ${base}`, params.slice(0, 4)),
+      ctx.db.query(`SELECT COALESCE(sum(n), 0)::int AS total, ${presence} ${base}`, params.slice(0, 4)),
       ctx.db.query(
-        `SELECT to_char(date_trunc('${q.group}', received_at AT TIME ZONE $5), 'YYYY-MM-DD') AS period, count(*)::int AS total,
-                avg(cardinality(match_keys))::float AS avg_params,
-                count(*) FILTER (WHERE match_keys && ARRAY['fbp','fbc','external_id'])::int AS dedup_ready,
-                count(*) FILTER (WHERE source = 'browser')::int AS browser, count(*) FILTER (WHERE source = 'server')::int AS server
+        `SELECT to_char(date_trunc('${q.group}', at AT TIME ZONE $5), 'YYYY-MM-DD') AS period, sum(n)::int AS total,
+                (sum(n * cardinality(match_keys))::float / NULLIF(sum(n), 0)) AS avg_params,
+                COALESCE(sum(n) FILTER (WHERE match_keys && ARRAY['fbp','fbc','external_id']), 0)::int AS dedup_ready,
+                COALESCE(sum(n) FILTER (WHERE source = 'browser'), 0)::int AS browser, COALESCE(sum(n) FILTER (WHERE source = 'server'), 0)::int AS server
            ${base} GROUP BY 1 ORDER BY 1 DESC`,
         params,
       ),
       ctx.db.query(
-        `SELECT event_name, count(*)::int AS total, avg(cardinality(match_keys))::float AS avg_params,
-                count(*) FILTER (WHERE match_keys && ARRAY['fbp','fbc','external_id'])::int AS dedup_ready
+        `SELECT event_name, sum(n)::int AS total, (sum(n * cardinality(match_keys))::float / NULLIF(sum(n), 0)) AS avg_params,
+                COALESCE(sum(n) FILTER (WHERE match_keys && ARRAY['fbp','fbc','external_id']), 0)::int AS dedup_ready
            ${base} GROUP BY 1 ORDER BY 2 DESC`,
         params.slice(0, 4),
       ),
@@ -234,9 +235,9 @@ export function reportRoutes(app: FastifyInstance, ctx: Ctx) {
     if (!UTM_KEYS.includes(dim)) throw notFound();
     const events = await ctx.db.query(
       `SELECT COALESCE(utm_source, '(direto)') AS source, COALESCE(${dim}, '—') AS key,
-              count(*) FILTER (WHERE event_name = 'PageView')::int AS page_views,
-              count(*) FILTER (WHERE event_name = 'InitiateCheckout')::int AS initiate_checkouts
-         FROM tracking_events WHERE org_id = $1 AND received_at >= $2 AND received_at < $3 GROUP BY 1, 2`,
+              COALESCE(sum(n) FILTER (WHERE event_name = 'PageView'), 0)::int AS page_views,
+              COALESCE(sum(n) FILTER (WHERE event_name = 'InitiateCheckout'), 0)::int AS initiate_checkouts
+         FROM tracking_counts WHERE org_id = $1 AND at >= $2 AND at < $3 GROUP BY 1, 2`,
       [a.org.id, w.startUtc, w.endUtc],
     );
     const sales = await ctx.db.query(
@@ -291,11 +292,11 @@ export function reportRoutes(app: FastifyInstance, ctx: Ctx) {
     const r = await ctx.db.query(
       `SELECT
          count(*)::int AS approved,
-         count(*) FILTER (WHERE o.status = 'sent')::int AS purchase_sent,
+         count(*) FILTER (WHERE COALESCE(o.status, p.purchase_capi_status) = 'sent')::int AS purchase_sent,
          count(*) FILTER (WHERE o.status IN ('pending', 'sending'))::int AS purchase_pending,
-         count(*) FILTER (WHERE o.status = 'dead')::int AS purchase_dead,
-         count(*) FILTER (WHERE o.id IS NULL AND p.pixel_id IS NULL)::int AS without_pixel,
-         count(*) FILTER (WHERE o.id IS NULL AND p.pixel_id IS NOT NULL)::int AS not_queued
+         count(*) FILTER (WHERE COALESCE(o.status, p.purchase_capi_status) = 'dead')::int AS purchase_dead,
+         count(*) FILTER (WHERE o.id IS NULL AND p.purchase_capi_status IS NULL AND p.pixel_id IS NULL)::int AS without_pixel,
+         count(*) FILTER (WHERE o.id IS NULL AND p.purchase_capi_status IS NULL AND p.pixel_id IS NOT NULL)::int AS not_queued
        FROM payments p LEFT JOIN capi_outbox o ON o.payment_id = p.id AND o.event_name = 'Purchase'
       WHERE p.org_id = $1 AND p.approved_at >= $2 AND p.approved_at < $3`,
       [a.org.id, w.startUtc, w.endUtc],
