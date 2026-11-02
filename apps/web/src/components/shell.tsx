@@ -123,7 +123,7 @@ function Sidebar({ onNavigate, onSearch }: { onNavigate?: () => void; onSearch: 
                 <li key={i.to}>
                   <NavLink to={i.to} end={i.to === '/' || i.to === '/integracoes'} onClick={onNavigate}
                     className={({ isActive }) => clsx('group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all [&>svg]:h-[18px] [&>svg]:w-[18px]',
-                      isActive ? 'bg-[#2563eb] text-white shadow-[0_8px_20px_-10px_rgb(37_99_235/0.9),inset_0_1px_0_rgb(255_255_255/0.18)]' : 'text-muted hover:bg-surface-2 hover:text-fg')}>
+                      isActive ? 'bg-gradient-to-b from-[#3b82f6] to-[#2563eb] font-semibold text-white shadow-[0_8px_20px_-10px_rgb(37_99_235/0.9),inset_0_1px_0_rgb(255_255_255/0.18)]' : 'text-muted hover:bg-surface-2 hover:text-fg')}>
                     {() => (<>
                       {i.icon}
                       <span className="flex-1">{i.label}</span>
@@ -299,9 +299,9 @@ export function PageHeader({ title, description, actions, eyebrow }: { title: st
   return (
     <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">
-        {eyebrow && <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-primary">{eyebrow}</p>}
-        <h1 className="text-[26px] font-semibold leading-tight lg:text-[30px]">{title}</h1>
-        {description && <p className="mt-1.5 max-w-2xl text-sm text-muted">{description}</p>}
+        {eyebrow && <p className="mb-1 text-[13px] font-semibold text-primary">{eyebrow}</p>}
+        <h1 className="text-[28px] font-bold leading-tight lg:text-[34px]">{title}</h1>
+        {description && <p className="mt-1 max-w-2xl text-[15px] text-muted">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>

@@ -1,5 +1,4 @@
-@import '@fontsource-variable/inter/opsz.css';
-@import '@fontsource-variable/plus-jakarta-sans/wght.css';
+@import '@fontsource-variable/outfit/wght.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -78,10 +77,10 @@
 @layer base {
   /* item de grid nunca alarga a página por causa de texto longo (rolagem lateral no celular) */
   .grid > * { min-width: 0; }
-  html { font-feature-settings: 'cv11', 'ss01', 'ss03'; -webkit-tap-highlight-color: transparent; text-rendering: optimizeLegibility; }
+  html { -webkit-tap-highlight-color: transparent; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; }
   body { @apply min-h-screen bg-bg text-[15px] leading-relaxed text-fg; }
-  /* títulos na fonte da marca (Plus Jakarta Sans, a mesma família geométrica do logo) */
-  h1, h2, h3 { @apply font-display; letter-spacing: -0.025em; }
+  /* Outfit em todo o painel: geométrica e arredondada; títulos mais fechados */
+  h1, h2, h3 { @apply font-display; letter-spacing: -0.02em; }
   :focus-visible { @apply outline-none ring-2 ring-primary/60 ring-offset-2 ring-offset-bg; }
   ::selection { @apply bg-primary/25; }
   /* barras de rolagem discretas */
@@ -111,13 +110,14 @@
   /* Cartão de destaque azul (valor principal de cada aba) — texto branco ≥ 5,17:1 em todo o gradiente */
   .hero-blue {
     @apply relative min-w-0 overflow-hidden rounded-[22px] text-white;
-    background-image: radial-gradient(120% 140% at 100% 0%, #3b82f6 0%, transparent 55%), linear-gradient(135deg, #2563eb 0%, #1d4ed8 55%, #1e40af 100%);
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18), 0 20px 50px -24px rgb(37 99 235 / 0.75);
+    background-image: radial-gradient(70% 110% at 100% 100%, rgb(37 99 235 / 0.95) 0%, transparent 70%), radial-gradient(60% 80% at 30% 0%, rgb(30 64 175 / 0.55), transparent 70%), linear-gradient(120deg, #142456 0%, #1a3488 50%, #1f4fd1 100%);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1), 0 24px 60px -28px rgb(37 99 235 / 0.8);
   }
-  .hero-chip { @apply inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white ring-1 ring-inset ring-white/20 backdrop-blur; }
+  .hero-chip { @apply inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white ring-1 ring-inset ring-white/10 backdrop-blur; }
+  .hero-chip-ok { @apply inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-semibold text-emerald-200 ring-1 ring-inset ring-emerald-300/25; }
   /* Cartão de atenção dourado (pendências) */
-  .card-gold { @apply relative min-w-0 overflow-hidden rounded-[20px] border border-amber-400/50 bg-surface; box-shadow: 0 0 0 1px rgb(251 191 36 / 0.08), 0 16px 40px -24px rgb(217 119 6 / 0.55); }
-  .dark .card-gold { background-image: linear-gradient(160deg, rgb(251 191 36 / 0.09), transparent 60%); }
+  .card-gold { @apply relative min-w-0 overflow-hidden rounded-[22px] border border-amber-500/45 bg-surface; box-shadow: 0 16px 40px -24px rgb(217 119 6 / 0.5); }
+  .dark .card-gold { background-image: linear-gradient(135deg, rgb(146 98 12 / 0.32) 0%, rgb(17 26 46 / 0) 70%); }
   :root:not(.dark) .card-gold { background-image: linear-gradient(160deg, rgb(251 191 36 / 0.12), transparent 60%); }
   /* barrinha de progresso fina dos indicadores */
   .meter { @apply h-1.5 overflow-hidden rounded-full bg-surface-3; }

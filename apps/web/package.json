@@ -12,8 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@fontsource-variable/inter": "5.1.1",
-    "@fontsource-variable/plus-jakarta-sans": "5.2.8",
+    "@fontsource-variable/outfit": "5.2.8",
     "@hookform/resolvers": "5.9.1",
     "@tanstack/react-query": "5.62.8",
     "clsx": "2.1.1",

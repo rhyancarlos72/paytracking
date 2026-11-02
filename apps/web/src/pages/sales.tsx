@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowRight, CheckCircle2, Hourglass, RotateCcw, Search, ShoppingBag, Wallet, Wand2 } from 'lucide-react';
+import { ArrowRight, CheckCircle2, RotateCcw, Search, ShoppingBag, Timer, Wand2 } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { PeriodPicker, usePeriod } from '../components/period';
@@ -115,24 +115,24 @@ function SalesHighlights({ query, provider, currency, onPending }: { query: Reco
     <div className="mb-6 grid gap-4 lg:grid-cols-[1.65fr_1fr]">
       <section className="hero-blue p-6" aria-label="Vendas aprovadas no período">
         <p className="flex items-center gap-2 text-sm font-semibold text-white/85">
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/15 ring-1 ring-inset ring-white/20" aria-hidden><Wallet className="h-4 w-4" /></span>
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 ring-1 ring-inset ring-white/15" aria-hidden><CheckCircle2 className="h-4 w-4" /></span>
           Faturamento aprovado no período
         </p>
-        <p className="num mt-3 font-display text-[36px] font-extrabold leading-none tracking-[-0.03em] sm:text-[44px]">{money(c.revenueMinor, currency)}</p>
+        <p className="num mt-3 font-display text-[38px] font-bold leading-none tracking-[-0.02em] sm:text-[46px]">{money(c.revenueMinor, currency)}</p>
         <div className="mt-4 flex flex-wrap gap-2">
           <span className="hero-chip"><ShoppingBag className="h-3.5 w-3.5" aria-hidden />{int(c.sales)} venda{c.sales === 1 ? '' : 's'}</span>
           <span className="hero-chip">Ticket médio {c.averageTicketMinor ? money(c.averageTicketMinor, currency) : '—'}</span>
-          <span className="hero-chip"><CheckCircle2 className="h-3.5 w-3.5" aria-hidden />Aprovação {pct(c.approvalRate, 0)}</span>
+          <span className="hero-chip-ok">Aprovação em {pct(c.approvalRate, 0)}</span>
           {c.refunds.count > 0 && <span className="hero-chip"><RotateCcw className="h-3.5 w-3.5" aria-hidden />{int(c.refunds.count)} reembolso(s) · {money(c.refunds.amountMinor, currency)}</span>}
         </div>
       </section>
       <section className="card-gold flex flex-col p-6" aria-label="Vendas pendentes">
         <div className="flex items-center justify-between gap-3">
-          <p className="flex items-center gap-2 text-sm font-semibold">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-400/15 text-amber-500 ring-1 ring-inset ring-amber-400/30 dark:text-amber-300" aria-hidden><Hourglass className="h-4 w-4" /></span>
+          <p className="flex items-center gap-2.5 text-[15px] font-semibold text-amber-600 dark:text-amber-300">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-400/20 ring-1 ring-inset ring-amber-400/30" aria-hidden><Timer className="h-4 w-4" /></span>
             Vendas pendentes
           </p>
-          <span className="num rounded-full bg-amber-400 px-2.5 py-0.5 text-xs font-bold text-amber-950">{int(c.pending.count)}</span>
+          <span className="num rounded-full bg-amber-400/20 px-2.5 py-0.5 text-xs font-bold text-amber-700 ring-1 ring-inset ring-amber-400/30 dark:text-amber-200">{int(c.pending.count)}</span>
         </div>
         <p className="num mt-3 font-display text-[28px] font-bold leading-none">
           {c.pending.amountMinor && c.pending.currency ? money(c.pending.amountMinor, c.pending.currency) : c.pending.count > 0 ? `${int(c.pending.count)} em aberto` : 'Nada em aberto'}

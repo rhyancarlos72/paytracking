@@ -111,24 +111,25 @@ export function Switch({ checked, onChange, label, disabled }: { checked: boolea
 }
 
 // ------------------------------------------------------------------ Layout bits
-export function Card({ className, children, title, description, actions, padded = true, icon }: {
-  className?: string; children?: ReactNode; title?: ReactNode; description?: ReactNode; actions?: ReactNode; padded?: boolean; icon?: ReactNode;
+export function Card({ className, children, title, description, actions, padded = true, icon, footer }: {
+  className?: string; children?: ReactNode; title?: ReactNode; description?: ReactNode; actions?: ReactNode; padded?: boolean; icon?: ReactNode; footer?: ReactNode;
 }) {
   return (
     <section className={clsx('card animate-fade-in', className)}>
       {(title || actions) && (
-        <header className="flex flex-wrap items-start justify-between gap-3 px-5 pb-1 pt-5">
-          <div className="flex min-w-0 items-start gap-3">
-            {icon && <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-inset ring-primary/20 [&>svg]:h-[18px] [&>svg]:w-[18px]" aria-hidden>{icon}</span>}
+        <header className={clsx('flex flex-wrap items-start justify-between gap-3 px-5 sm:px-6', padded ? 'border-b border-border py-5' : 'pb-1 pt-5')}>
+          <div className="flex min-w-0 items-center gap-3.5">
+            {icon && <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-inset ring-primary/15 [&>svg]:h-5 [&>svg]:w-5" aria-hidden>{icon}</span>}
             <div className="min-w-0">
-              {title && <h2 className="text-[15px] font-semibold">{title}</h2>}
+              {title && <h2 className="text-[17px] font-semibold">{title}</h2>}
               {description && <p className="mt-0.5 text-[13px] text-muted">{description}</p>}
             </div>
           </div>
           {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
         </header>
       )}
-      <div className={padded ? 'p-5' : 'pt-3'}>{children}</div>
+      <div className={padded ? 'p-5 sm:p-6' : 'pt-3'}>{children}</div>
+      {footer && <div className="flex flex-wrap items-center justify-end gap-2 rounded-b-[20px] border-t border-border bg-surface-2/40 px-5 py-4 sm:px-6">{footer}</div>}
     </section>
   );
 }
@@ -353,10 +354,10 @@ export function ConfirmButton({ onConfirm, title, description, confirmLabel = 'C
 // ------------------------------------------------------------------ Tabs / segmented
 export function Segmented<T extends string>({ value, onChange, options, label }: { value: T; onChange: (v: T) => void; options: Array<{ value: T; label: string }>; label: string }) {
   return (
-    <div role="radiogroup" aria-label={label} className="no-scrollbar inline-flex max-w-full overflow-x-auto rounded-xl border border-border bg-surface-2 p-1">
+    <div role="radiogroup" aria-label={label} className="no-scrollbar inline-flex max-w-full overflow-x-auto rounded-xl border border-border bg-surface p-1">
       {options.map((o) => (
         <button key={o.value} role="radio" aria-checked={value === o.value} onClick={() => onChange(o.value)}
-          className={clsx('h-8 shrink-0 whitespace-nowrap rounded-lg px-3 text-[13px] font-medium transition-all duration-150', value === o.value ? 'bg-surface text-fg shadow-sm ring-1 ring-border' : 'text-muted hover:text-fg')}>
+          className={clsx('h-8 shrink-0 whitespace-nowrap rounded-lg px-3 text-[13px] font-semibold transition-all duration-150', value === o.value ? 'bg-[#2563eb] text-white shadow-[0_6px_16px_-8px_rgb(37_99_235/0.9)]' : 'text-muted hover:bg-surface-2 hover:text-fg')}>
           {o.label}
         </button>
       ))}
@@ -364,14 +365,14 @@ export function Segmented<T extends string>({ value, onChange, options, label }:
   );
 }
 
-export function Tabs<T extends string>({ value, onChange, tabs }: { value: T; onChange: (v: T) => void; tabs: Array<{ value: T; label: string; count?: number }> }) {
+export function Tabs<T extends string>({ value, onChange, tabs }: { value: T; onChange: (v: T) => void; tabs: Array<{ value: T; label: string; count?: number; icon?: ReactNode }> }) {
   return (
-    <div role="tablist" className="inline-flex max-w-full gap-1 overflow-x-auto rounded-xl border border-border bg-surface-2/70 p-1">
+    <div role="tablist" className="no-scrollbar inline-flex max-w-full gap-1 overflow-x-auto rounded-2xl border border-border bg-surface p-1.5">
       {tabs.map((t) => (
         <button key={t.value} role="tab" aria-selected={value === t.value} onClick={() => onChange(t.value)}
-          className={clsx('h-8 whitespace-nowrap rounded-lg px-3 text-[13px] font-medium transition-all duration-150',
-            value === t.value ? 'bg-surface text-fg shadow-sm ring-1 ring-border' : 'text-muted hover:text-fg')}>
-          {t.label}{t.count !== undefined && <span className={clsx('ml-1.5 rounded-full px-1.5 text-[11px]', value === t.value ? 'bg-primary/10 text-primary' : 'bg-surface-3 text-muted')}>{t.count}</span>}
+          className={clsx('inline-flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-4 text-sm font-semibold transition-all duration-150 [&>svg]:h-4 [&>svg]:w-4',
+            value === t.value ? 'bg-gradient-to-b from-[#3b82f6] to-[#2563eb] text-white shadow-[0_8px_20px_-10px_rgb(37_99_235/0.95)]' : 'text-muted hover:bg-surface-2 hover:text-fg')}>
+          {t.icon}{t.label}{t.count !== undefined && <span className={clsx('rounded-full px-1.5 text-[11px]', value === t.value ? 'bg-white/20 text-white' : 'bg-surface-3 text-muted')}>{t.count}</span>}
         </button>
       ))}
     </div>

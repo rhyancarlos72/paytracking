@@ -1,13 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { Bell, BellOff, BellRing, Copy, Download, KeyRound, Play, Send, ShieldCheck, Smartphone, Upload, Volume2 } from 'lucide-react';
+import { Bell, BellOff, BellRing, Copy, Download, KeyRound, Mail, MonitorSmartphone, Play, Send, Shield, ShieldCheck, Smartphone, Store, Upload, UserPlus, UserRound, Users, Volume2 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { useEffect, useRef, useState } from 'react';
 import { PageHeader } from '../components/shell';
 import { useToast } from '../components/toast';
 import { Badge, Button, Callout, Card, ConfirmButton, Field, Input, Select, Switch, Tabs } from '../components/ui';
 import { del, get, patch, post } from '../lib/api';
-import { dateTime, exponent, minorToNumber, relative } from '../lib/format';
+import { dateTime, exponent, maskEmail, minorToNumber, relative } from '../lib/format';
 import { canInstall, currentSubscription, endpointHash, isIOS, isStandalone, onInstallChange, permission, promptInstall, pushSupported, subscribe } from '../lib/push-client';
 import { customSound, loadSettings, onSoundChange, playSaleSound, PRESETS, removeCustomSound, saveSettings, setCustomSound, unlockAudio, type SoundPreset, type SoundSettings } from '../lib/sale-sound';
 import { useSession, type Role } from '../lib/session';
@@ -23,12 +23,13 @@ export default function SettingsPage() {
   const [tab, setTab] = useState<Tab>(initial);
   return (
     <>
-      <PageHeader title="Configurações" description="Sua conta, a organização, a equipe e a segurança." />
+      <PageHeader title="Configurações" description="Sua conta, segurança e preferências da loja." />
       <div className="mb-6"><Tabs value={tab} onChange={setTab} tabs={[
-        { value: 'account', label: 'Conta' }, { value: 'org', label: 'Organização e metas' }, { value: 'members', label: 'Equipe' },
-        { value: 'security', label: 'Segurança' }, { value: 'notifications', label: 'Notificações' },
+        { value: 'account', label: 'Perfil', icon: <UserRound /> }, { value: 'security', label: 'Segurança', icon: <Shield /> },
+        { value: 'org', label: 'Loja e metas', icon: <Store /> }, { value: 'members', label: 'Equipe', icon: <Users /> },
+        { value: 'notifications', label: 'Notificações', icon: <Bell /> },
       ]} /></div>
-      <div className="max-w-3xl space-y-6">
+      <div className={clsx('space-y-6', tab === 'account' ? 'max-w-6xl' : 'max-w-3xl')}>
         {tab === 'account' && <Account />}
         {tab === 'org' && <Org />}
         {tab === 'members' && <Members />}
@@ -46,17 +47,19 @@ function Account() {
   const [name, setName] = useState(s.user.name ?? '');
   const save = useMutation({ mutationFn: (b: object) => patch('/v1/auth/preferences', b), onSuccess: () => { toast.ok('Preferências salvas'); void qc.invalidateQueries({ queryKey: ['me'] }); }, onError: (e) => toast.err(e) });
   return (
-    <Card title="Perfil">
-      <div className="space-y-4">
-        <Field label="E-mail" htmlFor="em"><Input id="em" value={s.user.email} disabled /></Field>
-        <Field label="Nome" htmlFor="nm"><Input id="nm" value={name} onChange={(e) => setName(e.target.value)} /></Field>
-        <div className="flex items-center justify-between gap-4 rounded-xl border border-border p-4">
+    <div className="grid gap-6 lg:grid-cols-2">
+      <Card title="Seu nome" description="Aparece no painel e na saudação." icon={<UserRound />}
+        footer={<Button variant="primary" loading={save.isPending} disabled={!name.trim() || name === (s.user.name ?? '')} onClick={() => save.mutate({ name })}>Salvar nome</Button>}>
+        <Field label="Nome completo" htmlFor="nm"><Input id="nm" value={name} onChange={(e) => setName(e.target.value)} /></Field>
+      </Card>
+      <Card title="E-mail de acesso" description="Usado para entrar e para recuperar a senha." icon={<Mail />}>
+        <Field label="E-mail" htmlFor="em"><Input id="em" value={s.user.hideEmail ? maskEmail(s.user.email) : s.user.email} disabled /></Field>
+        <div className="mt-4 flex items-center justify-between gap-4 rounded-xl border border-border bg-surface-2/40 p-4">
           <div><p className="text-sm font-medium">Ocultar meu e-mail no painel</p><p className="text-xs text-muted">Útil para gravações de tela.</p></div>
           <Switch checked={s.user.hideEmail} label="Ocultar e-mail" onChange={(v) => save.mutate({ hideEmail: v })} />
         </div>
-        <Button variant="primary" loading={save.isPending} onClick={() => save.mutate({ name })}>Salvar</Button>
-      </div>
-    </Card>
+      </Card>
+    </div>
   );
 }
 
@@ -70,7 +73,8 @@ function Org() {
   const save = useMutation({ mutationFn: () => patch('/v1/org', v), onSuccess: () => { toast.ok('Organização atualizada'); void qc.invalidateQueries(); }, onError: (e) => toast.err(e) });
   const disabled = !s.can('admin');
   return (
-    <Card title="Organização" description="A moeda e o fuso definem como TODOS os relatórios são calculados.">
+    <Card title="Loja e metas" description="A moeda e o fuso definem como TODOS os relatórios são calculados." icon={<Store />}
+      footer={!disabled && <Button variant="primary" loading={save.isPending} onClick={() => save.mutate()}>Salvar alterações</Button>}>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2"><Field label="Nome" htmlFor="on"><Input id="on" disabled={disabled} value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} /></Field></div>
         <Field label="Moeda de relatório" htmlFor="rc" hint="Vendas em outras moedas são convertidas pela cotação do dia da venda.">
@@ -82,7 +86,6 @@ function Org() {
         <Field label={`Meta diária (${v.reportingCurrency})`} htmlFor="gd"><Input id="gd" inputMode="decimal" disabled={disabled} value={v.goalDaily} onChange={(e) => setV({ ...v, goalDaily: e.target.value })} /></Field>
         <Field label={`Meta mensal (${v.reportingCurrency})`} htmlFor="gm"><Input id="gm" inputMode="decimal" disabled={disabled} value={v.goalMonthly} onChange={(e) => setV({ ...v, goalMonthly: e.target.value })} /></Field>
       </div>
-      {!disabled && <Button className="mt-5" variant="primary" loading={save.isPending} onClick={() => save.mutate()}>Salvar alterações</Button>}
     </Card>
   );
 }
@@ -100,7 +103,7 @@ function Members() {
   return (
     <>
       {owner && (
-        <Card title="Convidar pessoa" description="Leitura: só visualiza. Analista: também reprocessa eventos. Administrador: altera pixels, integrações e Meta.">
+        <Card title="Convidar pessoa" icon={<UserPlus />} description="Leitura: só visualiza. Analista: também reprocessa eventos. Administrador: altera pixels, integrações e Meta.">
           <div className="flex flex-wrap gap-2">
             <Input aria-label="E-mail" placeholder="pessoa@empresa.com" type="email" className="min-w-[220px] flex-1" value={email} onChange={(e) => setEmail(e.target.value)} />
             <Select aria-label="Papel" className="w-[170px]" value={role} onChange={(e) => setRole(e.target.value as Role)}>
@@ -110,7 +113,7 @@ function Members() {
           </div>
         </Card>
       )}
-      <Card title="Membros" padded={false}>
+      <Card title="Membros" icon={<Users />} padded={false}>
         <ul className="divide-y divide-border">
           {(q.data?.members ?? []).map((m: any) => (
             <li key={m.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
@@ -152,14 +155,14 @@ function Security() {
   return (
     <>
       <TwoFactorCard />
-      <Card title="Alterar senha" description="Mínimo de 10 caracteres com maiúscula, minúscula e número. As outras sessões são encerradas.">
+      <Card title="Alterar senha" description="Mínimo de 10 caracteres com maiúscula, minúscula e número. As outras sessões são encerradas." icon={<KeyRound />}
+        footer={<Button variant="primary" loading={change.isPending} disabled={!pw.currentPassword || pw.newPassword.length < 10} onClick={() => change.mutate()}>Atualizar senha</Button>}>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Senha atual" htmlFor="cp"><Input id="cp" type="password" autoComplete="current-password" value={pw.currentPassword} onChange={(e) => setPw({ ...pw, currentPassword: e.target.value })} /></Field>
           <Field label="Nova senha" htmlFor="np"><Input id="np" type="password" autoComplete="new-password" value={pw.newPassword} onChange={(e) => setPw({ ...pw, newPassword: e.target.value })} /></Field>
         </div>
-        <Button className="mt-4" variant="primary" loading={change.isPending} disabled={!pw.currentPassword || pw.newPassword.length < 10} onClick={() => change.mutate()}>Atualizar senha</Button>
       </Card>
-      <Card title="Sessões ativas" actions={<Button size="sm" onClick={async () => { const r = await post('/v1/auth/sessions/revoke-others'); toast.ok(`${r.revoked} sessão(ões) encerrada(s)`); void sessions.refetch(); }}>Encerrar as outras</Button>} padded={false}>
+      <Card title="Sessões ativas" icon={<MonitorSmartphone />} actions={<Button size="sm" onClick={async () => { const r = await post('/v1/auth/sessions/revoke-others'); toast.ok(`${r.revoked} sessão(ões) encerrada(s)`); void sessions.refetch(); }}>Encerrar as outras</Button>} padded={false}>
         <ul className="divide-y divide-border">
           {(sessions.data?.sessions ?? []).map((x: any) => (
             <li key={x.id} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm">

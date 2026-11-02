@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { AlertTriangle, ArrowDownRight, ArrowRight, ArrowUpRight, BarChart3, CheckCircle2, Hourglass, Info, Megaphone, PieChart as PieIcon, Radio, Receipt, RotateCcw, ShoppingBag, ShoppingCart, Target, Ticket, TrendingUp, Trophy, Wallet, Zap } from 'lucide-react';
+import { AlertTriangle, ArrowDownRight, ArrowRight, ArrowUpRight, BarChart3, CheckCircle2, Timer, Info, Megaphone, PieChart as PieIcon, Radio, Receipt, RotateCcw, ShoppingCart, Target, TrendingUp, Trophy, Zap } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Donut, HourlyBars, RevenueChart, Sparkline } from '../components/charts';
@@ -58,28 +58,27 @@ function Help({ text }: { text: string }) {
 }
 
 const KPI_TONE = {
-  ok: { tile: 'bg-ok/10 text-ok ring-ok/25', bar: 'bg-ok' },
-  warn: { tile: 'bg-warn/10 text-warn ring-warn/25', bar: 'bg-warn' },
-  info: { tile: 'bg-info/10 text-info ring-info/25', bar: 'bg-info' },
-  err: { tile: 'bg-err/10 text-err ring-err/25', bar: 'bg-err' },
-  primary: { tile: 'bg-primary/10 text-primary ring-primary/25', bar: 'bg-primary' },
+  ok: { tile: 'bg-emerald-500/10 text-emerald-500 dark:text-emerald-400', bar: 'bg-emerald-500' },
+  warn: { tile: 'bg-amber-500/10 text-amber-600 dark:text-amber-400', bar: 'bg-amber-500' },
+  info: { tile: 'bg-blue-500/10 text-blue-600 dark:text-blue-400', bar: 'bg-blue-500' },
+  err: { tile: 'bg-rose-500/10 text-rose-600 dark:text-rose-400', bar: 'bg-rose-500' },
+  primary: { tile: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400', bar: 'bg-cyan-500' },
+  violet: { tile: 'bg-violet-500/10 text-violet-600 dark:text-violet-400', bar: 'bg-violet-500' },
 };
 
 function Kpi({ label, value, help, sub, meter, icon, tone = 'info' }: { label: string; value: ReactNode; help?: string; sub?: ReactNode; meter?: number; icon: ReactNode; tone?: keyof typeof KPI_TONE }) {
   const t = KPI_TONE[tone];
   return (
-    <div className="card card-interactive p-5">
-      <div className="flex items-start gap-3">
-        <span className={clsx('flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ring-1 ring-inset [&>svg]:h-5 [&>svg]:w-5', t.tile)} aria-hidden>{icon}</span>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 text-[13px] font-medium text-muted">{label}{help && <Help text={help} />}</div>
-          <div className="num mt-1 font-display text-[26px] font-bold leading-tight tracking-tight">{value}</div>
-        </div>
+    <div className="card card-interactive flex flex-col p-5">
+      <div className="flex items-center gap-3">
+        <span className={clsx('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl [&>svg]:h-5 [&>svg]:w-5', t.tile)} aria-hidden>{icon}</span>
+        <div className="flex min-w-0 items-center gap-1.5 text-sm font-medium text-muted">{label}{help && <Help text={help} />}</div>
       </div>
+      <div className="num mt-4 font-display text-[30px] font-bold leading-none tracking-[-0.02em]">{value}</div>
+      {sub && <div className="mt-2 flex min-h-[20px] flex-wrap items-center gap-2 text-[13px] text-muted">{sub}</div>}
       {meter !== undefined && (
-        <div className="meter mt-4" aria-hidden><span className={t.bar} style={{ width: `${Math.max(2, Math.min(1, meter) * 100)}%` }} /></div>
+        <div className="mt-auto pt-4"><div className="meter" aria-hidden><span className={t.bar} style={{ width: `${Math.max(2, Math.min(1, meter) * 100)}%` }} /></div></div>
       )}
-      {sub && <div className="mt-2.5 flex min-h-[20px] flex-wrap items-center gap-2 text-xs text-muted">{sub}</div>}
     </div>
   );
 }
@@ -103,27 +102,26 @@ function HeroSpark({ c, cur }: { c: Kpis; cur: string }) {
   const values = c.series.length > 1
     ? c.series.map((x) => minorToNumber(x.revenueMinor, cur))
     : (c.hourly ?? []).map((x) => (acc += minorToNumber(x.revenueMinor, cur)));
-  if (values.length < 2 || values.every((v) => v === 0)) return <div className="h-6" aria-hidden />;
-  return <Sparkline values={values} height={64} color="#ffffff" className="relative -mx-6 -mb-6 mt-5 w-[calc(100%+3rem)] opacity-90 lg:-mx-7 lg:-mb-7 lg:w-[calc(100%+3.5rem)]" />;
+  if (values.length < 2 || values.every((v) => v === 0)) return null;
+  return <Sparkline values={values} height={88} color="#a5d8ff" className="relative w-full shrink-0 sm:w-[38%] sm:max-w-[300px]" />;
 }
 
 function PendingCard({ c }: { c: Kpis }) {
   const n = c.pending.count;
   return (
-    <section className="card-gold flex flex-col p-6" aria-labelledby="pend-title">
-      <div className="flex items-start justify-between gap-3">
-        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-400/15 text-amber-500 ring-1 ring-inset ring-amber-400/30 dark:text-amber-300" aria-hidden><Hourglass className="h-5 w-5" /></span>
-        <span className="num rounded-full bg-amber-400 px-2.5 py-0.5 text-xs font-bold text-amber-950" aria-label={`${n} pendentes`}>{int(n)}</span>
+    <section className="card-gold flex flex-col p-6 lg:p-7" aria-labelledby="pend-title">
+      <div className="flex items-center justify-between gap-3">
+        <h2 id="pend-title" className="flex items-center gap-2.5 text-[15px] font-semibold text-amber-600 dark:text-amber-300">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-400/20 ring-1 ring-inset ring-amber-400/30" aria-hidden><Timer className="h-4 w-4" /></span>
+          Vendas pendentes
+        </h2>
+        <span className="num rounded-full bg-amber-400/20 px-2.5 py-0.5 text-xs font-bold text-amber-700 ring-1 ring-inset ring-amber-400/30 dark:text-amber-200" aria-label={`${n} pendentes`}>{int(n)}</span>
       </div>
-      <h2 id="pend-title" className="mt-4 text-[15px] font-semibold">Vendas pendentes</h2>
-      <p className="mt-1 text-sm text-muted">PIX ou boleto gerado e ainda não pago. Não conta como venda até o gateway aprovar.</p>
-      <p className="num mt-4 font-display text-[30px] font-bold leading-none">
-        {c.pending.amountMinor && c.pending.currency ? money(c.pending.amountMinor, c.pending.currency) : n > 0 ? `${int(n)} em aberto` : 'Nada em aberto'}
+      <p className="num mt-4 font-display text-[34px] font-bold leading-none tracking-[-0.02em]">
+        {c.pending.amountMinor && c.pending.currency ? money(c.pending.amountMinor, c.pending.currency) : n > 0 ? `${int(n)} em aberto` : 'R$ 0,00'}
       </p>
-      <div className="mt-auto flex items-center justify-between gap-3 pt-5">
-        <span className="text-xs text-muted">{c.paymentsCreated ? `${pct(n / c.paymentsCreated, 0)} dos pedidos do período` : 'Nenhum pedido no período'}</span>
-        <Link to="/vendas?status=pending" className="inline-flex items-center gap-1 text-sm font-semibold text-amber-600 hover:underline dark:text-amber-300">Ver pendentes <ArrowRight className="h-4 w-4" aria-hidden /></Link>
-      </div>
+      <p className="mt-3 text-[13px] text-muted">PIX ou boleto gerado e ainda não pago{c.paymentsCreated ? ` — ${pct(n / c.paymentsCreated, 0)} dos pedidos do período` : ''}. Não conta como venda até o gateway aprovar.</p>
+      <Link to="/vendas?status=pending" className="mt-auto inline-flex items-center gap-1 pt-5 text-sm font-semibold text-amber-600 hover:underline dark:text-amber-300">Ver pendentes <ArrowRight className="h-4 w-4" aria-hidden /></Link>
     </section>
   );
 }
@@ -182,23 +180,24 @@ export default function DashboardPage() {
 
             {/* Destaque: faturamento aprovado (azul) + vendas pendentes (dourado) */}
             <div className="grid gap-6 xl:grid-cols-[1.65fr_1fr]">
-              <section className="hero-blue p-6 lg:p-7" aria-labelledby="rev-title">
-                <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" aria-hidden />
-                <div className="relative flex flex-wrap items-start justify-between gap-3">
-                  <p id="rev-title" className="flex items-center gap-2 text-sm font-semibold text-white/85">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/15 ring-1 ring-inset ring-white/20" aria-hidden><Wallet className="h-4 w-4" /></span>
-                    Faturamento aprovado · {period.label.toLowerCase()}
+              <section className="hero-blue flex flex-col gap-6 p-6 sm:flex-row sm:items-center lg:p-8" aria-labelledby="rev-title">
+                <div className="relative min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p id="rev-title" className="flex items-center gap-2 text-sm font-medium text-white/80">
+                      <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 ring-1 ring-inset ring-white/15" aria-hidden><CheckCircle2 className="h-4 w-4" /></span>
+                      Faturamento aprovado · {period.label.toLowerCase()}
+                    </p>
+                    <HeroDelta cur={Number(c.revenueMinor)} prev={Number(p.revenueMinor)} />
+                  </div>
+                  <p className="mt-4 font-display text-[42px] font-bold leading-none tracking-[-0.02em] sm:text-[56px]">
+                    <AnimatedMoney minor={c.revenueMinor} currency={cur} />
                   </p>
-                  <HeroDelta cur={Number(c.revenueMinor)} prev={Number(p.revenueMinor)} />
-                </div>
-                <p className="relative mt-4 font-display text-[40px] font-extrabold leading-none tracking-[-0.03em] sm:text-[56px]">
-                  <AnimatedMoney minor={c.revenueMinor} currency={cur} />
-                </p>
-                <div className="relative mt-5 flex flex-wrap gap-2">
-                  <span className="hero-chip"><ShoppingBag className="h-3.5 w-3.5" aria-hidden />{int(c.sales)} venda{c.sales === 1 ? '' : 's'}</span>
-                  <span className="hero-chip"><Ticket className="h-3.5 w-3.5" aria-hidden />Ticket médio {c.averageTicketMinor ? money(c.averageTicketMinor, cur) : '—'}</span>
-                  <span className="hero-chip"><CheckCircle2 className="h-3.5 w-3.5" aria-hidden />Aprovação {pct(c.approvalRate, 0)}</span>
-                  {c.refunds.count > 0 && <span className="hero-chip"><ArrowDownRight className="h-3.5 w-3.5" aria-hidden />{int(c.refunds.count)} reembolso{c.refunds.count === 1 ? '' : 's'}</span>}
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    <span className="hero-chip">{int(c.sales)} venda{c.sales === 1 ? '' : 's'}</span>
+                    <span className="hero-chip">Ticket médio {c.averageTicketMinor ? money(c.averageTicketMinor, cur) : '—'}</span>
+                    <span className="hero-chip-ok">Aprovação em {pct(c.approvalRate, 0)}</span>
+                    {c.refunds.count > 0 && <span className="hero-chip">{int(c.refunds.count)} reembolso{c.refunds.count === 1 ? '' : 's'}</span>}
+                  </div>
                 </div>
                 <HeroSpark c={c} cur={cur} />
               </section>
@@ -211,11 +210,11 @@ export default function DashboardPage() {
               <Kpi label="Conversão do checkout" tone="info" icon={<ShoppingCart />} value={pct(c.funnel.initiateCheckouts ? c.sales / c.funnel.initiateCheckouts : null)}
                 help="Vendas confirmadas ÷ InitiateCheckout (cliques para o checkout) do pixel no período."
                 meter={c.funnel.initiateCheckouts ? c.sales / c.funnel.initiateCheckouts : 0} sub={`${int(c.funnel.initiateCheckouts)} checkouts iniciados`} />
-              <Kpi label="Taxa de aprovação" tone="ok" icon={<CheckCircle2 />} value={pct(c.approvalRate)} help="Aprovados (incluindo depois reembolsados) ÷ pagamentos criados no período."
+              <Kpi label="Taxa de aprovação" tone="violet" icon={<CheckCircle2 />} value={pct(c.approvalRate)} help="Aprovados (incluindo depois reembolsados) ÷ pagamentos criados no período."
                 meter={c.approvalRate ?? 0} sub={<Delta cur={c.approvalRate ?? 0} prev={p.approvalRate ?? 0} />} />
               <Kpi label="Pedidos gerados" tone="primary" icon={<Receipt />} value={int(c.paymentsCreated)} help="Pagamentos criados no período (PIX/boleto gerado, cartão etc.)."
                 meter={c.paymentsCreated ? c.sales / c.paymentsCreated : 0} sub={`${int(c.sales)} pagos · ${int(c.pending.count)} pendentes`} />
-              <Kpi label="Reembolsos e chargebacks" tone="err" icon={<RotateCcw />} value={int(c.refunds.count)} help="Revertidos no período; já abatidos da receita."
+              <Kpi label="Reembolsos" tone="err" icon={<RotateCcw />} value={int(c.refunds.count)} help="Revertidos no período; já abatidos da receita."
                 meter={c.sales + c.refunds.count ? c.refunds.count / (c.sales + c.refunds.count) : 0} sub={money(c.refunds.amountMinor, cur)} />
             </div>
 
