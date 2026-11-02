@@ -96845,6 +96845,17 @@ async function monthlyGoal(ctx, org) {
   const b = await salesBuckets(ctx, org, month, {}, fx, "approved_at", `status = 'approved'`);
   return { currency: org.reporting_currency, goalMinor: org.goal_monthly_minor, achievedMinor: b.total.amountMinor, sales: b.total.count };
 }
+async function lifetimeRevenue(ctx, org) {
+  const first = await ctx.db.query(`SELECT min(approved_at) AS at FROM payments WHERE org_id = $1 AND status = 'approved'`, [org.id]);
+  const start = first.rows[0]?.at;
+  if (!start) return { currency: org.reporting_currency, revenueMinor: 0n, sales: 0, unconverted: 0, since: null };
+  const end = new Date(ctx.now().getTime() + 6e4);
+  const local = (d) => new Intl.DateTimeFormat("en-CA", { timeZone: org.timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+  const w = { preset: "custom", timezone: org.timezone, since: local(start), until: local(end), startUtc: start, endUtc: end, days: 0 };
+  const fx = await FxTable.loadFor(ctx, [org.reporting_currency, ...await currenciesInUse(ctx, org.id)], w.since, w.until);
+  const b = await salesBuckets(ctx, org, w, {}, fx, "approved_at", `status = 'approved'`);
+  return { currency: org.reporting_currency, revenueMinor: b.total.amountMinor, sales: b.total.count, unconverted: b.total.unconverted, since: w.since };
+}
 async function dashboard(ctx, org, q) {
   const w = reportWindow(q.preset, org.timezone, { now: ctx.now(), since: q.since, until: q.until });
   const filters = { pixelId: q.pixelId, provider: q.provider };
@@ -96929,6 +96940,10 @@ function reportRoutes(app, ctx) {
     const a = requireRole(req, "viewer");
     const q = parse5(periodQuery.extend({ pixelId: uuidOpt, provider: external_exports.string().max(20).optional() }), req.query);
     return jsonSafe(await dashboard(ctx, a.org, { ...q, preset: q.preset }));
+  });
+  app.get("/v1/reports/lifetime", async (req) => {
+    const a = requireRole(req, "viewer");
+    return jsonSafe(await lifetimeRevenue(ctx, a.org));
   });
   app.get("/v1/reports/monthly-goal", async (req) => {
     const a = requireRole(req, "viewer");

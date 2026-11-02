@@ -2,7 +2,7 @@ import clsx from 'clsx';
 import { Logo as BrandLogo, LogoMark } from './logo';
 import {
   Activity, BarChart3, BellRing, BookOpen, ChevronsUpDown, CreditCard, Eye, EyeOff, GitBranch, LayoutDashboard, LogOut, Megaphone, Menu, Moon,
-  Lock, Plug, Plus, QrCode, Receipt, Search, Settings, Shield, Sparkles, Stethoscope, Sun, Target, X,
+  Lock, Plug, Plus, QrCode, Receipt, Search, Settings, Shield, Sparkles, Stethoscope, Sun, Target, Trophy, X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
@@ -247,6 +247,7 @@ export function AppShell() {
     ] : []),
     { id: 'act:notif', label: 'Notificações no celular e som de venda', group: 'Ações', icon: <BellRing />, keywords: 'push celular som alerta aviso', run: () => nav('/configuracoes?aba=notificacoes') },
     { id: 'act:hide', label: 'Esconder/mostrar nomes de campanhas e pixels', group: 'Ações', icon: <EyeOff />, keywords: 'olho ocultar privado print gravar compartilhar tela nomes', run: () => void setNamesHidden(!namesHiddenNow()) },
+    { id: 'act:awards', label: 'Premiações (placas de 100 mil, 500 mil e 1 milhão)', group: 'Ações', icon: <Trophy />, keywords: 'placa premio conquista awards faturamento', run: () => nav('/configuracoes?aba=premiacoes') },
     { id: 'act:2fa', label: 'Segurança da conta', group: 'Ações', icon: <Shield />, keywords: 'senha sessões duas etapas 2fa', run: () => nav('/configuracoes?aba=seguranca') },
     { id: 'act:theme', label: dark ? 'Usar tema claro' : 'Usar tema escuro', group: 'Ações', icon: dark ? <Sun /> : <Moon />, keywords: 'tema escuro claro dark light', run: toggle },
     { id: 'act:logout', label: 'Sair', group: 'Ações', icon: <LogOut />, keywords: 'logout encerrar', run: logout },

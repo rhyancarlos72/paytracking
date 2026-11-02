@@ -87,6 +87,8 @@ describe('cenários 14/15/16 — dashboard coerente e moedas', () => {
     // widget "Meta do mês" da barra lateral: mesma receita do mês
     const g = (await acc.client.get('/v1/reports/monthly-goal')).data;
     expect(g).toMatchObject({ currency: 'BRL', achievedMinor: '16000', sales: 2 });
+    // placas de premiação: faturamento acumulado (o reembolso de D-4 não conta)
+    expect((await acc.client.get('/v1/reports/lifetime')).data).toMatchObject({ currency: 'BRL', revenueMinor: '16000', sales: 2, unconverted: 0 });
 
     // valor original preservado vs. normalizado
     const p = (await acc.client.get('/v1/payments?preset=today&search=D-2')).data.payments[0];

@@ -168,6 +168,22 @@ export async function monthlyGoal(ctx: Ctx, org: OrgSummary) {
   return { currency: org.reporting_currency, goalMinor: org.goal_monthly_minor, achievedMinor: b.total.amountMinor, sales: b.total.count };
 }
 
+/**
+ * Faturamento acumulado da conta (placas de premiação): todas as vendas com status atual = aprovado,
+ * convertidas pela cotação do dia da aprovação. Reembolsadas/chargeback não contam (o status mudou).
+ */
+export async function lifetimeRevenue(ctx: Ctx, org: OrgSummary) {
+  const first = await ctx.db.query<{ at: Date | null }>(`SELECT min(approved_at) AS at FROM payments WHERE org_id = $1 AND status = 'approved'`, [org.id]);
+  const start = first.rows[0]?.at;
+  if (!start) return { currency: org.reporting_currency, revenueMinor: 0n, sales: 0, unconverted: 0, since: null };
+  const end = new Date(ctx.now().getTime() + 60_000);
+  const local = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: org.timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+  const w = { preset: 'custom', timezone: org.timezone, since: local(start), until: local(end), startUtc: start, endUtc: end, days: 0 } as unknown as ReportWindow;
+  const fx = await FxTable.loadFor(ctx, [org.reporting_currency, ...(await currenciesInUse(ctx, org.id))], w.since, w.until);
+  const b = await salesBuckets(ctx, org, w, {}, fx, 'approved_at', `status = 'approved'`);
+  return { currency: org.reporting_currency, revenueMinor: b.total.amountMinor, sales: b.total.count, unconverted: b.total.unconverted, since: w.since };
+}
+
 export async function dashboard(ctx: Ctx, org: OrgSummary, q: { preset: PeriodPreset; since?: string; until?: string } & DashboardFilters) {
   const w = reportWindow(q.preset, org.timezone, { now: ctx.now(), since: q.since, until: q.until });
   const filters = { pixelId: q.pixelId, provider: q.provider };

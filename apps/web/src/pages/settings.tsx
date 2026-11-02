@@ -1,13 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { Bell, BellOff, BellRing, Copy, Download, KeyRound, Mail, MonitorSmartphone, Play, Send, Shield, ShieldCheck, Smartphone, Store, Upload, UserPlus, UserRound, Users, Volume2 } from 'lucide-react';
+import { Bell, BellOff, BellRing, Copy, Download, KeyRound, Mail, MonitorSmartphone, Play, Send, Shield, Lock, ShieldCheck, Smartphone, Store, Trophy, Upload, UserPlus, UserRound, Users, Volume2 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { useEffect, useRef, useState } from 'react';
 import { PageHeader } from '../components/shell';
 import { useToast } from '../components/toast';
 import { Badge, Button, Callout, Card, ConfirmButton, Field, Input, Select, Switch, Tabs } from '../components/ui';
 import { del, get, patch, post } from '../lib/api';
-import { dateTime, exponent, maskEmail, minorToNumber, relative } from '../lib/format';
+import { dateTime, exponent, int, maskEmail, minorToNumber, money, pct, relative } from '../lib/format';
 import { canInstall, currentSubscription, endpointHash, isIOS, isStandalone, onInstallChange, permission, promptInstall, pushSupported, subscribe } from '../lib/push-client';
 import { customSound, loadSettings, onSoundChange, playSaleSound, PRESETS, removeCustomSound, saveSettings, setCustomSound, unlockAudio, type SoundPreset, type SoundSettings } from '../lib/sale-sound';
 import { useSession, type Role } from '../lib/session';
@@ -17,9 +17,9 @@ const CURRENCIES = ['BRL', 'EUR', 'USD', 'GBP', 'CHF', 'CAD', 'AUD', 'MXN', 'ARS
 const TZS = ['America/Sao_Paulo', 'America/Manaus', 'America/Fortaleza', 'America/Recife', 'America/Belem', 'America/Cuiaba', 'America/Rio_Branco', 'America/Noronha', 'Europe/Lisbon', 'Europe/Madrid', 'Europe/London', 'America/New_York', 'UTC'];
 
 export default function SettingsPage() {
-  type Tab = 'account' | 'org' | 'members' | 'security' | 'notifications';
+  type Tab = 'account' | 'org' | 'members' | 'security' | 'notifications' | 'awards';
   // ?aba=notificacoes / seguranca abre direto na aba (atalhos da busca e dos avisos)
-  const initial = ({ notificacoes: 'notifications', seguranca: 'security', equipe: 'members', organizacao: 'org' } as Record<string, Tab>)[new URLSearchParams(location.search).get('aba') ?? ''] ?? 'account';
+  const initial = ({ notificacoes: 'notifications', seguranca: 'security', equipe: 'members', organizacao: 'org', premiacoes: 'awards' } as Record<string, Tab>)[new URLSearchParams(location.search).get('aba') ?? ''] ?? 'account';
   const [tab, setTab] = useState<Tab>(initial);
   return (
     <>
@@ -27,14 +27,15 @@ export default function SettingsPage() {
       <div className="mb-6"><Tabs value={tab} onChange={setTab} tabs={[
         { value: 'account', label: 'Perfil', icon: <UserRound /> }, { value: 'security', label: 'Segurança', icon: <Shield /> },
         { value: 'org', label: 'Loja e metas', icon: <Store /> }, { value: 'members', label: 'Equipe', icon: <Users /> },
-        { value: 'notifications', label: 'Notificações', icon: <Bell /> },
+        { value: 'notifications', label: 'Notificações', icon: <Bell /> }, { value: 'awards', label: 'Premiações', icon: <Trophy /> },
       ]} /></div>
-      <div className={clsx('space-y-6', tab === 'account' ? 'max-w-6xl' : 'max-w-3xl')}>
+      <div className={clsx('space-y-6', tab === 'account' || tab === 'awards' ? 'max-w-6xl' : 'max-w-3xl')}>
         {tab === 'account' && <Account />}
         {tab === 'org' && <Org />}
         {tab === 'members' && <Members />}
         {tab === 'security' && <Security />}
         {tab === 'notifications' && <Notifications />}
+        {tab === 'awards' && <Awards />}
       </div>
     </>
   );
@@ -501,5 +502,84 @@ function SaleSoundCard() {
         <p className="text-xs text-muted">Os navegadores só tocam sons depois de um clique na página. Se o painel ficou aberto sem uso, clique em qualquer lugar (ou em “Ativar som de vendas” no topo) para liberar.</p>
       </div>
     </Card>
+  );
+}
+
+// ------------------------------------------------------------------ Premiações (PayTracking Awards)
+const AWARDS = [
+  { major: 100_000, title: '100 mil', img: '/awards/100mil.webp', h: 855, quote: 'A jornada de mil milhas começa com um único passo.', glow: 'shadow-[0_24px_60px_-20px_rgb(37_99_235/0.75)]', chip: 'bg-blue-500/15 text-blue-300 ring-blue-400/30' },
+  { major: 500_000, title: '500 mil', img: '/awards/500mil.webp', h: 833, quote: 'A excelência não é um ato, mas um hábito.', glow: 'shadow-[0_24px_60px_-20px_rgb(217_160_40/0.75)]', chip: 'bg-amber-400/15 text-amber-300 ring-amber-300/30' },
+  { major: 1_000_000, title: '1 milhão', img: '/awards/1milhao.webp', h: 828, quote: 'Grandes conquistas exigem grandes ambições.', glow: 'shadow-[0_24px_70px_-18px_rgb(59_130_246/0.9)]', chip: 'bg-sky-400/15 text-sky-200 ring-sky-300/30' },
+];
+
+function Awards() {
+  const q = useQuery<{ currency: string; revenueMinor: string; sales: number; unconverted: number; since: string | null }>({
+    queryKey: ['lifetime'], queryFn: ({ signal }) => get('/v1/reports/lifetime', signal), staleTime: 60_000,
+  });
+  if (!q.data) return <div className="grid gap-6 sm:grid-cols-3">{[0, 1, 2].map((i) => <div key={i} className="skeleton aspect-[5/7] rounded-[20px]" />)}</div>;
+  const cur = q.data.currency;
+  const factor = 10 ** exponent(cur);
+  const revenue = Number(q.data.revenueMinor);
+  const won = AWARDS.filter((a) => revenue >= a.major * factor).length;
+  const next = AWARDS.find((a) => revenue < a.major * factor);
+  const nextP = next ? revenue / (next.major * factor) : 1;
+  return (
+    <>
+      <section className="hero-blue p-6 sm:p-8" aria-label="Faturamento acumulado">
+        <div className="flex flex-wrap items-end justify-between gap-6">
+          <div>
+            <p className="flex items-center gap-2 text-sm font-medium text-white/80"><Trophy className="h-4 w-4" aria-hidden />PayTracking Awards · faturamento acumulado</p>
+            <p className="num mt-3 font-display text-[40px] font-bold leading-none tracking-[-0.02em] sm:text-[52px]">{money(q.data.revenueMinor, cur)}</p>
+            <p className="mt-3 text-sm text-white/70">{int(q.data.sales)} venda{q.data.sales === 1 ? '' : 's'} aprovada{q.data.sales === 1 ? '' : 's'}{q.data.since ? ` desde ${q.data.since.split('-').reverse().join('/')}` : ''} · {won} de {AWARDS.length} placas conquistadas</p>
+          </div>
+          {next ? (
+            <div className="w-full max-w-sm">
+              <div className="flex items-baseline justify-between text-sm"><span className="text-white/75">Próxima placa: <b className="text-white">{next.title}</b></span><span className="num font-semibold">{pct(nextP, 1)}</span></div>
+              <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-white/15"><div className="h-full rounded-full bg-gradient-to-r from-sky-300 to-white transition-[width] duration-700" style={{ width: `${Math.max(2, nextP * 100)}%` }} /></div>
+              <p className="mt-1.5 text-xs text-white/65">Faltam <span className="num font-semibold text-white">{money(String(next.major * factor - revenue), cur)}</span></p>
+            </div>
+          ) : <span className="hero-chip-ok">Todas as placas conquistadas 🏆</span>}
+        </div>
+      </section>
+
+      <div className="grid gap-6 sm:grid-cols-3">
+        {AWARDS.map((a) => {
+          const goal = a.major * factor;
+          const done = revenue >= goal;
+          const p = Math.min(1, revenue / goal);
+          return (
+            <figure key={a.major} className="flex flex-col">
+              <div className="flex flex-1 items-end justify-center rounded-[22px] bg-gradient-to-b from-surface-2/60 to-transparent px-6 pb-2 pt-6">
+              <div className={clsx('relative w-full max-w-[300px] overflow-hidden rounded-md transition duration-300', done ? `${a.glow} hover:-translate-y-1` : 'shadow-lift')}>
+                <img src={a.img} alt={`Placa PayTracking Awards de ${a.title}${done ? ' — conquistada' : ' — bloqueada'}`} width={600} height={a.h} loading="lazy" decoding="async"
+                  className={clsx('block h-auto w-full transition duration-500', !done && 'opacity-40 blur-[1.5px] grayscale')} />
+                {!done && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-bg/30 text-center">
+                    <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface/90 text-muted ring-1 ring-border backdrop-blur"><Lock className="h-5 w-5" aria-hidden /></span>
+                    <span className="rounded-full bg-surface/90 px-3 py-1 text-xs font-semibold backdrop-blur">Bloqueada</span>
+                  </div>
+                )}
+              </div>
+              </div>
+              <figcaption className="mt-4">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-display text-lg font-bold">{a.title} em vendas</p>
+                  <span className={clsx('rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset', done ? a.chip : 'bg-surface-2 text-muted ring-border')}>{done ? 'Conquistada' : pct(p, 0)}</span>
+                </div>
+                <p className="mt-1 text-[13px] italic text-muted">“{a.quote}”</p>
+                {!done && (<>
+                  <div className="meter mt-3" aria-hidden><span className="bg-primary" style={{ width: `${Math.max(2, p * 100)}%` }} /></div>
+                  <p className="mt-1.5 text-xs text-muted">Faltam <span className="num font-semibold text-fg">{money(String(goal - revenue), cur)}</span> de {money(String(goal), cur)}</p>
+                </>)}
+              </figcaption>
+            </figure>
+          );
+        })}
+      </div>
+      <p className="text-xs text-muted">
+        Conta só o faturamento confirmado pelos gateways (vendas aprovadas; reembolsos e chargebacks saem da conta), na moeda de relatório ({cur}).
+        {q.data.unconverted > 0 && <> {int(q.data.unconverted)} venda(s) em outra moeda ainda sem cotação não entraram na soma.</>}
+      </p>
+    </>
   );
 }
