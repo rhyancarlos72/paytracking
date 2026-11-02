@@ -183,6 +183,12 @@ describe('cenários 11/12/13 — Meta OAuth e Marketing API', () => {
     const b = await acc.client.post('/v1/meta/entities/120000000000001/budget', { type: 'daily', amount: '75,50' });
     expect(b.data).toMatchObject({ amountMinor: '7550', currency: 'USD' });
     expect(env.fake.calls.at(-1)!.body).toContain('daily_budget=7550');
+    // duplicar: cópia já ativa, com conjuntos e anúncios
+    env.fake.on(/120000000000001\/copies$/, () => json(200, { copied_campaign_id: '120000000000999' }));
+    const dup = await acc.client.post('/v1/meta/entities/120000000000001/duplicate', { type: 'campaign' });
+    expect(dup.data).toMatchObject({ ok: true, newId: '120000000000999' });
+    const sent = new URLSearchParams(env.fake.calls.at(-1)!.body!);
+    expect([sent.get('status_option'), sent.get('deep_copy')]).toEqual(['ACTIVE', 'true']);
 
     await env.db.query('DELETE FROM meta_insights_cache');
     env.fake.on(/act_1\/campaigns/, () => json(400, { error: { code: 190, message: 'Session has expired' } }));

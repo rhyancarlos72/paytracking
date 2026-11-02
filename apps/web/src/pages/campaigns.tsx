@@ -6,7 +6,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { PeriodPicker, usePeriod } from '../components/period';
 import { PageHeader } from '../components/shell';
 import { useToast } from '../components/toast';
-import { Badge, Button, Callout, Card, EmptyState, ErrorState, Field, Input, Modal, Segmented, Skeleton } from '../components/ui';
+import { Badge, Button, Callout, Card, EmptyState, ErrorState, Input, Segmented, Skeleton } from '../components/ui';
 import { get, post, qs } from '../lib/api';
 import { exponent, int, minorToNumber, money, pct, ratio } from '../lib/format';
 import { alias, Name, useNamesHidden } from '../lib/privacy';
@@ -53,7 +53,6 @@ export default function CampaignsPage() {
   const [source, setSource] = useState<Source>('tracked');
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'spend', dir: -1 });
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [budgetRow, setBudgetRow] = useState<Row | null>(null);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<'all' | 'active' | 'paused'>('all');
   const [onlySales, setOnlySales] = useState(false);
@@ -68,7 +67,7 @@ export default function CampaignsPage() {
 
   const act = useMutation({
     mutationFn: ({ id, path, body }: { id: string; path: string; body: object }) => post(`/v1/meta/entities/${id}/${path}`, body),
-    onSuccess: (_d, v) => { toast.ok(v.path === 'duplicate' ? 'Cópia criada (pausada)' : 'Alteração enviada à Meta'); void qc.invalidateQueries({ queryKey: ['campaigns'] }); },
+    onSuccess: (_d, v) => { toast.ok(v.path === 'duplicate' ? 'Cópia criada e já ativa' : v.path === 'budget' ? 'Orçamento atualizado na Meta' : 'Alteração enviada à Meta', v.path === 'duplicate' ? 'Com os conjuntos e anúncios. Ela aparece aqui em instantes.' : undefined); void qc.invalidateQueries({ queryKey: ['campaigns'] }); },
     onError: (e) => toast.err(e),
   });
 
@@ -108,23 +107,30 @@ export default function CampaignsPage() {
     </th>
   );
   const drill = (id: string) => { const n = new URLSearchParams(sp); n.set('nivel', 'adset'); n.set('campanhas', id); setSp(n); };
-  const actions = (r: Row, active: boolean) => (
-    <div className="inline-flex gap-1">
-      <Button size="sm" variant="ghost" aria-label={active ? 'Pausar' : 'Ativar'} title={active ? 'Pausar' : 'Ativar'} disabled={!s.can('admin') || act.isPending}
-        onClick={() => act.mutate({ id: r.id, path: 'status', body: { status: active ? 'PAUSED' : 'ACTIVE' } })}>
-        {active ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-      </Button>
-      <Button size="sm" variant="ghost" aria-label="Duplicar" title="Duplicar (cópia pausada)" disabled={!s.can('admin') || act.isPending}
-        onClick={() => act.mutate({ id: r.id, path: 'duplicate', body: { type: level } })}><Copy className="h-4 w-4" /></Button>
-    </div>
-  );
-  const budget = (r: Row) => r.budget ? (
-    <button className="group inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 transition hover:bg-surface-2" onClick={() => setBudgetRow(r)} disabled={!s.can('admin')}>
-      <span className="num">{money(r.budget.amountMinor, r.budget.currency)}</span>
-      <span className="text-xs text-muted">{r.budget.type === 'daily' ? '/dia' : 'total'}</span>
-      {s.can('admin') && <Pencil className="h-3 w-3 text-muted opacity-0 transition group-hover:opacity-100" aria-hidden />}
-    </button>
-  ) : <span className="text-muted">—</span>;
+  const busyId = act.isPending ? act.variables?.id : undefined;
+  const actions = (r: Row, active: boolean) => {
+    const label = hideNames ? alias(kind, r.name) : r.name;
+    const can = s.can('admin') && busyId !== r.id;
+    return (
+      <div className="inline-flex shrink-0 gap-1">
+        <button type="button" aria-label={`${active ? 'Pausar' : 'Ativar'} ${label}`} title={active ? 'Pausar' : 'Ativar'} disabled={!can}
+          onClick={() => act.mutate({ id: r.id, path: 'status', body: { status: active ? 'PAUSED' : 'ACTIVE' } })}
+          className={clsx('flex h-8 w-8 items-center justify-center rounded-lg ring-1 ring-inset transition disabled:cursor-not-allowed disabled:opacity-50 [&>svg]:h-4 [&>svg]:w-4',
+            active ? 'bg-ok/10 text-ok ring-ok/25 hover:bg-ok/20' : 'bg-surface-2 text-muted ring-border hover:text-fg')}>
+          {active ? <Pause /> : <Play />}
+        </button>
+        <button type="button" aria-label={`Duplicar ${label}`} title="Duplicar (a cópia já nasce ativa)" disabled={!can}
+          onClick={() => act.mutate({ id: r.id, path: 'duplicate', body: { type: level } })}
+          className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-inset ring-primary/25 transition hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50 [&>svg]:h-4 [&>svg]:w-4">
+          <Copy />
+        </button>
+      </div>
+    );
+  };
+  const budget = (r: Row) => r.budget
+    ? <InlineBudget key={`${r.id}:${r.budget.amountMinor}`} budget={r.budget} editable={s.can('admin')} label={hideNames ? alias(kind, r.name) : r.name}
+        onSave={(amount) => act.mutateAsync({ id: r.id, path: 'budget', body: { type: r.budget!.type, amount } })} />
+    : <span className="text-muted">—</span>;
 
   return (
     <>
@@ -263,10 +269,12 @@ export default function CampaignsPage() {
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                               <p className="flex items-center gap-2 font-semibold">
-                                <span className={clsx('h-2 w-2 shrink-0 rounded-full', active ? 'bg-ok' : 'bg-subtle')} aria-label={active ? 'Ativa' : 'Pausada'} />
+                                {actions(r, active)}
                                 {level === 'campaign' ? <button className="min-w-0 truncate text-left hover:text-primary" onClick={() => drill(r.id)}><Name kind={kind} value={r.name} /></button> : <Name kind={kind} value={r.name} className="min-w-0 truncate" />}
                               </p>
-                              {r.campaignName && <p className="ml-4 truncate text-xs text-muted"><Name kind="campanha" value={r.campaignName} /></p>}
+                              <p className="ml-[76px] truncate text-xs text-muted">
+                                <span className={active ? 'text-ok' : ''}>{active ? 'Ativa' : 'Pausada'}</span>{r.campaignName && <> · <Name kind="campanha" value={r.campaignName} /></>}
+                              </p>
                             </div>
                             <RoasPill roas={roas} />
                           </div>
@@ -277,7 +285,7 @@ export default function CampaignsPage() {
                           </dl>
                           <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted">
                             <span>CPA {cpa !== null ? money(Math.round(cpa), cur) : '—'} · CTR {pct(r.ctr / 100, 2)}</span>
-                            <span className="flex items-center gap-1">{budget(r)}{actions(r, active)}</span>
+                            <span className="flex items-center gap-1">{budget(r)}</span>
                           </div>
                         </li>
                       ))}
@@ -291,7 +299,7 @@ export default function CampaignsPage() {
                           {header('name', level === 'campaign' ? 'Campanha' : 'Conjunto', false)}
                           <th>Orçamento</th>
                           {header('spend', 'Gasto')}{header('sales', 'Vendas')}{header('revenue', 'Receita')}{header('roas', 'ROAS')}{header('cpa', 'CPA')}
-                          {header('ctr', 'CTR')}<th className="text-right">Connect</th><th className="text-right"><span className="sr-only">Ações</span></th>
+                          {header('ctr', 'CTR')}<th className="text-right">Connect</th>
                         </tr></thead>
                         <tbody>
                           {rows.map(({ r, sales, revenue, spend, roas, cpa, active }) => (
@@ -300,9 +308,10 @@ export default function CampaignsPage() {
                                 <td><input type="checkbox" aria-label={`Selecionar ${hideNames ? alias(kind, r.name) : r.name}`} className="h-4 w-4 accent-[rgb(var(--primary))]" checked={selected.has(r.id)}
                                   onChange={(e) => setSelected((p) => { const n = new Set(p); e.target.checked ? n.add(r.id) : n.delete(r.id); return n; })} /></td>
                               )}
-                              <td className="max-w-[280px] 2xl:max-w-[380px]">
+                              <td className="max-w-[360px] 2xl:max-w-[480px]">
                                 <div className="flex items-center gap-2.5">
                                   <span className={clsx('h-8 w-1 shrink-0 rounded-full', roasTier(roas).bar)} aria-hidden />
+                                  {actions(r, active)}
                                   <div className="min-w-0">
                                     <div className="flex items-center gap-2">
                                       {level === 'campaign'
@@ -329,7 +338,6 @@ export default function CampaignsPage() {
                               <td className="num text-right">{cpa !== null ? money(Math.round(cpa), cur) : '—'}</td>
                               <td className="num text-right">{pct(r.ctr / 100, 2)}</td>
                               <td className="num text-right">{r.linkClicks > 0 ? pct(r.landingPageViews / r.linkClicks) : '—'}</td>
-                              <td className="text-right opacity-70 transition group-hover:opacity-100">{actions(r, active)}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -356,7 +364,6 @@ export default function CampaignsPage() {
             <p className="text-xs text-muted">Faixa vermelha: gasto sem vendas {source === 'tracked' ? 'rastreadas' : 'atribuídas'}. Vendas rastreadas são casadas quando utm_campaign/content/term/medium/id contém o nome ou o ID da {level === 'campaign' ? 'campanha' : 'conjunto'}. ROAS: <span className="text-err">abaixo de 1 = prejuízo</span>, 1–2 no limite, 2 ou mais lucrativo.</p>
           </div>
         )}
-      <BudgetModal row={budgetRow} hideNames={hideNames} onClose={() => setBudgetRow(null)} onSave={(amount) => act.mutateAsync({ id: budgetRow!.id, path: 'budget', body: { type: budgetRow!.budget!.type, amount } })} />
     </>
   );
 }
@@ -382,22 +389,50 @@ function Highlight({ icon, tone, label, item, empty }: {
   );
 }
 
-function BudgetModal({ row, hideNames, onClose, onSave }: { row: Row | null; hideNames: boolean; onClose: () => void; onSave: (amount: string) => Promise<unknown> }) {
-  const [value, setValue] = useState('');
+/** Orçamento editável na própria linha: clica, digita, Enter (ou OK) salva; Esc cancela. */
+function InlineBudget({ budget, editable, label, onSave }: { budget: NonNullable<Row['budget']>; editable: boolean; label: string; onSave: (amount: string) => Promise<unknown> }) {
+  const cur = budget.currency;
+  const initial = minorToNumber(budget.amountMinor, cur).toFixed(exponent(cur)).replace('.', ',');
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(initial);
+  const [shown, setShown] = useState(budget.amountMinor); // mostra o novo valor na hora, antes da Meta recarregar
   const [busy, setBusy] = useState(false);
-  const cur = row?.budget?.currency ?? 'BRL';
-  const open = !!row;
-  const initial = row?.budget ? minorToNumber(row.budget.amountMinor, cur).toFixed(exponent(cur)).replace('.', ',') : '';
+  const suffix = budget.type === 'daily' ? '/dia' : 'total';
+  const save = async () => {
+    const v = value.trim();
+    if (!v || v === initial) { setEditing(false); return; }
+    setBusy(true);
+    try {
+      const r = (await onSave(v)) as { amountMinor?: string } | undefined;
+      if (r?.amountMinor) setShown(r.amountMinor);
+      setEditing(false);
+    } catch { /* o aviso de erro já aparece; continua editando */ } finally { setBusy(false); }
+  };
+  if (!editing) {
+    return (
+      <button type="button" disabled={!editable} onClick={() => { setValue(initial); setEditing(true); }} title={editable ? 'Clique para alterar o orçamento' : undefined}
+        aria-label={editable ? `Orçamento de ${label}: ${money(shown, cur)} ${suffix}. Clique para alterar` : undefined}
+        className="group inline-flex items-center gap-1.5 rounded-lg px-2 py-1 ring-1 ring-inset ring-transparent transition enabled:hover:bg-surface-2 enabled:hover:ring-border">
+        <span className="num font-medium">{money(shown, cur)}</span>
+        <span className="text-xs text-muted">{suffix}</span>
+        {editable && <Pencil className="h-3 w-3 text-muted opacity-60 transition group-hover:opacity-100" aria-hidden />}
+      </button>
+    );
+  }
   return (
-    <Modal open={open} onClose={onClose} title="Editar orçamento" description={row && (hideNames ? alias('campanha', row.name) : row.name)}
-      footer={<>
-        <Button variant="ghost" onClick={onClose}>Cancelar</Button>
-        <Button variant="primary" loading={busy} onClick={async () => { setBusy(true); try { await onSave(value || initial); onClose(); } catch { /* toast já exibido */ } finally { setBusy(false); } }}>Salvar na Meta</Button>
-      </>}>
-      <Field label={`Orçamento ${row?.budget?.type === 'daily' ? 'diário' : 'total'} (${cur})`} htmlFor="budget"
-        hint={`Valor na moeda da conta de anúncios (${cur}), sem conversão.`}>
-        <Input id="budget" inputMode="decimal" key={row?.id} defaultValue={initial} onChange={(e) => setValue(e.target.value)} />
-      </Field>
-    </Modal>
+    <form className="inline-flex items-center gap-1" onSubmit={(e) => { e.preventDefault(); void save(); }}>
+      <label className="relative">
+        <span className="sr-only">Novo orçamento {budget.type === 'daily' ? 'diário' : 'total'} de {label} ({cur})</span>
+        <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted">{cur === 'BRL' ? 'R$' : cur}</span>
+        <input autoFocus inputMode="decimal" value={value} disabled={busy} onChange={(e) => setValue(e.target.value)}
+          onFocus={(e) => e.currentTarget.select()} onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); setEditing(false); } }}
+          className="num h-8 w-[118px] rounded-lg border border-primary bg-surface pl-9 pr-2 text-right text-base font-medium outline-none ring-4 ring-primary/15 sm:text-sm" />
+      </label>
+      <button type="submit" disabled={busy} aria-label="Salvar orçamento" title="Salvar (Enter)"
+        className="inline-flex h-8 items-center justify-center rounded-lg bg-[#2563eb] px-2.5 text-xs font-bold text-white transition hover:brightness-110 disabled:opacity-60">
+        {busy ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" /> : 'OK'}
+      </button>
+      <button type="button" onClick={() => setEditing(false)} aria-label="Cancelar" title="Cancelar (Esc)" className="flex h-8 w-7 items-center justify-center rounded-lg text-muted hover:bg-surface-2 hover:text-fg"><X className="h-4 w-4" /></button>
+    </form>
   );
 }

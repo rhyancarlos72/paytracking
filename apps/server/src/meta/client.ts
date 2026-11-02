@@ -155,8 +155,12 @@ export class MetaClient {
     return this.request('POST', `/${id}`, { status });
   }
 
-  duplicate(id: string, type: 'campaign' | 'adset') {
-    return this.request('POST', `/${id}/copies`, { status_option: 'PAUSED', ...(type === 'adset' ? { deep_copy: 'true' } : {}) });
+  /**
+   * Cópia já ATIVA, com tudo dentro (campanha → conjuntos e anúncios; conjunto → anúncios).
+   * Sem deep_copy a Meta copiaria só a "casca" da campanha, sem conjuntos — ativar isso não veicula nada.
+   */
+  duplicate(id: string, _type: 'campaign' | 'adset') {
+    return this.request('POST', `/${id}/copies`, { status_option: 'ACTIVE', deep_copy: 'true' });
   }
 
   /** Orçamento em unidade mínima da MOEDA DA CONTA (sem conversão — corrige P-25/P-27). */
