@@ -15,23 +15,35 @@ function safeUrl(url) {
   }
 }
 
+/** Manda a mensagem para uma janela do painel e espera a resposta (ou null depois de `ms`). */
+function ask(client, msg, ms) {
+  return new Promise((resolve) => {
+    const ch = new MessageChannel();
+    const t = setTimeout(() => resolve(null), ms);
+    ch.port1.onmessage = (e) => { clearTimeout(t); resolve(e.data || null); };
+    try { client.postMessage(msg, [ch.port2]); } catch (e) { clearTimeout(t); resolve(null); }
+  });
+}
+
 self.addEventListener('push', (event) => {
   let d = {};
   try { d = event.data ? event.data.json() : {}; } catch (e) { d = { body: event.data ? event.data.text() : '' }; }
   event.waitUntil((async () => {
     const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    const focused = clients.some((c) => c.focused && c.visibilityState === 'visible');
-    // painel aberto: avisa a página (ela atualiza os números e toca o som escolhido)
-    clients.forEach((c) => c.postMessage({ type: d.type === 'test' ? 'sale-test' : 'sale', payload: d }));
+    // painel aberto: avisa a página (ela atualiza os números e toca o som escolhido) e espera ela
+    // dizer se tocou. Tocou → notificação muda (sem dois sons). Não tocou (celular com o app em
+    // segundo plano, som bloqueado, painel fechado) → a notificação toca o som do sistema.
+    const msg = { type: d.type === 'test' ? 'sale-test' : 'sale', payload: d };
+    const replies = await Promise.all(clients.map((c) => ask(c, msg, 4000)));
+    const played = replies.some((r) => r && r.played === true);
     await self.registration.showNotification(d.title || 'Venda aprovada!', {
       body: d.body || '',
       icon: ICON,
       badge: BADGE,
       tag: d.tag || 'pt-sale',
       renotify: true,
-      // com o painel na frente, o som é o do app (sem tocar dois sons); fora dele, som + vibração do celular
-      silent: focused,
-      vibrate: focused ? undefined : [180, 80, 180, 80, 320],
+      silent: played,
+      vibrate: played ? undefined : [180, 80, 180, 80, 320],
       timestamp: d.ts || Date.now(),
       data: { url: safeUrl(d.url) },
       actions: [{ action: 'abrir', title: 'Ver venda' }],
