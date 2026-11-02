@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { API_URL, APP_URL, Client, newAccount, newIntegration, newPixel, setup, type TestEnv } from './helpers.js';
+import { API_URL, APP_URL, Client, newAccount, newIntegration, newPixel, setup, type TestEnv, verifyEmail } from './helpers.js';
 
 let env: TestEnv;
 beforeAll(async () => { env = await setup(); });
@@ -143,11 +143,39 @@ describe('cenário 17 — permissões por papel', () => {
     expect((await intruder.client.post('/v1/invitations/accept', { token })).status).toBe(403);
   });
 
-  it('admin da plataforma é o único com acesso a /v1/admin', async () => {
+  it('admin da plataforma: só o e-mail de PLATFORM_ADMIN_EMAILS, e só depois de confirmado', async () => {
     const normal = await newAccount(env);
+    const ADMIN_ROUTES: Array<[string, string]> = [['GET', '/v1/admin/orgs'], ['GET', '/v1/admin/overview'], ['GET', '/v1/admin/google'],
+      ['POST', `/v1/admin/orgs/${normal.orgId}/plan`], ['DELETE', `/v1/admin/orgs/${normal.orgId}`], ['POST', '/v1/admin/test-email']];
+    for (const [m, u] of ADMIN_ROUTES) expect((await normal.client.req(m, u, m === 'GET' || m === 'DELETE' ? undefined : {})).status, `${m} ${u}`).toBe(403);
+    expect((await normal.client.get('/v1/auth/me')).data.user.isPlatformAdmin).toBe(false);
+    // flag antiga no banco (ex.: importação) não vale sem estar na lista
+    await env.db.query('UPDATE users SET is_platform_admin = true WHERE id = $1', [normal.userId]);
     expect((await normal.client.get('/v1/admin/orgs')).status).toBe(403);
+    // e-mail do dono cadastrado por alguém que NÃO confirmou a caixa de entrada: nada de admin, nem plano isento
     const root = await newAccount(env, 'root@paytracking.test');
+    expect((await root.client.get('/v1/admin/orgs')).status).toBe(403);
+    expect((await root.client.get('/v1/auth/me')).data.user.isPlatformAdmin).toBe(false);
+    expect((await env.db.query('SELECT plan_status FROM organizations WHERE id = $1', [root.orgId])).rows[0].plan_status).toBe('trial');
+    // confirmou: vira admin e a organização dele fica isenta
+    await verifyEmail(env, root.client, root.email);
     expect((await root.client.get('/v1/admin/orgs')).status).toBe(200);
+    expect((await root.client.get('/v1/auth/me')).data.user.isPlatformAdmin).toBe(true);
+    expect((await env.db.query('SELECT plan_status FROM organizations WHERE id = $1', [root.orgId])).rows[0].plan_status).toBe('exempt');
+    // o admin não ganha acesso aos DADOS das outras contas pelas rotas normais
+    expect((await root.client.get('/v1/pixels')).data.pixels).toHaveLength(0);
+  });
+
+  it('o admin deixa de ser admin assim que o e-mail sai de PLATFORM_ADMIN_EMAILS', async () => {
+    const { platformAdmins } = env.ctx.config;
+    const root = await newAccount(env, 'dono2@paytracking.test');
+    platformAdmins.add('dono2@paytracking.test');
+    try {
+      await verifyEmail(env, root.client, root.email);
+      expect((await root.client.get('/v1/admin/orgs')).status).toBe(200);
+      platformAdmins.delete('dono2@paytracking.test');
+      expect((await root.client.get('/v1/admin/orgs')).status).toBe(403);
+    } finally { platformAdmins.delete('dono2@paytracking.test'); }
   });
 
   it('assinatura expirada bloqueia o painel (402) mas não o financeiro', async () => {

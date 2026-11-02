@@ -24,8 +24,8 @@ export function listenTarget(raw: string | undefined): Target {
 /** Tira credenciais de URLs que apareçam em mensagens de erro. */
 const sanitize = (msg: string) => msg.replace(/(\w+:\/\/)[^@\s/]+@/g, '$1***@').slice(0, 1000);
 
-const log = (level: 'info' | 'error', msg: string, extra: Record<string, unknown> = {}) =>
-  (level === 'error' ? console.error : console.log)(JSON.stringify({ level, severity: level.toUpperCase(), msg, ...extra }));
+const log = (level: 'info' | 'warn' | 'error', msg: string, extra: Record<string, unknown> = {}) =>
+  (level === 'error' ? console.error : level === 'warn' ? console.warn : console.log)(JSON.stringify({ level, severity: level === 'warn' ? 'WARNING' : level.toUpperCase(), msg, ...extra }));
 
 const RETRY_MS = 30_000;
 
@@ -43,7 +43,10 @@ async function boot(target: Target): Promise<void> {
     const app = await buildApp(ctx);
     await app.listen('path' in target ? { path: target.path } : target);
     const worker = process.env.EMBEDDED_WORKER === 'true' ? startWorker(ctx) : null;
-    log('info', 'PayTracking no ar', { listen: 'path' in target ? 'socket' : target.port });
+    log('info', 'PayTracking no ar', { listen: 'path' in target ? 'socket' : target.port, admins: config.platformAdmins.size });
+    if (config.isProd && config.platformAdmins.size === 0) {
+      log('warn', 'PLATFORM_ADMIN_EMAILS vazio: ninguém tem acesso ao painel Admin. Defina o seu e-mail nas variáveis de ambiente.');
+    }
 
     const shutdown = async () => {
       await app.close();

@@ -92491,7 +92491,7 @@ async function createUserWithOrg(ctx, input2) {
   return tx(ctx.db, async (c) => {
     const exists = await c.query("SELECT 1 FROM users WHERE email = $1", [email4]);
     if (exists.rowCount) throw conflict("J\xE1 existe uma conta com este e-mail. Fa\xE7a login.");
-    const isAdmin = ctx.config.platformAdmins.has(email4);
+    const isAdmin = isPlatformAdminEmail(ctx, email4, !!input2.googleSub);
     const u = await c.query(
       `INSERT INTO users(email, password_hash, name, is_platform_admin, google_sub, email_verified_at)
        VALUES ($1, $2, $3, $4, $5, CASE WHEN $5::text IS NULL THEN NULL ELSE now() END) RETURNING id`,
@@ -92537,6 +92537,20 @@ async function revokeSessions(ctx, userId, exceptSessionId) {
   );
   return r.rowCount ?? 0;
 }
+function isPlatformAdminEmail(ctx, email4, verified) {
+  return verified && ctx.config.platformAdmins.has(email4.trim().toLowerCase());
+}
+async function onEmailVerified(ctx, userId) {
+  const u = await ctx.db.query("UPDATE users SET email_verified_at = COALESCE(email_verified_at, now()) WHERE id = $1 RETURNING email", [userId]);
+  const email4 = u.rows[0]?.email;
+  if (!email4 || !isPlatformAdminEmail(ctx, email4, true)) return;
+  await ctx.db.query("UPDATE users SET is_platform_admin = true WHERE id = $1", [userId]);
+  await ctx.db.query(
+    `UPDATE organizations SET plan_status = 'exempt', plan_expires_at = NULL
+      WHERE id IN (SELECT org_id FROM memberships WHERE user_id = $1 AND role = 'owner')`,
+    [userId]
+  );
+}
 async function resolveSession(ctx, token) {
   const id = sha256Hex(token);
   const r = await ctx.db.query(
@@ -92570,7 +92584,7 @@ async function resolveSession(ctx, token) {
       id: s.user_id,
       email: s.email,
       name: s.name,
-      isPlatformAdmin: s.is_platform_admin,
+      isPlatformAdmin: isPlatformAdminEmail(ctx, s.email, !!s.email_verified_at),
       emailVerified: !!s.email_verified_at,
       hideEmail: s.hide_email,
       hideNames: s.hide_names,
@@ -94018,7 +94032,7 @@ O link vale por 1 hora e funciona uma \xFAnica vez. Se n\xE3o foi voc\xEA, ignor
     const body = parse5(external_exports.object({ token: external_exports.string().min(20) }), req.body);
     const userId = await consumeToken(ctx, body.token, "email_verify");
     if (!userId) throw badRequest("Link inv\xE1lido ou expirado.");
-    await ctx.db.query("UPDATE users SET email_verified_at = now() WHERE id = $1", [userId]);
+    await onEmailVerified(ctx, userId);
     return { ok: true };
   });
   app.post("/v1/auth/resend-verification", async (req) => {
@@ -94176,6 +94190,7 @@ function googleRoutes(app, ctx) {
         if (existing.google_sub && existing.google_sub !== sub) return fail(reply, "google_outra_conta");
         await ctx.db.query("UPDATE users SET google_sub = $2, email_verified_at = COALESCE(email_verified_at, now()), updated_at = now() WHERE id = $1", [existing.id, sub]);
         userId = existing.id;
+        await onEmailVerified(ctx, userId);
         await ctx.db.query(`INSERT INTO audit_log(user_id, action, ip) VALUES ($1, 'auth.google_linked', $2)`, [userId, clientIp(req) || null]);
         await securityAlert(ctx, req, email4, "O login com Google foi conectado");
       } else {
@@ -94307,7 +94322,8 @@ O convite expira em 7 dias.`
     if (userId === a.user.id) throw badRequest("Voc\xEA n\xE3o pode remover a si mesmo.");
     const owners = await ctx.db.query(`SELECT count(*)::int AS n FROM memberships WHERE org_id = $1 AND role = 'owner' AND user_id <> $2`, [a.org.id, userId]);
     if ((owners.rows[0]?.n ?? 0) < 1) throw conflict("A organiza\xE7\xE3o precisa de pelo menos um propriet\xE1rio.");
-    await ctx.db.query("DELETE FROM memberships WHERE org_id = $1 AND user_id = $2", [a.org.id, userId]);
+    const del = await ctx.db.query("DELETE FROM memberships WHERE org_id = $1 AND user_id = $2", [a.org.id, userId]);
+    if (!del.rowCount) throw notFound("Membro n\xE3o encontrado.");
     await ctx.db.query("UPDATE sessions SET active_org_id = NULL WHERE user_id = $1 AND active_org_id = $2", [userId, a.org.id]);
     await audit(ctx, a.org.id, a.user.id, "member.removed", userId);
     return { ok: true };
@@ -98064,7 +98080,7 @@ function listenTarget(raw) {
   return /^\d+$/.test(v) ? { port: Number(v), host: "0.0.0.0" } : { path: v };
 }
 var sanitize = (msg) => msg.replace(/(\w+:\/\/)[^@\s/]+@/g, "$1***@").slice(0, 1e3);
-var log = (level, msg, extra = {}) => (level === "error" ? console.error : console.log)(JSON.stringify({ level, severity: level.toUpperCase(), msg, ...extra }));
+var log = (level, msg, extra = {}) => (level === "error" ? console.error : level === "warn" ? console.warn : console.log)(JSON.stringify({ level, severity: level === "warn" ? "WARNING" : level.toUpperCase(), msg, ...extra }));
 var RETRY_MS = 3e4;
 async function boot(target) {
   const config2 = loadConfig();
@@ -98083,7 +98099,10 @@ async function boot(target) {
     const app = await buildApp(ctx);
     await app.listen("path" in target ? { path: target.path } : target);
     const worker = process.env.EMBEDDED_WORKER === "true" ? startWorker(ctx) : null;
-    log("info", "PayTracking no ar", { listen: "path" in target ? "socket" : target.port });
+    log("info", "PayTracking no ar", { listen: "path" in target ? "socket" : target.port, admins: config2.platformAdmins.size });
+    if (config2.isProd && config2.platformAdmins.size === 0) {
+      log("warn", "PLATFORM_ADMIN_EMAILS vazio: ningu\xE9m tem acesso ao painel Admin. Defina o seu e-mail nas vari\xE1veis de ambiente.");
+    }
     const shutdown = async () => {
       await app.close();
       await worker?.stop();

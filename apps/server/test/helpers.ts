@@ -145,3 +145,18 @@ export async function newIntegration(c: Client, provider: string, over: Record<s
 export function metaOk(fake: FakeFetch) {
   fake.on(/graph\.facebook\.com\/v[\d.]+\/\d+\/events/, () => json(200, { events_received: 1, fbtrace_id: 'TRACE' }));
 }
+
+/** Confirma o e-mail da conta pelo link enviado (como a pessoa faria). */
+export async function verifyEmail(env: TestEnv, c: Client, email: string) {
+  const mail = env.mailer.sent.filter((m) => m.to === email && m.subject.includes('Confirme')).at(-1)!;
+  const token = /token=([\w-]+)/.exec(mail.text)![1]!;
+  const r = await c.post('/v1/auth/verify-email', { token });
+  if (r.status !== 200) throw new Error('verificação falhou');
+}
+
+/** Conta do dono da plataforma (e-mail em PLATFORM_ADMIN_EMAILS) já confirmada. */
+export async function newPlatformAdmin(env: TestEnv) {
+  const acc = await newAccount(env, 'root@paytracking.test');
+  await verifyEmail(env, acc.client, acc.email);
+  return acc;
+}

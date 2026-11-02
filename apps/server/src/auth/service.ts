@@ -71,7 +71,8 @@ export async function createUserWithOrg(
   return tx(ctx.db, async (c) => {
     const exists = await c.query('SELECT 1 FROM users WHERE email = $1', [email]);
     if (exists.rowCount) throw conflict('Já existe uma conta com este e-mail. Faça login.');
-    const isAdmin = ctx.config.platformAdmins.has(email);
+    // admin só com e-mail CONFIRMADO (Google já confirma); por senha, vira admin ao confirmar o e-mail
+    const isAdmin = isPlatformAdminEmail(ctx, email, !!input.googleSub);
     const u = await c.query<{ id: string }>(
       `INSERT INTO users(email, password_hash, name, is_platform_admin, google_sub, email_verified_at)
        VALUES ($1, $2, $3, $4, $5, CASE WHEN $5::text IS NULL THEN NULL ELSE now() END) RETURNING id`,
@@ -122,6 +123,26 @@ export async function revokeSessions(ctx: Ctx, userId: string, exceptSessionId?:
   return r.rowCount ?? 0;
 }
 
+/**
+ * Admin da plataforma: o e-mail precisa estar em PLATFORM_ADMIN_EMAILS (fonte única — tirar da lista
+ * tira o acesso na hora) E confirmado. Sem a confirmação, quem cadastrasse primeiro o e-mail do dono
+ * viraria admin sem ter acesso à caixa de entrada.
+ */
+export function isPlatformAdminEmail(ctx: Ctx, email: string, verified: boolean): boolean {
+  return verified && ctx.config.platformAdmins.has(email.trim().toLowerCase());
+}
+
+/** Conta do dono confirmada: a organização dele fica isenta de assinatura. */
+export async function onEmailVerified(ctx: Ctx, userId: string): Promise<void> {
+  const u = await ctx.db.query<{ email: string }>('UPDATE users SET email_verified_at = COALESCE(email_verified_at, now()) WHERE id = $1 RETURNING email', [userId]);
+  const email = u.rows[0]?.email;
+  if (!email || !isPlatformAdminEmail(ctx, email, true)) return;
+  await ctx.db.query('UPDATE users SET is_platform_admin = true WHERE id = $1', [userId]);
+  await ctx.db.query(
+    `UPDATE organizations SET plan_status = 'exempt', plan_expires_at = NULL
+      WHERE id IN (SELECT org_id FROM memberships WHERE user_id = $1 AND role = 'owner')`, [userId]);
+}
+
 /** Resolve a sessão do cookie, renova o prazo (expiração deslizante) e carrega org + papel. */
 export async function resolveSession(ctx: Ctx, token: string): Promise<AuthContext | null> {
   const id = sha256Hex(token);
@@ -153,7 +174,7 @@ export async function resolveSession(ctx: Ctx, token: string): Promise<AuthConte
   return {
     sessionId: s.session_id,
     user: {
-      id: s.user_id, email: s.email, name: s.name, isPlatformAdmin: s.is_platform_admin,
+      id: s.user_id, email: s.email, name: s.name, isPlatformAdmin: isPlatformAdminEmail(ctx, s.email, !!s.email_verified_at),
       emailVerified: !!s.email_verified_at, hideEmail: s.hide_email, hideNames: s.hide_names, twoFactorEnabled: !!s.totp_enabled_at,
     },
     role: org.role,

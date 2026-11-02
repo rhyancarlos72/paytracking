@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { hotp, counterAt } from '../src/auth/totp.js';
-import { APP_URL, Client, json, newAccount, setup, type TestEnv } from './helpers.js';
+import { APP_URL, Client, json, newAccount, setup, type TestEnv, newPlatformAdmin } from './helpers.js';
 
 let env: TestEnv;
 beforeAll(async () => { env = await setup({ GOOGLE_CLIENT_ID: 'cliente.apps.googleusercontent.com', GOOGLE_CLIENT_SECRET: 'segredo-google' }); });
@@ -119,7 +119,7 @@ describe('login com Google', () => {
   });
 
   it('admin vê a URI exata para o Google Cloud e os problemas de configuração', async () => {
-    const { client } = await newAccount(env, 'root@paytracking.test');
+    const { client } = await newPlatformAdmin(env);
     const r = await client.get('/v1/admin/google');
     expect(r.status).toBe(200);
     expect(r.data.redirectUri).toBe('http://localhost:8080/v1/auth/google/callback');

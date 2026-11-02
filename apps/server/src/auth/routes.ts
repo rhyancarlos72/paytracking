@@ -5,7 +5,7 @@ import { hit, clear } from '../lib/rate-limit.js';
 import { badRequest, unauthorized } from '../lib/errors.js';
 import { auth, clearSessionCookie, clientIp, parse, setSessionCookie } from '../lib/http.js';
 import {
-  authenticate, consumeToken, createSession, createUserWithOrg, hashPassword, issueToken, planState,
+  authenticate, consumeToken, createSession, createUserWithOrg, hashPassword, issueToken, onEmailVerified, planState,
   revokeSessions, validatePassword, verifyPassword,
 } from './service.js';
 import { hasTwoFactor, issueChallenge, securityAlert } from './two-factor.js';
@@ -124,7 +124,7 @@ export function authRoutes(app: FastifyInstance, ctx: Ctx) {
     const body = parse(z.object({ token: z.string().min(20) }), req.body);
     const userId = await consumeToken(ctx, body.token, 'email_verify');
     if (!userId) throw badRequest('Link inválido ou expirado.');
-    await ctx.db.query('UPDATE users SET email_verified_at = now() WHERE id = $1', [userId]);
+    await onEmailVerified(ctx, userId);
     return { ok: true };
   });
 

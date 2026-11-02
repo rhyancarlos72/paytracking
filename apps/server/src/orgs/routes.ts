@@ -121,7 +121,8 @@ export function orgRoutes(app: FastifyInstance, ctx: Ctx) {
     if (userId === a.user.id) throw badRequest('Você não pode remover a si mesmo.');
     const owners = await ctx.db.query(`SELECT count(*)::int AS n FROM memberships WHERE org_id = $1 AND role = 'owner' AND user_id <> $2`, [a.org.id, userId]);
     if ((owners.rows[0]?.n ?? 0) < 1) throw conflict('A organização precisa de pelo menos um proprietário.');
-    await ctx.db.query('DELETE FROM memberships WHERE org_id = $1 AND user_id = $2', [a.org.id, userId]);
+    const del = await ctx.db.query('DELETE FROM memberships WHERE org_id = $1 AND user_id = $2', [a.org.id, userId]);
+    if (!del.rowCount) throw notFound('Membro não encontrado.');
     await ctx.db.query('UPDATE sessions SET active_org_id = NULL WHERE user_id = $1 AND active_org_id = $2', [userId, a.org.id]);
     await audit(ctx, a.org.id, a.user.id, 'member.removed', userId);
     return { ok: true };

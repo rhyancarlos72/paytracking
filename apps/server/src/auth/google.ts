@@ -3,7 +3,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Ctx } from '../context.js';
 import { clientIp, setSessionCookie } from '../lib/http.js';
 import { hit } from '../lib/rate-limit.js';
-import { createSession, createUserWithOrg } from './service.js';
+import { createSession, createUserWithOrg, onEmailVerified } from './service.js';
 import { hasTwoFactor, issueChallenge, securityAlert } from './two-factor.js';
 import { trackSignup } from '../platform/tracking.js';
 
@@ -126,6 +126,7 @@ export function googleRoutes(app: FastifyInstance, ctx: Ctx) {
         if (existing.google_sub && existing.google_sub !== sub) return fail(reply, 'google_outra_conta');
         await ctx.db.query('UPDATE users SET google_sub = $2, email_verified_at = COALESCE(email_verified_at, now()), updated_at = now() WHERE id = $1', [existing.id, sub]);
         userId = existing.id;
+        await onEmailVerified(ctx, userId);
         await ctx.db.query(`INSERT INTO audit_log(user_id, action, ip) VALUES ($1, 'auth.google_linked', $2)`, [userId, clientIp(req) || null]);
         await securityAlert(ctx, req, email, 'O login com Google foi conectado');
       } else {
