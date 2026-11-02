@@ -33,7 +33,7 @@ import { SESSION_COOKIE } from './lib/http.js';
 /** Rotas públicas chamadas por terceiros (gateways, navegador do visitante, Meta). */
 const SEVERITY: Record<string, string> = { trace: 'DEBUG', debug: 'DEBUG', info: 'INFO', warn: 'WARNING', error: 'ERROR', fatal: 'CRITICAL' };
 
-const PUBLIC_PREFIXES = ['/v1/webhooks', '/api/', '/v1/collect', '/v1/pixel-config', '/v1/meta/callback', '/v1/public/', '/healthz', '/pixel.js', '/checkout-loader'];
+const PUBLIC_PREFIXES = ['/v1/webhooks', '/api/', '/v1/collect', '/v1/pixel-config', '/v1/meta/callback', '/v1/public/', '/healthz', '/pixel.js', '/utms.js', '/checkout-loader'];
 const isPublic = (url: string) => PUBLIC_PREFIXES.some((p) => url.startsWith(p));
 
 export async function buildApp(ctx: Ctx): Promise<FastifyInstance> {
@@ -169,6 +169,7 @@ export async function buildApp(ctx: Ctx): Promise<FastifyInstance> {
   const pixelDir = ctx.config.PIXEL_DIST_DIR || firstDir(path.join(here, 'pixel'), path.resolve(here, '../../../packages/pixel/dist'));
   const scripts: Record<string, string> = {
     '/pixel.js': 'pixel.js',
+    '/utms.js': 'utms.js',
     '/checkout-loader.js': 'checkout-loader.js',
     '/checkout-loader-ic-only.js': 'checkout-loader.js',
   };

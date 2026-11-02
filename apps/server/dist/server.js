@@ -97912,7 +97912,7 @@ var FLOOD_LIMITS = [
 
 // src/app.ts
 var SEVERITY = { trace: "DEBUG", debug: "DEBUG", info: "INFO", warn: "WARNING", error: "ERROR", fatal: "CRITICAL" };
-var PUBLIC_PREFIXES = ["/v1/webhooks", "/api/", "/v1/collect", "/v1/pixel-config", "/v1/meta/callback", "/v1/public/", "/healthz", "/pixel.js", "/checkout-loader"];
+var PUBLIC_PREFIXES = ["/v1/webhooks", "/api/", "/v1/collect", "/v1/pixel-config", "/v1/meta/callback", "/v1/public/", "/healthz", "/pixel.js", "/utms.js", "/checkout-loader"];
 var isPublic = (url2) => PUBLIC_PREFIXES.some((p) => url2.startsWith(p));
 async function buildApp(ctx) {
   const app = (0, import_fastify.default)({
@@ -98032,6 +98032,7 @@ Canonical: ${ctx.config.APP_URL.replace(/\/$/, "")}/.well-known/security.txt
   const pixelDir = ctx.config.PIXEL_DIST_DIR || firstDir(path4.join(here2, "pixel"), path4.resolve(here2, "../../../packages/pixel/dist"));
   const scripts = {
     "/pixel.js": "pixel.js",
+    "/utms.js": "utms.js",
     "/checkout-loader.js": "checkout-loader.js",
     "/checkout-loader-ic-only.js": "checkout-loader.js"
   };
