@@ -25628,7 +25628,11 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import_pg.default.types.setTypeParser(20, (v) => BigInt(v));
 function createPool(connectionString, max = 10) {
-  return new import_pg.default.Pool({ connectionString, max, idleTimeoutMillis: 3e4, connectionTimeoutMillis: 1e4 });
+  const pool2 = new import_pg.default.Pool({ connectionString, max, idleTimeoutMillis: 3e4, connectionTimeoutMillis: 1e4 });
+  pool2.on("error", (e) => {
+    console.warn(JSON.stringify({ level: "warn", severity: "WARNING", msg: "conex\xE3o ociosa do banco encerrada pelo servidor", code: e.code ?? null, motivo: e.message }));
+  });
+  return pool2;
 }
 var here = path.dirname(fileURLToPath(import.meta.url));
 var MIGRATIONS_DIR = process.env.MIGRATIONS_DIR || [path.join(here, "migrations"), path.resolve(here, "../migrations")].find((d) => existsSync(d)) || path.resolve(here, "../migrations");

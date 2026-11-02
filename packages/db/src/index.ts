@@ -13,7 +13,14 @@ pg.types.setTypeParser(20, (v) => BigInt(v));
 
 export function createPool(connectionString: string, max = 10): pg.Pool {
   // 10 s: o Neon suspende a compute ociosa e a primeira conexão espera ela acordar
-  return new pg.Pool({ connectionString, max, idleTimeoutMillis: 30_000, connectionTimeoutMillis: 10_000 });
+  const pool = new pg.Pool({ connectionString, max, idleTimeoutMillis: 30_000, connectionTimeoutMillis: 10_000 });
+  // Conexão OCIOSA encerrada pelo servidor (Neon suspendendo/reiniciando a compute, failover):
+  // o pg descarta o cliente e abre outro na próxima consulta. Sem este ouvinte, o evento 'error'
+  // sem tratamento derrubaria o processo inteiro. Só o código/mensagem vão para o log.
+  pool.on('error', (e: Error & { code?: string }) => {
+    console.warn(JSON.stringify({ level: 'warn', severity: 'WARNING', msg: 'conexão ociosa do banco encerrada pelo servidor', code: e.code ?? null, motivo: e.message }));
+  });
+  return pool;
 }
 
 /**
