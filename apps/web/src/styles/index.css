@@ -10,18 +10,19 @@
   /* topo do "P" do logo: roxo em fundo claro, branco em fundo escuro */
   --logo-hi: #7c5cff;
   --logo-mid: #a588ff;
-  --bg: 247 247 251;
+  --bg: 244 246 251;
   --surface: 255 255 255;
-  --surface-2: 241 241 247;
-  --surface-3: 233 233 242;
-  --border: 228 228 238;
-  --border-strong: 208 209 224;
-  --fg: 11 13 26;
-  --muted: 93 99 120;
-  --subtle: 100 106 127;
-  --primary: 103 68 245;
+  --surface-2: 238 241 247;
+  --surface-3: 228 233 242;
+  --border: 224 229 239;
+  --border-strong: 202 210 225;
+  --fg: 10 15 30;
+  --muted: 83 94 118;
+  --subtle: 91 102 128;
+  /* azul principal (#2563eb): texto branco sobre ele 5,17:1; ele sobre branco 5,17:1 */
+  --primary: 37 99 235;
   --primary-fg: 255 255 255;
-  --primary-soft: 240 236 255;
+  --primary-soft: 232 240 255;
   --accent: 8 145 178;
   --ok: 4 120 87;
   --warn: 170 78 8;
@@ -29,42 +30,47 @@
   --err-fg: 255 255 255;
   --info: 29 78 216;
   /* séries de gráfico (validadas: CVD e contraste — docs/DESIGN-SYSTEM.md) */
-  --series-1: #6d4aff;
+  --series-1: #2563eb;
   --series-2: #0d9488;
-  --grid: #e7e7ef;
-  --aurora-1: 109 74 255;
+  --series-3: #d97706;
+  --series-4: #db2777;
+  --grid: #e3e8f1;
+  --aurora-1: 37 99 235;
   --aurora-2: 6 182 212;
-  --aurora-opacity: 0.10;
+  --aurora-opacity: 0.09;
   --card-highlight: 255 255 255;
   color-scheme: light;
 }
+/* Escuro: azul-marinho profundo com destaque azul */
 .dark {
   --logo-hi: #ffffff;
-  --logo-mid: #e6ddff;
-  --bg: 6 7 11;
-  --surface: 13 14 20;
-  --surface-2: 20 22 30;
-  --surface-3: 28 30 40;
-  --border: 31 34 45;
-  --border-strong: 45 49 64;
-  --fg: 237 238 245;
-  --muted: 152 158 178;
-  --subtle: 124 130 152;
-  --primary: 156 136 255;
-  --primary-fg: 10 11 15;
-  --primary-soft: 33 27 66;
+  --logo-mid: #dbe7ff;
+  --bg: 11 17 32;
+  --surface: 17 26 46;
+  --surface-2: 23 34 56;
+  --surface-3: 31 44 70;
+  --border: 31 43 69;
+  --border-strong: 46 61 94;
+  --fg: 237 241 248;
+  --muted: 148 160 184;
+  --subtle: 135 148 176;
+  --primary: 96 165 250;
+  --primary-fg: 11 17 32;
+  --primary-soft: 22 38 74;
   --accent: 34 211 238;
   --ok: 52 211 153;
   --warn: 251 191 36;
   --err: 248 113 113;
-  --err-fg: 10 11 15;
+  --err-fg: 11 17 32;
   --info: 96 165 250;
-  --series-1: #8b70ff;
+  --series-1: #3b82f6;
   --series-2: #0f9e8e;
-  --grid: #1f2230;
-  --aurora-1: 124 92 255;
+  --series-3: #d97706;
+  --series-4: #db2777;
+  --grid: #1f2b45;
+  --aurora-1: 37 99 235;
   --aurora-2: 34 211 238;
-  --aurora-opacity: 0.16;
+  --aurora-opacity: 0.14;
   --card-highlight: 255 255 255;
   color-scheme: dark;
 }
@@ -87,20 +93,35 @@
   .card {
     /* min-width 0: dentro de grid/flex o cartão não cresce até o tamanho do texto mais longo
        (era o que fazia a tela "expandir" para o lado no celular) */
-    @apply relative min-w-0 rounded-2xl border border-border bg-surface shadow-card;
+    @apply relative min-w-0 rounded-[20px] border border-border bg-surface shadow-card;
     box-shadow: inset 0 1px 0 rgb(var(--card-highlight) / 0.04), 0 1px 2px rgb(0 0 0 / 0.04), 0 2px 8px -2px rgb(0 0 0 / 0.04);
   }
-  .dark .card { @apply bg-surface/80 backdrop-blur-xl; }
+  .dark .card { box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.03), 0 1px 2px rgb(0 0 0 / 0.25), 0 12px 32px -18px rgb(0 0 0 / 0.6); }
   .card-interactive { @apply transition duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-lift; }
   .glass { @apply border border-border bg-surface/70 backdrop-blur-xl; }
 
-  /* Botão principal: gradiente com brilho; branco sobre #6d4aff→#5b37f0 tem ≥ 5,15:1 nos dois temas */
+  /* Botão principal: azul com brilho; branco sobre #2563eb→#1d4ed8 tem ≥ 5,17:1 nos dois temas */
   .btn-primary {
     @apply text-white;
-    background-image: linear-gradient(180deg, #7653ff 0%, #6d4aff 45%, #5b37f0 100%);
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22), 0 1px 2px rgb(40 20 120 / 0.25), 0 8px 24px -10px rgb(109 74 255 / 0.65);
+    background-image: linear-gradient(180deg, #2f6df0 0%, #2563eb 45%, #1d4ed8 100%);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.2), 0 1px 2px rgb(15 35 110 / 0.3), 0 8px 24px -10px rgb(37 99 235 / 0.7);
   }
-  .btn-primary:hover { filter: brightness(1.06); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 1px 2px rgb(40 20 120 / 0.25), 0 12px 32px -10px rgb(109 74 255 / 0.8); }
+  .btn-primary:hover { filter: brightness(1.07); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22), 0 1px 2px rgb(15 35 110 / 0.3), 0 12px 32px -10px rgb(37 99 235 / 0.85); }
+
+  /* Cartão de destaque azul (valor principal de cada aba) — texto branco ≥ 5,17:1 em todo o gradiente */
+  .hero-blue {
+    @apply relative min-w-0 overflow-hidden rounded-[22px] text-white;
+    background-image: radial-gradient(120% 140% at 100% 0%, #3b82f6 0%, transparent 55%), linear-gradient(135deg, #2563eb 0%, #1d4ed8 55%, #1e40af 100%);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18), 0 20px 50px -24px rgb(37 99 235 / 0.75);
+  }
+  .hero-chip { @apply inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white ring-1 ring-inset ring-white/20 backdrop-blur; }
+  /* Cartão de atenção dourado (pendências) */
+  .card-gold { @apply relative min-w-0 overflow-hidden rounded-[20px] border border-amber-400/50 bg-surface; box-shadow: 0 0 0 1px rgb(251 191 36 / 0.08), 0 16px 40px -24px rgb(217 119 6 / 0.55); }
+  .dark .card-gold { background-image: linear-gradient(160deg, rgb(251 191 36 / 0.09), transparent 60%); }
+  :root:not(.dark) .card-gold { background-image: linear-gradient(160deg, rgb(251 191 36 / 0.12), transparent 60%); }
+  /* barrinha de progresso fina dos indicadores */
+  .meter { @apply h-1.5 overflow-hidden rounded-full bg-surface-3; }
+  .meter > span { @apply block h-full rounded-full transition-[width] duration-700; }
 
   .label { @apply mb-1.5 block text-[13px] font-medium text-fg; }
   .hint { @apply mt-1.5 text-xs text-muted; }
@@ -134,7 +155,7 @@
     background-image: linear-gradient(120deg, rgb(var(--fg)) 0%, rgb(var(--fg)) 40%, rgb(var(--primary)) 100%);
   }
   .icon-tile { @apply flex shrink-0 items-center justify-center rounded-xl border border-border bg-surface-2 text-muted; }
-  .icon-tile-primary { @apply flex shrink-0 items-center justify-center rounded-xl text-white; background-image: linear-gradient(135deg, #7653ff, #4f39e6); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 6px 18px -8px rgb(109 74 255 / 0.7); }
+  .icon-tile-primary { @apply flex shrink-0 items-center justify-center rounded-xl text-white; background-image: linear-gradient(135deg, #3b82f6, #1d4ed8); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 6px 18px -8px rgb(37 99 235 / 0.7); }
 
   /* Fundo "aurora": brilho suave atrás do conteúdo (decorativo) */
   .aurora {

@@ -32,7 +32,7 @@ const HELP: Record<string, string> = {
 
 // marcas: letras brancas sobre tons escuros (contraste ≥ 4,5:1)
 const MARK: Record<string, { letter: string; cls: string }> = {
-  checkout: { letter: '', cls: 'bg-gradient-to-br from-[#7653ff] to-[#4f39e6]' },
+  checkout: { letter: '', cls: 'bg-gradient-to-br from-[#3b82f6] to-[#1d4ed8]' },
   kiwify: { letter: 'K', cls: 'bg-gradient-to-br from-emerald-600 to-emerald-800' },
   hotmart: { letter: 'H', cls: 'bg-gradient-to-br from-orange-600 to-red-700' },
   cakto: { letter: 'C', cls: 'bg-gradient-to-br from-sky-600 to-blue-800' },

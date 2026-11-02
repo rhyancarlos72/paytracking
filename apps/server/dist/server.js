@@ -96210,11 +96210,39 @@ async function salesBuckets(ctx, org, w, f, fx, column, statusFilter) {
   }
   return { total, byDay };
 }
+async function salesBreakdown(ctx, org, w, f, fx) {
+  const r = await ctx.db.query(
+    `SELECT to_char((approved_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day, extract(hour FROM approved_at AT TIME ZONE $4)::int AS hour,
+            provider, currency, count(*)::int AS n, COALESCE(sum(amount_minor), 0)::bigint AS amount
+       FROM payments
+      WHERE org_id = $1 AND approved_at >= $2 AND approved_at < $3 AND status = 'approved'
+        AND ($5::uuid IS NULL OR pixel_id = $5) AND ($6::text IS NULL OR provider = $6)
+      GROUP BY 1, 2, 3, 4`,
+    [org.id, w.startUtc, w.endUtc, org.timezone, f.pixelId ?? null, f.provider ?? null]
+  );
+  const hourly = Array.from({ length: 24 }, (_, hour) => ({ hour, sales: 0, revenueMinor: 0n }));
+  const providers = /* @__PURE__ */ new Map();
+  for (const row of r.rows) {
+    const h = hourly[row.hour];
+    const pv = providers.get(row.provider) ?? { provider: String(row.provider), sales: 0, revenueMinor: 0n };
+    h.sales += row.n;
+    pv.sales += row.n;
+    if (row.currency) {
+      const c = fx.convert(BigInt(row.amount), String(row.currency).trim(), org.reporting_currency, row.day);
+      if (c.converted) {
+        h.revenueMinor += c.amountMinor;
+        pv.revenueMinor += c.amountMinor;
+      }
+    }
+    providers.set(pv.provider, pv);
+  }
+  return { hourly, byProvider: [...providers.values()].sort((a, b) => b.sales - a.sales || Number(b.revenueMinor - a.revenueMinor)) };
+}
 async function currenciesInUse(ctx, orgId) {
   const r = await ctx.db.query("SELECT DISTINCT currency FROM payments WHERE org_id = $1 AND currency IS NOT NULL", [orgId]);
   return r.rows.map((x) => String(x.currency).trim());
 }
-async function windowKpis(ctx, org, w, f, withMeta) {
+async function windowKpis(ctx, org, w, f, withMeta, breakdown = false) {
   const meta3 = withMeta && !f.pixelId && !f.provider ? await accountDaily(ctx, org.id, w.since, w.until).catch(() => null) : null;
   const fx = await FxTable.loadFor(ctx, [org.reporting_currency, ...await currenciesInUse(ctx, org.id), meta3?.currency ?? ""], w.since, w.until);
   const confirmed = await salesBuckets(ctx, org, w, f, fx, "approved_at", `status = 'approved'`);
@@ -96259,6 +96287,7 @@ async function windowKpis(ctx, org, w, f, withMeta) {
   );
   const ev = Object.fromEntries(funnel.rows.map((r) => [r.event_name, r.n]));
   const revenue = confirmed.total.amountMinor;
+  const extra = breakdown ? await salesBreakdown(ctx, org, w, f, fx) : null;
   const sales = confirmed.total.count;
   return {
     window: { since: w.since, until: w.until, days: w.days },
@@ -96283,14 +96312,21 @@ async function windowKpis(ctx, org, w, f, withMeta) {
       revenueMinor: confirmed.byDay.get(day)?.amountMinor ?? 0n,
       refundsMinor: reversed.byDay.get(day)?.amountMinor ?? 0n,
       spendMinor: spendByDay.get(day) ?? (meta3 ? 0n : null)
-    }))
+    })),
+    ...extra ?? {}
   };
+}
+async function monthlyGoal(ctx, org) {
+  const month = reportWindow("this_month", org.timezone, { now: ctx.now() });
+  const fx = await FxTable.loadFor(ctx, [org.reporting_currency, ...await currenciesInUse(ctx, org.id)], month.since, month.until);
+  const b = await salesBuckets(ctx, org, month, {}, fx, "approved_at", `status = 'approved'`);
+  return { currency: org.reporting_currency, goalMinor: org.goal_monthly_minor, achievedMinor: b.total.amountMinor, sales: b.total.count };
 }
 async function dashboard(ctx, org, q) {
   const w = reportWindow(q.preset, org.timezone, { now: ctx.now(), since: q.since, until: q.until });
   const filters = { pixelId: q.pixelId, provider: q.provider };
   const [current, previous] = await Promise.all([
-    windowKpis(ctx, org, w, filters, true),
+    windowKpis(ctx, org, w, filters, true, true),
     windowKpis(ctx, org, previousWindow(w), filters, true)
   ]);
   const fxToday = await FxTable.loadFor(ctx, [org.reporting_currency, ...await currenciesInUse(ctx, org.id)], reportWindow("this_month", org.timezone, { now: ctx.now() }).since, reportWindow("today", org.timezone, { now: ctx.now() }).until);
@@ -96370,6 +96406,10 @@ function reportRoutes(app, ctx) {
     const a = requireRole(req, "viewer");
     const q = parse5(periodQuery.extend({ pixelId: uuidOpt, provider: external_exports.string().max(20).optional() }), req.query);
     return jsonSafe(await dashboard(ctx, a.org, { ...q, preset: q.preset }));
+  });
+  app.get("/v1/reports/monthly-goal", async (req) => {
+    const a = requireRole(req, "viewer");
+    return jsonSafe(await monthlyGoal(ctx, a.org));
   });
   app.get("/v1/sales/feed", async (req) => {
     const a = requireRole(req, "viewer");

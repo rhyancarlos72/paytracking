@@ -1,2 +1,3 @@
-// aplica o tema antes da renderização (evita "flash"); script externo para manter CSP sem 'unsafe-inline'
-try { var t = localStorage.getItem('pt_theme'); if (t === 'dark' || (!t && matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.classList.add('dark'); } catch (e) {}
+// aplica o tema antes da renderização (evita "flash"); script externo para manter CSP sem 'unsafe-inline'.
+// Padrão: escuro (azul-marinho). Quem escolheu o claro no botão do topo continua no claro.
+try { if (localStorage.getItem('pt_theme') !== 'light') document.documentElement.classList.add('dark'); } catch (e) { document.documentElement.classList.add('dark'); }

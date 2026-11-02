@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Search, Wand2 } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Hourglass, RotateCcw, Search, ShoppingBag, Wallet, Wand2 } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { PeriodPicker, usePeriod } from '../components/period';
@@ -7,7 +7,7 @@ import { PageHeader } from '../components/shell';
 import { useToast } from '../components/toast';
 import { Badge, Button, Card, EmptyState, ErrorState, Input, Pager, Select, Skeleton, STATUS_TONE } from '../components/ui';
 import { get, post, qs } from '../lib/api';
-import { dateTime, money, PROVIDER_LABEL, STATUS_LABEL } from '../lib/format';
+import { dateTime, int, money, pct, PROVIDER_LABEL, STATUS_LABEL } from '../lib/format';
 import { useSession } from '../lib/session';
 import { mask, Name, useNamesHidden } from '../lib/privacy';
 
@@ -51,6 +51,7 @@ export default function SalesPage() {
             </Button>
           )}
         </>} />
+      <SalesHighlights query={period.query} provider={provider} currency={s.currency} onPending={() => period.set({ status: 'pending', pagina: null })} />
       <Card padded={false}>
         <div className="flex flex-wrap gap-2 border-b border-border p-4">
           <form className="relative min-w-[220px] flex-1" onSubmit={(e) => { e.preventDefault(); period.set({ busca: search, pagina: null }); }}>
@@ -95,5 +96,51 @@ export default function SalesPage() {
           )}
       </Card>
     </>
+  );
+}
+
+interface Highlights { current: { sales: number; revenueMinor: string; approvalRate: number | null; averageTicketMinor: string | null; paymentsCreated: number;
+  refunds: { count: number; amountMinor: string }; pending: { count: number; amountMinor: string | null; currency: string | null } } }
+
+/** Topo da aba: aprovado no período (azul) e pendentes (dourado) — mesmos números do Resumo. */
+function SalesHighlights({ query, provider, currency, onPending }: { query: Record<string, string | undefined>; provider: string; currency: string; onPending: () => void }) {
+  const q = useQuery<Highlights>({
+    queryKey: ['dashboard', query, provider, ''],
+    queryFn: ({ signal }) => get(`/v1/reports/dashboard${qs({ ...query, provider })}`, signal),
+    refetchInterval: 60_000,
+  });
+  if (!q.data) return <div className="mb-6 grid gap-4 lg:grid-cols-[1.65fr_1fr]"><Skeleton className="h-[164px] rounded-[22px]" /><Skeleton className="h-[164px] rounded-[20px]" /></div>;
+  const c = q.data.current;
+  return (
+    <div className="mb-6 grid gap-4 lg:grid-cols-[1.65fr_1fr]">
+      <section className="hero-blue p-6" aria-label="Vendas aprovadas no período">
+        <p className="flex items-center gap-2 text-sm font-semibold text-white/85">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/15 ring-1 ring-inset ring-white/20" aria-hidden><Wallet className="h-4 w-4" /></span>
+          Faturamento aprovado no período
+        </p>
+        <p className="num mt-3 font-display text-[36px] font-extrabold leading-none tracking-[-0.03em] sm:text-[44px]">{money(c.revenueMinor, currency)}</p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <span className="hero-chip"><ShoppingBag className="h-3.5 w-3.5" aria-hidden />{int(c.sales)} venda{c.sales === 1 ? '' : 's'}</span>
+          <span className="hero-chip">Ticket médio {c.averageTicketMinor ? money(c.averageTicketMinor, currency) : '—'}</span>
+          <span className="hero-chip"><CheckCircle2 className="h-3.5 w-3.5" aria-hidden />Aprovação {pct(c.approvalRate, 0)}</span>
+          {c.refunds.count > 0 && <span className="hero-chip"><RotateCcw className="h-3.5 w-3.5" aria-hidden />{int(c.refunds.count)} reembolso(s) · {money(c.refunds.amountMinor, currency)}</span>}
+        </div>
+      </section>
+      <section className="card-gold flex flex-col p-6" aria-label="Vendas pendentes">
+        <div className="flex items-center justify-between gap-3">
+          <p className="flex items-center gap-2 text-sm font-semibold">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-400/15 text-amber-500 ring-1 ring-inset ring-amber-400/30 dark:text-amber-300" aria-hidden><Hourglass className="h-4 w-4" /></span>
+            Vendas pendentes
+          </p>
+          <span className="num rounded-full bg-amber-400 px-2.5 py-0.5 text-xs font-bold text-amber-950">{int(c.pending.count)}</span>
+        </div>
+        <p className="num mt-3 font-display text-[28px] font-bold leading-none">
+          {c.pending.amountMinor && c.pending.currency ? money(c.pending.amountMinor, c.pending.currency) : c.pending.count > 0 ? `${int(c.pending.count)} em aberto` : 'Nada em aberto'}
+        </p>
+        <button onClick={onPending} className="mt-auto inline-flex items-center gap-1 self-end pt-4 text-sm font-semibold text-amber-600 hover:underline dark:text-amber-300">
+          Ver pendentes <ArrowRight className="h-4 w-4" aria-hidden />
+        </button>
+      </section>
+    </div>
   );
 }

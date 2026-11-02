@@ -29,14 +29,14 @@ function PreviewCards() {
           <p className="text-sm font-semibold text-white">R$ 197,00</p>
         </div>
         <div className="mt-3 flex items-center gap-2 rounded-xl bg-white/[0.06] px-3 py-2 text-xs text-white/75">
-          <Zap className="h-3.5 w-3.5 text-violet-300" />Purchase entregue à Meta em 0,8 s
+          <Zap className="h-3.5 w-3.5 text-blue-300" />Purchase entregue à Meta em 0,8 s
         </div>
       </div>
       <div className="absolute right-0 top-28 w-[250px] animate-float rounded-2xl border border-white/10 bg-white/[0.06] p-4 shadow-2xl backdrop-blur-xl [animation-delay:-2s]">
         <p className="text-xs text-white/60">Receita confirmada · 30 dias</p>
         <p className="mt-1 text-xl font-semibold text-white">R$ 48.920</p>
         <svg viewBox="0 0 200 50" className="mt-2 h-12 w-full">
-          <defs><linearGradient id="authg" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#8b70ff" stopOpacity=".45" /><stop offset="100%" stopColor="#8b70ff" stopOpacity="0" /></linearGradient></defs>
+          <defs><linearGradient id="authg" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#60a5fa" stopOpacity=".45" /><stop offset="100%" stopColor="#60a5fa" stopOpacity="0" /></linearGradient></defs>
           <path d="M0,42 C20,40 30,30 50,32 C70,34 80,20 100,22 C120,24 130,12 150,14 C170,16 180,6 200,4 L200,50 L0,50 Z" fill="url(#authg)" />
           <path d="M0,42 C20,40 30,30 50,32 C70,34 80,20 100,22 C120,24 130,12 150,14 C170,16 180,6 200,4" fill="none" stroke="#a78bfa" strokeWidth="2.5" strokeLinecap="round" />
         </svg>
@@ -53,7 +53,7 @@ function AuthLayout({ title, subtitle, children }: { title: string; subtitle?: R
   return (
     <div className="grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
       <aside className="relative hidden overflow-hidden bg-[#07060f] p-12 text-white lg:flex lg:flex-col lg:justify-between">
-        <div className="pointer-events-none absolute -left-32 -top-32 h-[480px] w-[480px] animate-drift rounded-full bg-[#6d4aff]/35 blur-[120px]" aria-hidden />
+        <div className="pointer-events-none absolute -left-32 -top-32 h-[480px] w-[480px] animate-drift rounded-full bg-[#2563eb]/35 blur-[120px]" aria-hidden />
         <div className="pointer-events-none absolute -bottom-40 -right-20 h-[420px] w-[420px] animate-drift rounded-full bg-cyan-400/15 blur-[120px] [animation-delay:-7s]" aria-hidden />
         <div className="grid-fade opacity-60 [--fg:255_255_255]" aria-hidden />
         <Link to="/conheca" className="relative flex w-fit items-center gap-2.5">
@@ -61,12 +61,12 @@ function AuthLayout({ title, subtitle, children }: { title: string; subtitle?: R
         </Link>
         <div className="relative">
           <h2 className="max-w-lg text-[38px] font-semibold leading-[1.1] tracking-tight">
-            Cada venda confirmada, <span className="bg-gradient-to-r from-violet-300 via-fuchsia-200 to-cyan-200 bg-clip-text text-transparent">atribuída e entregue à Meta.</span>
+            Cada venda confirmada, <span className="bg-gradient-to-r from-blue-300 via-sky-200 to-cyan-200 bg-clip-text text-transparent">atribuída e entregue à Meta.</span>
           </h2>
           <ul className="mt-7 grid max-w-lg gap-3 text-[15px] text-white/75">
-            <li className="flex gap-3"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-violet-300" />Purchase só com pagamento aprovado pelo gateway.</li>
-            <li className="flex gap-3"><Zap className="mt-0.5 h-5 w-5 shrink-0 text-violet-300" />Pixel + Conversions API sem duplicidade.</li>
-            <li className="flex gap-3"><LineChart className="mt-0.5 h-5 w-5 shrink-0 text-violet-300" />Receita, investimento e ROAS reais, em uma moeda só.</li>
+            <li className="flex gap-3"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-blue-300" />Purchase só com pagamento aprovado pelo gateway.</li>
+            <li className="flex gap-3"><Zap className="mt-0.5 h-5 w-5 shrink-0 text-blue-300" />Pixel + Conversions API sem duplicidade.</li>
+            <li className="flex gap-3"><LineChart className="mt-0.5 h-5 w-5 shrink-0 text-blue-300" />Receita, investimento e ROAS reais, em uma moeda só.</li>
           </ul>
           <PreviewCards />
         </div>
@@ -241,7 +241,7 @@ function IconBadge({ children, tone = 'primary' }: { children: ReactNode; tone?:
     <div className="relative mb-6 inline-flex">
       <span className={clsx('absolute inset-0 rounded-2xl blur-xl', tone === 'ok' ? 'bg-ok/30' : 'bg-primary/30')} aria-hidden />
       <span className={clsx('relative flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-lg',
-        tone === 'ok' ? 'bg-gradient-to-br from-emerald-400 to-emerald-600' : 'bg-gradient-to-br from-[#8b70ff] to-[#5b3df5]')}>
+        tone === 'ok' ? 'bg-gradient-to-br from-emerald-400 to-emerald-600' : 'bg-gradient-to-br from-[#60a5fa] to-[#5b3df5]')}>
         {children}
       </span>
     </div>

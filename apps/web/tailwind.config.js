@@ -19,7 +19,7 @@ export default {
         card: '0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.06)',
         lift: '0 2px 4px rgb(16 24 40 / 0.04), 0 12px 32px -12px rgb(16 24 40 / 0.18)',
         pop: '0 24px 64px -16px rgb(10 10 30 / 0.35), 0 4px 12px rgb(10 10 30 / 0.08)',
-        glow: '0 0 0 1px rgb(109 74 255 / 0.25), 0 8px 32px -8px rgb(109 74 255 / 0.45)',
+        glow: '0 0 0 1px rgb(37 99 235 / 0.25), 0 8px 32px -8px rgb(37 99 235 / 0.45)',
       },
       keyframes: {
         'fade-in': { from: { opacity: 0, transform: 'translateY(4px)' }, to: { opacity: 1, transform: 'none' } },

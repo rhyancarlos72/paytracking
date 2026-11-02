@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { get, post } from '../lib/api';
-import { maskEmail } from '../lib/format';
+import { maskEmail, money, pct } from '../lib/format';
 import { namesHidden as namesHiddenNow, setNamesHidden, useNamesHidden, useSyncHideNames } from '../lib/privacy';
 import { useLogout, useSession } from '../lib/session';
 import { CommandPalette, SHORTCUT, type Command } from './command';
@@ -82,7 +82,7 @@ function Sidebar({ onNavigate, onSearch }: { onNavigate?: () => void; onSearch: 
   const alerts = useOpenAlerts();
   const trial = s.plan.status === 'trial' && s.plan.daysLeft !== null;
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col overflow-y-auto">
       <div className="px-5 pb-4 pt-5"><Logo /></div>
 
       <div className="relative px-3">
@@ -114,7 +114,7 @@ function Sidebar({ onNavigate, onSearch }: { onNavigate?: () => void; onSearch: 
         </button>
       </div>
 
-      <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-5" aria-label="Navegação principal">
+      <nav className="space-y-5 px-3 py-5" aria-label="Navegação principal">
         {NAV.map((g) => (
           <div key={g.group}>
             <p className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-subtle">{g.group}</p>
@@ -122,10 +122,9 @@ function Sidebar({ onNavigate, onSearch }: { onNavigate?: () => void; onSearch: 
               {g.items.filter((i) => !i.admin || s.user.isPlatformAdmin).map((i) => (
                 <li key={i.to}>
                   <NavLink to={i.to} end={i.to === '/' || i.to === '/integracoes'} onClick={onNavigate}
-                    className={({ isActive }) => clsx('group relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all [&>svg]:h-[18px] [&>svg]:w-[18px]',
-                      isActive ? 'bg-primary/10 text-fg [&>svg]:text-primary' : 'text-muted hover:bg-surface-2 hover:text-fg')}>
-                    {({ isActive }) => (<>
-                      {isActive && <span className="absolute inset-y-1.5 left-0 w-[3px] rounded-r-full bg-gradient-to-b from-[#8b70ff] to-[#5b37f0]" aria-hidden />}
+                    className={({ isActive }) => clsx('group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all [&>svg]:h-[18px] [&>svg]:w-[18px]',
+                      isActive ? 'bg-[#2563eb] text-white shadow-[0_8px_20px_-10px_rgb(37_99_235/0.9),inset_0_1px_0_rgb(255_255_255/0.18)]' : 'text-muted hover:bg-surface-2 hover:text-fg')}>
+                    {() => (<>
                       {i.icon}
                       <span className="flex-1">{i.label}</span>
                       {i.to === '/diagnostico' && alerts > 0 && (
@@ -140,12 +139,15 @@ function Sidebar({ onNavigate, onSearch }: { onNavigate?: () => void; onSearch: 
         ))}
       </nav>
 
+      <div className="flex-1" aria-hidden />
+      <MonthGoal onNavigate={onNavigate} />
+
       {trial && (
         <div className="mx-3 mb-3 overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-4">
           <p className="flex items-center gap-1.5 text-[13px] font-semibold"><Sparkles className="h-4 w-4 text-primary" aria-hidden />Teste grátis</p>
           <p className="mt-0.5 text-xs text-muted">{s.plan.daysLeft} dia(s) restante(s)</p>
           <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-surface-3" aria-hidden>
-            <div className="h-full rounded-full bg-gradient-to-r from-[#8b70ff] to-[#5b37f0]" style={{ width: `${Math.max(6, Math.min(100, ((7 - (s.plan.daysLeft ?? 0)) / 7) * 100))}%` }} />
+            <div className="h-full rounded-full bg-gradient-to-r from-[#60a5fa] to-[#2563eb]" style={{ width: `${Math.max(6, Math.min(100, ((7 - (s.plan.daysLeft ?? 0)) / 7) * 100))}%` }} />
           </div>
           <Link to="/financeiro" onClick={onNavigate} className="mt-3 inline-flex text-xs font-semibold text-primary hover:underline">Assinar agora →</Link>
         </div>
@@ -161,6 +163,35 @@ function Sidebar({ onNavigate, onSearch }: { onNavigate?: () => void; onSearch: 
           <button onClick={logout} className="rounded-lg p-1.5 text-muted transition hover:bg-surface-2 hover:text-fg" aria-label="Sair" title="Sair"><LogOut className="h-4 w-4" /></button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** "Meta do mês": progresso da receita confirmada no mês contra a meta mensal da conta. */
+function MonthGoal({ onNavigate }: { onNavigate?: () => void }) {
+  const q = useQuery<{ currency: string; goalMinor: string; achievedMinor: string }>({
+    queryKey: ['monthly-goal'], queryFn: ({ signal }) => get('/v1/reports/monthly-goal', signal), refetchInterval: 120_000, staleTime: 60_000,
+  });
+  if (!q.data) return null;
+  const goal = Number(q.data.goalMinor);
+  const done = Number(q.data.achievedMinor);
+  const p = goal > 0 ? Math.min(1, done / goal) : 0;
+  const left = Math.max(0, goal - done);
+  return (
+    <div className="mx-3 mb-3 rounded-2xl border border-border bg-surface-2/60 p-4">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-subtle">Meta do mês</p>
+        {goal > 0 && <span className="num text-xs font-bold text-primary">{pct(p, 0)}</span>}
+      </div>
+      {goal > 0 ? (<>
+        <p className="num mt-1.5 text-[15px] font-bold">{money(q.data.achievedMinor, q.data.currency)}<span className="text-xs font-medium text-muted"> / {money(q.data.goalMinor, q.data.currency)}</span></p>
+        <div className="meter mt-2.5" role="progressbar" aria-label="Meta do mês" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(p * 100)}>
+          <span className="bg-gradient-to-r from-[#3b82f6] to-[#2563eb]" style={{ width: `${Math.max(3, p * 100)}%` }} />
+        </div>
+        <p className="mt-2 text-xs text-muted">{p >= 1 ? <span className="font-semibold text-ok">Meta batida 🎉</span> : <>{pct(p, 0)} concluído · faltam <span className="num font-semibold text-fg">{money(String(left), q.data.currency)}</span></>}</p>
+      </>) : (
+        <Link to="/configuracoes" onClick={onNavigate} className="mt-1.5 block text-xs text-muted hover:text-fg">Defina uma meta mensal para acompanhar aqui <span className="font-semibold text-primary">→</span></Link>
+      )}
     </div>
   );
 }
@@ -215,7 +246,7 @@ export function AppShell() {
     <div className="min-h-screen lg:pl-[264px]">
       <div className="aurora" aria-hidden />
       <a href="#conteudo" className="btn-primary sr-only z-50 rounded-xl px-4 py-2 focus:not-sr-only focus:fixed focus:left-4 focus:top-4">Pular para o conteúdo</a>
-      <aside className="glass fixed inset-y-0 left-0 z-30 hidden w-[264px] border-y-0 border-l-0 lg:block"><Sidebar onSearch={() => setPalette(true)} /></aside>
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[264px] border-r border-border bg-surface lg:block"><Sidebar onSearch={() => setPalette(true)} /></aside>
       {open && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={() => setOpen(false)} />

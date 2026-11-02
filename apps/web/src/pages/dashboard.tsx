@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { AlertTriangle, ArrowDownRight, ArrowRight, ArrowUpRight, BarChart3, CheckCircle2, Clock3, Info, Megaphone, Radio, Target, TrendingUp, Trophy, Zap } from 'lucide-react';
+import { AlertTriangle, ArrowDownRight, ArrowRight, ArrowUpRight, BarChart3, CheckCircle2, Hourglass, Info, Megaphone, PieChart as PieIcon, Radio, Receipt, RotateCcw, ShoppingBag, ShoppingCart, Target, Ticket, TrendingUp, Trophy, Wallet, Zap } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { RevenueChart, Sparkline } from '../components/charts';
+import { Donut, HourlyBars, RevenueChart, Sparkline } from '../components/charts';
 import { PeriodPicker, usePeriod } from '../components/period';
 import { PageHeader } from '../components/shell';
 import { Avatar, Badge, Button, Callout, Card, ErrorState, ProgressRing, Select, Skeleton, STATUS_TONE, useCountUp } from '../components/ui';
@@ -20,6 +20,8 @@ interface Kpis {
   cpaMinor: string | null; roas: number | null; profitMinor: string | null; conversionRate: number | null;
   funnel: { linkClicks: number | null; landingPageViews: number | null; pageViews: number; initiateCheckouts: number; sales: number };
   series: Array<{ day: string; sales: number; revenueMinor: string; refundsMinor: string; spendMinor: string | null }>;
+  hourly?: Array<{ hour: number; sales: number; revenueMinor: string }>;
+  byProvider?: Array<{ provider: string; sales: number; revenueMinor: string }>;
 }
 interface Dashboard {
   reportingCurrency: string; current: Kpis; previous: Kpis;
@@ -56,25 +58,73 @@ function Help({ text }: { text: string }) {
 }
 
 const KPI_TONE = {
-  ok: { tile: 'bg-ok/10 text-ok ring-ok/20', line: 'from-ok/70' },
-  warn: { tile: 'bg-warn/10 text-warn ring-warn/20', line: 'from-warn/70' },
-  info: { tile: 'bg-info/10 text-info ring-info/20', line: 'from-info/70' },
-  err: { tile: 'bg-err/10 text-err ring-err/20', line: 'from-err/70' },
+  ok: { tile: 'bg-ok/10 text-ok ring-ok/25', bar: 'bg-ok' },
+  warn: { tile: 'bg-warn/10 text-warn ring-warn/25', bar: 'bg-warn' },
+  info: { tile: 'bg-info/10 text-info ring-info/25', bar: 'bg-info' },
+  err: { tile: 'bg-err/10 text-err ring-err/25', bar: 'bg-err' },
+  primary: { tile: 'bg-primary/10 text-primary ring-primary/25', bar: 'bg-primary' },
 };
 
-function Kpi({ label, value, help, deltaEl, sub, trend, icon, tone = 'info' }: { label: string; value: ReactNode; help?: string; deltaEl?: ReactNode; sub?: ReactNode; trend?: number[]; icon: ReactNode; tone?: keyof typeof KPI_TONE }) {
+function Kpi({ label, value, help, sub, meter, icon, tone = 'info' }: { label: string; value: ReactNode; help?: string; sub?: ReactNode; meter?: number; icon: ReactNode; tone?: keyof typeof KPI_TONE }) {
   const t = KPI_TONE[tone];
   return (
-    <div className="card card-interactive relative overflow-hidden p-5">
-      <span className={clsx('absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r to-transparent', t.line)} aria-hidden />
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 text-[13px] font-medium text-muted">{label}{help && <Help text={help} />}</div>
-        <span className={clsx('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset [&>svg]:h-[18px] [&>svg]:w-[18px]', t.tile)} aria-hidden>{icon}</span>
+    <div className="card card-interactive p-5">
+      <div className="flex items-start gap-3">
+        <span className={clsx('flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ring-1 ring-inset [&>svg]:h-5 [&>svg]:w-5', t.tile)} aria-hidden>{icon}</span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 text-[13px] font-medium text-muted">{label}{help && <Help text={help} />}</div>
+          <div className="num mt-1 font-display text-[26px] font-bold leading-tight tracking-tight">{value}</div>
+        </div>
       </div>
-      <div className="num mt-3 font-display text-[28px] font-bold leading-none tracking-tight">{value}</div>
-      <div className="mt-2.5 flex min-h-[22px] flex-wrap items-center gap-x-2 gap-y-1">{deltaEl}{sub && <span className="text-xs text-muted">{sub}</span>}</div>
-      {trend && trend.length > 1 && <Sparkline values={trend} height={36} className="-mx-5 -mb-5 mt-3 w-[calc(100%+2.5rem)]" />}
+      {meter !== undefined && (
+        <div className="meter mt-4" aria-hidden><span className={t.bar} style={{ width: `${Math.max(2, Math.min(1, meter) * 100)}%` }} /></div>
+      )}
+      {sub && <div className="mt-2.5 flex min-h-[20px] flex-wrap items-center gap-2 text-xs text-muted">{sub}</div>}
     </div>
+  );
+}
+
+const peakHour = (h: NonNullable<Kpis['hourly']>) => h.reduce((best, x) => (x.sales > h[best]!.sales ? x.hour : best), 0);
+
+function HeroDelta({ cur, prev }: { cur: number; prev: number }) {
+  const d = delta(cur, prev);
+  if (d === null) return <span className="hero-chip">sem base anterior</span>;
+  return (
+    <span className="hero-chip">
+      {d >= 0 ? <ArrowUpRight className="h-3.5 w-3.5" aria-hidden /> : <ArrowDownRight className="h-3.5 w-3.5" aria-hidden />}
+      {d >= 0 ? '+' : '−'}{pct(Math.abs(d))} vs. anterior
+    </span>
+  );
+}
+
+/** Tendência no rodapé do cartão azul: receita por dia, ou acumulada por hora quando o período é um dia. */
+function HeroSpark({ c, cur }: { c: Kpis; cur: string }) {
+  let acc = 0;
+  const values = c.series.length > 1
+    ? c.series.map((x) => minorToNumber(x.revenueMinor, cur))
+    : (c.hourly ?? []).map((x) => (acc += minorToNumber(x.revenueMinor, cur)));
+  if (values.length < 2 || values.every((v) => v === 0)) return <div className="h-6" aria-hidden />;
+  return <Sparkline values={values} height={64} color="#ffffff" className="relative -mx-6 -mb-6 mt-5 w-[calc(100%+3rem)] opacity-90 lg:-mx-7 lg:-mb-7 lg:w-[calc(100%+3.5rem)]" />;
+}
+
+function PendingCard({ c }: { c: Kpis }) {
+  const n = c.pending.count;
+  return (
+    <section className="card-gold flex flex-col p-6" aria-labelledby="pend-title">
+      <div className="flex items-start justify-between gap-3">
+        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-400/15 text-amber-500 ring-1 ring-inset ring-amber-400/30 dark:text-amber-300" aria-hidden><Hourglass className="h-5 w-5" /></span>
+        <span className="num rounded-full bg-amber-400 px-2.5 py-0.5 text-xs font-bold text-amber-950" aria-label={`${n} pendentes`}>{int(n)}</span>
+      </div>
+      <h2 id="pend-title" className="mt-4 text-[15px] font-semibold">Vendas pendentes</h2>
+      <p className="mt-1 text-sm text-muted">PIX ou boleto gerado e ainda não pago. Não conta como venda até o gateway aprovar.</p>
+      <p className="num mt-4 font-display text-[30px] font-bold leading-none">
+        {c.pending.amountMinor && c.pending.currency ? money(c.pending.amountMinor, c.pending.currency) : n > 0 ? `${int(n)} em aberto` : 'Nada em aberto'}
+      </p>
+      <div className="mt-auto flex items-center justify-between gap-3 pt-5">
+        <span className="text-xs text-muted">{c.paymentsCreated ? `${pct(n / c.paymentsCreated, 0)} dos pedidos do período` : 'Nenhum pedido no período'}</span>
+        <Link to="/vendas?status=pending" className="inline-flex items-center gap-1 text-sm font-semibold text-amber-600 hover:underline dark:text-amber-300">Ver pendentes <ArrowRight className="h-4 w-4" aria-hidden /></Link>
+      </div>
+    </section>
   );
 }
 
@@ -130,50 +180,72 @@ export default function DashboardPage() {
               </Callout>
             )}
 
-            {/* Destaque: receita + retorno */}
+            {/* Destaque: faturamento aprovado (azul) + vendas pendentes (dourado) */}
             <div className="grid gap-6 xl:grid-cols-[1.65fr_1fr]">
-              <section className="card relative overflow-hidden p-6 lg:p-7" aria-labelledby="rev-title">
-                <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-primary/15 blur-3xl" aria-hidden />
-                <div className="relative flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <p id="rev-title" className="flex items-center gap-1.5 text-sm font-medium text-muted">
-                      Receita confirmada <Help text="Soma das vendas aprovadas no período (status atual = aprovado), convertida pela cotação do dia da aprovação." />
-                    </p>
-                    <p className="mt-2 font-display text-[40px] font-extrabold leading-none tracking-[-0.03em] sm:text-[54px]">
-                      <AnimatedMoney minor={c.revenueMinor} currency={cur} className="text-gradient" />
-                    </p>
-                    <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted">
-                      <Delta cur={Number(c.revenueMinor)} prev={Number(p.revenueMinor)} />
-                      <span><span className="font-semibold text-fg">{int(c.sales)}</span> venda{c.sales === 1 ? '' : 's'}</span>
-                      {c.averageTicketMinor && <span>· ticket médio <span className="num font-medium text-fg">{money(c.averageTicketMinor, cur)}</span></span>}
-                    </div>
-                  </div>
-                  <Badge tone="primary" dot>{period.label}</Badge>
+              <section className="hero-blue p-6 lg:p-7" aria-labelledby="rev-title">
+                <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" aria-hidden />
+                <div className="relative flex flex-wrap items-start justify-between gap-3">
+                  <p id="rev-title" className="flex items-center gap-2 text-sm font-semibold text-white/85">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/15 ring-1 ring-inset ring-white/20" aria-hidden><Wallet className="h-4 w-4" /></span>
+                    Faturamento aprovado · {period.label.toLowerCase()}
+                  </p>
+                  <HeroDelta cur={Number(c.revenueMinor)} prev={Number(p.revenueMinor)} />
                 </div>
-                <div className="relative mt-6">
-                  {c.series.length <= 1 ? (
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      <MiniStat label="Pendentes (PIX/boleto)" value={int(c.pending.count)} sub={c.pending.amountMinor && c.pending.currency ? money(c.pending.amountMinor, c.pending.currency) : 'nenhum valor em aberto'} icon={<Clock3 />} />
-                      <MiniStat label="Taxa de aprovação" value={pct(c.approvalRate)} sub={`${int(c.paymentsCreated)} pagamentos criados`} icon={<CheckCircle2 />} />
-                      <MiniStat label="Reembolsos" value={int(c.refunds.count)} sub={money(c.refunds.amountMinor, cur)} icon={<ArrowDownRight />} />
-                    </div>
-                  ) : <RevenueChart data={c.series} currency={cur} showSpend={metaOn} />}
+                <p className="relative mt-4 font-display text-[40px] font-extrabold leading-none tracking-[-0.03em] sm:text-[56px]">
+                  <AnimatedMoney minor={c.revenueMinor} currency={cur} />
+                </p>
+                <div className="relative mt-5 flex flex-wrap gap-2">
+                  <span className="hero-chip"><ShoppingBag className="h-3.5 w-3.5" aria-hidden />{int(c.sales)} venda{c.sales === 1 ? '' : 's'}</span>
+                  <span className="hero-chip"><Ticket className="h-3.5 w-3.5" aria-hidden />Ticket médio {c.averageTicketMinor ? money(c.averageTicketMinor, cur) : '—'}</span>
+                  <span className="hero-chip"><CheckCircle2 className="h-3.5 w-3.5" aria-hidden />Aprovação {pct(c.approvalRate, 0)}</span>
+                  {c.refunds.count > 0 && <span className="hero-chip"><ArrowDownRight className="h-3.5 w-3.5" aria-hidden />{int(c.refunds.count)} reembolso{c.refunds.count === 1 ? '' : 's'}</span>}
                 </div>
+                <HeroSpark c={c} cur={cur} />
               </section>
 
-              <ReturnCard c={c} p={p} cur={cur} />
+              <PendingCard c={c} />
             </div>
 
-            {/* Indicadores */}
+            {/* Indicadores com barra de progresso */}
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <Kpi label="Vendas confirmadas" tone="ok" value={int(c.sales)} icon={<TrendingUp />} help="Pagamentos aprovados pelo gateway. PIX/boleto gerado não conta."
-                deltaEl={<Delta cur={c.sales} prev={p.sales} />} trend={salesTrend} />
-              <Kpi label="Pagamentos pendentes" tone="warn" value={int(c.pending.count)} icon={<Clock3 />} help="Criados no período e ainda aguardando pagamento."
-                sub={c.pending.amountMinor && c.pending.currency ? money(c.pending.amountMinor, c.pending.currency) : undefined} />
-              <Kpi label="Taxa de aprovação" tone="info" value={pct(c.approvalRate)} icon={<CheckCircle2 />} help="Aprovados (incluindo depois reembolsados) ÷ pagamentos criados no período."
-                sub={`${int(c.paymentsCreated)} criados`} />
-              <Kpi label="Reembolsos e chargebacks" tone="err" value={int(c.refunds.count)} icon={<ArrowDownRight />} help="Revertidos no período; já abatidos da receita."
-                sub={money(c.refunds.amountMinor, cur)} trend={revTrend.length > 1 ? c.series.map((x) => minorToNumber(x.refundsMinor, cur)) : undefined} />
+              <Kpi label="Conversão do checkout" tone="info" icon={<ShoppingCart />} value={pct(c.funnel.initiateCheckouts ? c.sales / c.funnel.initiateCheckouts : null)}
+                help="Vendas confirmadas ÷ InitiateCheckout (cliques para o checkout) do pixel no período."
+                meter={c.funnel.initiateCheckouts ? c.sales / c.funnel.initiateCheckouts : 0} sub={`${int(c.funnel.initiateCheckouts)} checkouts iniciados`} />
+              <Kpi label="Taxa de aprovação" tone="ok" icon={<CheckCircle2 />} value={pct(c.approvalRate)} help="Aprovados (incluindo depois reembolsados) ÷ pagamentos criados no período."
+                meter={c.approvalRate ?? 0} sub={<Delta cur={c.approvalRate ?? 0} prev={p.approvalRate ?? 0} />} />
+              <Kpi label="Pedidos gerados" tone="primary" icon={<Receipt />} value={int(c.paymentsCreated)} help="Pagamentos criados no período (PIX/boleto gerado, cartão etc.)."
+                meter={c.paymentsCreated ? c.sales / c.paymentsCreated : 0} sub={`${int(c.sales)} pagos · ${int(c.pending.count)} pendentes`} />
+              <Kpi label="Reembolsos e chargebacks" tone="err" icon={<RotateCcw />} value={int(c.refunds.count)} help="Revertidos no período; já abatidos da receita."
+                meter={c.sales + c.refunds.count ? c.refunds.count / (c.sales + c.refunds.count) : 0} sub={money(c.refunds.amountMinor, cur)} />
+            </div>
+
+            {/* Vendas por hora + por origem */}
+            <div className="grid gap-6 xl:grid-cols-[1.65fr_1fr]">
+              <Card title="Vendas por hora" description={`Vendas confirmadas por horário · fuso ${s.org.timezone}`} icon={<BarChart3 />}
+                actions={<Badge tone="primary">{period.label}</Badge>}>
+                {c.hourly ? <HourlyBars data={c.hourly} currency={cur} highlightHour={peakHour(c.hourly)} /> : <Skeleton className="h-[240px]" />}
+                {c.hourly && c.sales > 0 && (
+                  <p className="mt-3 text-xs text-muted">Horário de pico: <span className="font-semibold text-fg">{String(peakHour(c.hourly)).padStart(2, '0')}h</span> · {int(c.hourly[peakHour(c.hourly)]!.sales)} venda(s)</p>
+                )}
+              </Card>
+              <Card title="Vendas por origem" description="Gateway ou checkout de onde veio cada venda" icon={<PieIcon />}>
+                <Donut currency={cur} centerLabel="vendas"
+                  items={(c.byProvider ?? []).map((x) => ({ key: x.provider, label: PROVIDER_LABEL[x.provider] ?? x.provider, sales: x.sales, revenueMinor: x.revenueMinor }))} />
+              </Card>
+            </div>
+
+            {/* Receita diária + retorno */}
+            <div className="grid gap-6 xl:grid-cols-[1.65fr_1fr]">
+              {c.series.length > 1 ? (
+                <Card title="Receita por dia" description={metaOn ? 'Receita confirmada × investimento na Meta' : 'Receita confirmada no período'} icon={<TrendingUp />}>
+                  <RevenueChart data={c.series} currency={cur} showSpend={metaOn} />
+                </Card>
+              ) : (
+                <Card title="Funil de conversão" description="Cliques e visualizações vêm da Meta; PageView e InitiateCheckout, do pixel" icon={<Zap />}>
+                  <Funnel f={c.funnel} />
+                </Card>
+              )}
+              <ReturnCard c={c} p={p} cur={cur} />
             </div>
 
             <div className="grid gap-6 lg:grid-cols-[1.25fr_1fr]">
@@ -181,16 +253,18 @@ export default function DashboardPage() {
               <RecentSales />
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-2">
+            <div className={clsx('grid gap-6', c.series.length > 1 && 'lg:grid-cols-2')}>
               <Card title="Metas de faturamento" description="Hoje e mês corrente, independentemente do filtro" icon={<Target />}>
                 <div className="grid grid-cols-2 gap-4">
                   <Goal label="Meta diária" goal={d.goals.daily.goalMinor} achieved={d.goals.daily.achievedMinor} currency={cur} />
                   <Goal label="Meta mensal" goal={d.goals.monthly.goalMinor} achieved={d.goals.monthly.achievedMinor} currency={cur} />
                 </div>
               </Card>
-              <Card title="Funil de conversão" description="Cliques e visualizações vêm da Meta; PageView e InitiateCheckout, do pixel" icon={<Zap />}>
-                <Funnel f={c.funnel} />
-              </Card>
+              {c.series.length > 1 && (
+                <Card title="Funil de conversão" description="Cliques e visualizações vêm da Meta; PageView e InitiateCheckout, do pixel" icon={<Zap />}>
+                  <Funnel f={c.funnel} />
+                </Card>
+              )}
             </div>
 
             <DeliveryCard d={d} c={c} cur={cur} metaOn={metaOn} />
@@ -198,16 +272,6 @@ export default function DashboardPage() {
         );
       })()}
     </>
-  );
-}
-
-function MiniStat({ label, value, sub, icon }: { label: string; value: ReactNode; sub?: ReactNode; icon: ReactNode }) {
-  return (
-    <div className="rounded-2xl border border-border bg-surface-2/50 p-4">
-      <p className="flex items-center gap-2 text-xs font-medium text-muted"><span className="text-subtle [&>svg]:h-3.5 [&>svg]:w-3.5" aria-hidden>{icon}</span>{label}</p>
-      <p className="num mt-2 text-xl font-semibold">{value}</p>
-      {sub && <p className="mt-0.5 text-xs text-muted">{sub}</p>}
-    </div>
   );
 }
 
@@ -288,7 +352,7 @@ function Funnel({ f }: { f: Kpis['funnel'] }) {
               <span className="num text-muted"><span className="font-semibold text-fg">{int(s.n)}</span>{prev ? <span className="ml-1.5 text-xs">{pct(s.n / prev)}</span> : null}</span>
             </div>
             <div className="h-2.5 overflow-hidden rounded-full bg-surface-3">
-              <div className={clsx('h-full rounded-full transition-[width] duration-700', last ? 'bg-gradient-to-r from-[#8b70ff] to-[#5b37f0]' : 'bg-primary/45')}
+              <div className={clsx('h-full rounded-full transition-[width] duration-700', last ? 'bg-gradient-to-r from-[#60a5fa] to-[#2563eb]' : 'bg-primary/45')}
                 style={{ width: `${Math.max(2, (s.n / max) * 100)}%` }} />
             </div>
           </li>
@@ -377,7 +441,7 @@ function TopCampaigns({ query, currency }: { query: Record<string, string | unde
                     <p className="num shrink-0 text-sm font-bold">{money(String(x.revenue), currency)}</p>
                   </div>
                   <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-surface-3">
-                    <div className="h-full rounded-full bg-gradient-to-r from-[#8b70ff] to-[#c084fc] transition-[width] duration-700" style={{ width: `${Math.max(3, (x.revenue / max) * 100)}%` }} />
+                    <div className="h-full rounded-full bg-gradient-to-r from-[#60a5fa] to-[#38bdf8] transition-[width] duration-700" style={{ width: `${Math.max(3, (x.revenue / max) * 100)}%` }} />
                   </div>
                   <p className="mt-1 flex justify-between text-[11px] text-muted">
                     <span>{int(x.sales)} venda{x.sales === 1 ? '' : 's'}{x.pageViews > 0 && <> · conversão {pct(x.sales / x.pageViews)}</>}</span>

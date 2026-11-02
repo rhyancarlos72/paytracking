@@ -8,7 +8,7 @@ import { notFound } from '../lib/errors.js';
 import { jsonSafe, parse, requireRole } from '../lib/http.js';
 import { periodQuery } from '../meta/routes.js';
 import { audit } from '../orgs/routes.js';
-import { dashboard } from './dashboard.js';
+import { dashboard, monthlyGoal } from './dashboard.js';
 import { hit } from '../lib/rate-limit.js';
 import { recoverPaymentUtms } from '../webhooks/recover-utms.js';
 
@@ -19,6 +19,11 @@ export function reportRoutes(app: FastifyInstance, ctx: Ctx) {
     const a = requireRole(req, 'viewer');
     const q = parse(periodQuery.extend({ pixelId: uuidOpt, provider: z.string().max(20).optional() }), req.query);
     return jsonSafe(await dashboard(ctx, a.org, { ...q, preset: q.preset as PeriodPreset }));
+  });
+
+  app.get('/v1/reports/monthly-goal', async (req) => {
+    const a = requireRole(req, 'viewer');
+    return jsonSafe(await monthlyGoal(ctx, a.org));
   });
 
   // ------------------------------------------------------------------ vendas / pagamentos

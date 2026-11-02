@@ -21,7 +21,7 @@ interface Billing {
 }
 
 const STATUS: Record<Billing['plan']['status'], { label: string; tone: string; dot: string }> = {
-  trial: { label: 'Teste grátis', tone: 'bg-violet-400/15 text-violet-200 ring-violet-300/30', dot: 'bg-violet-300' },
+  trial: { label: 'Teste grátis', tone: 'bg-blue-400/15 text-blue-200 ring-blue-300/30', dot: 'bg-blue-300' },
   active: { label: 'Assinatura ativa', tone: 'bg-emerald-400/15 text-emerald-200 ring-emerald-300/30', dot: 'bg-emerald-300' },
   expired: { label: 'Assinatura expirada', tone: 'bg-rose-400/15 text-rose-200 ring-rose-300/30', dot: 'bg-rose-300' },
   exempt: { label: 'Isento', tone: 'bg-sky-400/15 text-sky-200 ring-sky-300/30', dot: 'bg-sky-300' },
@@ -30,7 +30,7 @@ const STATUS: Record<Billing['plan']['status'], { label: string; tone: string; d
 /* Tudo o que a assinatura inclui (somente recursos que existem no produto). */
 const GROUPS: Array<{ title: string; icon: ReactNode; tone: string; items: Array<{ icon: ReactNode; t: string; d: string }> }> = [
   {
-    title: 'Rastreamento que a Meta entende', icon: <Target />, tone: 'from-violet-500 to-fuchsia-500',
+    title: 'Rastreamento que a Meta entende', icon: <Target />, tone: 'from-blue-500 to-sky-500',
     items: [
       { icon: <BadgeCheck />, t: 'Purchase só com pagamento aprovado', d: 'PIX gerado não vira venda. Reembolso e chargeback registrados.' },
       { icon: <Layers />, t: 'Pixel + Conversions API sem duplicar', d: 'Mesmo event_id no navegador e no servidor.' },
@@ -125,7 +125,7 @@ export default function BillingPage() {
         {/* ====== plano (herói) + pagamento ====== */}
         <div className="grid gap-6 xl:grid-cols-[1.25fr_1fr]">
           <section className="relative overflow-hidden rounded-[28px] bg-[#0b0820] p-6 text-white shadow-2xl ring-1 ring-white/10 sm:p-8" aria-label="Seu plano">
-            <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-[#6d4aff]/45 blur-[110px]" aria-hidden />
+            <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-[#2563eb]/45 blur-[110px]" aria-hidden />
             <div className="pointer-events-none absolute -bottom-32 -left-16 h-72 w-72 rounded-full bg-cyan-400/15 blur-[110px]" aria-hidden />
             <div className="grid-fade opacity-40 [--fg:255_255_255]" aria-hidden />
             <LogoMark onDark className="pointer-events-none absolute -right-6 bottom-0 h-56 w-56 opacity-[0.07]" />
@@ -190,7 +190,7 @@ export default function BillingPage() {
               <div className="relative mt-5 grid items-center gap-6 sm:grid-cols-[auto_1fr] xl:grid-cols-1 2xl:grid-cols-[auto_1fr]">
                 {pending.qr_code_image && (
                   <div className="relative mx-auto">
-                    <div className="absolute -inset-3 rounded-[28px] bg-gradient-to-tr from-[#6d4aff]/40 to-emerald-400/30 blur-xl" aria-hidden />
+                    <div className="absolute -inset-3 rounded-[28px] bg-gradient-to-tr from-[#2563eb]/40 to-emerald-400/30 blur-xl" aria-hidden />
                     <img src={pending.qr_code_image} alt="QR Code do PIX" className="relative h-52 w-52 rounded-2xl border border-border bg-white p-2.5 shadow-xl" />
                   </div>
                 )}

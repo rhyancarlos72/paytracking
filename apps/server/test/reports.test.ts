@@ -78,6 +78,15 @@ describe('cenários 14/15/16 — dashboard coerente e moedas', () => {
     expect(c.paymentsCreated).toBe(4);
     expect(c.approvalRate).toBeCloseTo(3 / 4);
     expect(c.unconvertedSales).toBe(0);
+    // gráficos do Resumo: vendas por hora (24 faixas) e por origem batem com o total
+    expect(c.hourly).toHaveLength(24);
+    expect(c.hourly.reduce((n: number, h: { sales: number }) => n + h.sales, 0)).toBe(2);
+    expect(c.hourly.reduce((n: bigint, h: { revenueMinor: string }) => n + BigInt(h.revenueMinor), 0n)).toBe(16000n);
+    expect(c.byProvider).toEqual([{ provider: 'checkout', sales: 2, revenueMinor: '16000' }]);
+    expect(d.previous.hourly).toBeUndefined();
+    // widget "Meta do mês" da barra lateral: mesma receita do mês
+    const g = (await acc.client.get('/v1/reports/monthly-goal')).data;
+    expect(g).toMatchObject({ currency: 'BRL', achievedMinor: '16000', sales: 2 });
 
     // valor original preservado vs. normalizado
     const p = (await acc.client.get('/v1/payments?preset=today&search=D-2')).data.payments[0];

@@ -119,7 +119,7 @@ export function Card({ className, children, title, description, actions, padded 
       {(title || actions) && (
         <header className="flex flex-wrap items-start justify-between gap-3 px-5 pb-1 pt-5">
           <div className="flex min-w-0 items-start gap-3">
-            {icon && <span className="icon-tile mt-0.5 h-8 w-8 [&>svg]:h-4 [&>svg]:w-4">{icon}</span>}
+            {icon && <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-inset ring-primary/20 [&>svg]:h-[18px] [&>svg]:w-[18px]" aria-hidden>{icon}</span>}
             <div className="min-w-0">
               {title && <h2 className="text-[15px] font-semibold">{title}</h2>}
               {description && <p className="mt-0.5 text-[13px] text-muted">{description}</p>}
@@ -188,8 +188,8 @@ export function ProgressRing({ value, size = 88, stroke = 8, label, children, do
       <svg width={size} height={size} className="-rotate-90" aria-hidden>
         <defs>
           <linearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor={done ? 'rgb(var(--ok))' : '#8b70ff'} />
-            <stop offset="100%" stopColor={done ? 'rgb(var(--ok))' : '#5b37f0'} />
+            <stop offset="0%" stopColor={done ? 'rgb(var(--ok))' : '#60a5fa'} />
+            <stop offset="100%" stopColor={done ? 'rgb(var(--ok))' : '#2563eb'} />
           </linearGradient>
         </defs>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgb(var(--surface-3))" strokeWidth={stroke} />
