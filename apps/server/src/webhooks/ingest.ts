@@ -239,6 +239,15 @@ async function applyPayment(
   const identity = await findIdentity(c, orgId, { xid: t.externalId ?? n.customer.externalId, email: n.customer.email, phone: n.customer.phone });
   const utm = (k: (typeof UTM_KEYS)[number]) => t[k] ?? identity?.[k] ?? null;
 
+  // venda importada do sistema antigo (provider "legacy") com o mesmo id de transação: é a MESMA venda.
+  // Adota a linha em vez de criar outra (era o que duplicava as vendas da Hotmart no PURCHASE_COMPLETE).
+  await c.query(
+    `UPDATE payments SET provider = $2, integration_id = COALESCE(integration_id, $4), updated_at = now()
+      WHERE org_id = $1 AND provider = 'legacy' AND transaction_id = $3
+        AND NOT EXISTS (SELECT 1 FROM payments x WHERE x.org_id = $1 AND x.provider = $2 AND x.transaction_id = $3)`,
+    [orgId, n.provider, n.transactionId, integration.id],
+  );
+
   // upsert + lock da linha do pagamento
   const ins = await c.query(
     `INSERT INTO payments(org_id, provider, transaction_id, status, integration_id)
@@ -261,6 +270,10 @@ async function applyPayment(
   }
 
   const at = n.occurredAt ?? ctx.now();
+  // confirmação tardia (fim da garantia) de uma venda que nunca passou por aqui: só histórico,
+  // na data original — não toca som, não manda push e não envia Purchase à Meta
+  const historical = isNew && to === 'approved' && n.lateConfirmation === true;
+  if (historical) await c.query('UPDATE payments SET late_import = true, created_at = LEAST(created_at, $2) WHERE id = $1', [payment.id, at]);
   const amountMinor = n.amountMinor ?? payment.amount_minor ?? null;
   const currency = n.amountMinor !== null ? n.currency : (payment.currency?.trim() ?? n.currency);
   await c.query(
@@ -286,7 +299,9 @@ async function applyPayment(
   let queued = false;
   let purchase: { amount: string; pixelName: string | null } | null = null;
 
-  if (isPurchaseTransition(from, to)) {
+  if (historical) {
+    // nada a enviar
+  } else if (isPurchaseTransition(from, to)) {
     purchase = { amount: amountMinor !== null && currency ? formatMoney(amountMinor, currency) : 'valor não informado', pixelName: effectivePixel?.name ?? null };
     if (!effectivePixel) {
       await raiseAlert(c, orgId, {

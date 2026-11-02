@@ -95034,7 +95034,8 @@ var hotmart = {
       occurredAt: mapped === "approved" ? toDate(approvedMs) : toDate(p.creation_date),
       customer: customerFrom(obj(data.buyer)),
       products: Object.keys(prod).length ? [{ id: pick2(prod, ["id", "ucode"]), name: pick2(prod, ["name"]), quantity: 1, priceMinor: value }] : [],
-      tracking
+      tracking,
+      ...evKey === "purchase_complete" ? { lateConfirmation: true } : {}
     };
   }
 };
@@ -95571,6 +95572,12 @@ async function applyPayment(ctx, c, integration, n, productIds, rb, ms) {
   const t = n.tracking;
   const identity = await findIdentity(c, orgId, { xid: t.externalId ?? n.customer.externalId, email: n.customer.email, phone: n.customer.phone });
   const utm = (k) => t[k] ?? identity?.[k] ?? null;
+  await c.query(
+    `UPDATE payments SET provider = $2, integration_id = COALESCE(integration_id, $4), updated_at = now()
+      WHERE org_id = $1 AND provider = 'legacy' AND transaction_id = $3
+        AND NOT EXISTS (SELECT 1 FROM payments x WHERE x.org_id = $1 AND x.provider = $2 AND x.transaction_id = $3)`,
+    [orgId, n.provider, n.transactionId, integration.id]
+  );
   const ins = await c.query(
     `INSERT INTO payments(org_id, provider, transaction_id, status, integration_id)
      VALUES ($1, $2, $3, $4, $5) ON CONFLICT (org_id, provider, transaction_id) DO NOTHING RETURNING id`,
@@ -95590,6 +95597,8 @@ async function applyPayment(ctx, c, integration, n, productIds, rb, ms) {
     return { purchase: null, response: { duplicate: true, reason, status: from } };
   }
   const at = n.occurredAt ?? ctx.now();
+  const historical = isNew && to === "approved" && n.lateConfirmation === true;
+  if (historical) await c.query("UPDATE payments SET late_import = true, created_at = LEAST(created_at, $2) WHERE id = $1", [payment.id, at]);
   const amountMinor = n.amountMinor ?? payment.amount_minor ?? null;
   const currency = n.amountMinor !== null ? n.currency : payment.currency?.trim() ?? n.currency;
   await c.query(
@@ -95625,7 +95634,8 @@ async function applyPayment(ctx, c, integration, n, productIds, rb, ms) {
   const effectivePixel = pixel ?? (payment.pixel_id ? await loadPixel2(c, orgId, payment.pixel_id) : null);
   let queued = false;
   let purchase = null;
-  if (isPurchaseTransition(from, to)) {
+  if (historical) {
+  } else if (isPurchaseTransition(from, to)) {
     purchase = { amount: amountMinor !== null && currency ? formatMoney(amountMinor, currency) : "valor n\xE3o informado", pixelName: effectivePixel?.name ?? null };
     if (!effectivePixel) {
       await raiseAlert(c, orgId, {
@@ -96933,6 +96943,46 @@ async function recoverPaymentUtms(ctx, orgId) {
   return { checked: r.rows.length, recovered };
 }
 
+// src/webhooks/fix-duplicates.ts
+async function fixDuplicateSales(ctx, orgId, userId) {
+  return tx(ctx.db, async (c) => {
+    const pairs = await c.query(
+      `SELECT l.id AS legacy_id, p.id AS payment_id, to_jsonb(l) AS legacy_row
+         FROM payments l JOIN payments p ON p.org_id = l.org_id AND p.transaction_id = l.transaction_id AND p.provider <> 'legacy'
+        WHERE l.org_id = $1 AND l.provider = 'legacy'
+        FOR UPDATE OF l, p`,
+      [orgId]
+    );
+    for (const r of pairs.rows) {
+      await c.query(
+        `UPDATE payments p SET
+            approved_at = CASE WHEN p.status = 'approved' THEN LEAST(p.approved_at, l.approved_at) ELSE p.approved_at END,
+            created_at  = LEAST(p.created_at, l.created_at),
+            pixel_id    = COALESCE(p.pixel_id, l.pixel_id),
+            utm_source = COALESCE(p.utm_source, l.utm_source), utm_medium = COALESCE(p.utm_medium, l.utm_medium),
+            utm_campaign = COALESCE(p.utm_campaign, l.utm_campaign), utm_content = COALESCE(p.utm_content, l.utm_content),
+            utm_term = COALESCE(p.utm_term, l.utm_term), utm_id = COALESCE(p.utm_id, l.utm_id),
+            late_import = true, updated_at = now()
+           FROM payments l WHERE p.id = $1 AND l.id = $2`,
+        [r.payment_id, r.legacy_id]
+      );
+      await c.query("DELETE FROM payments WHERE id = $1 AND org_id = $2", [r.legacy_id, orgId]);
+      await c.query(
+        `INSERT INTO audit_log(org_id, user_id, action, target, metadata) VALUES ($1, $2, 'payment.duplicate_merged', $3, $4)`,
+        [orgId, userId, r.payment_id, JSON.stringify({ removedLegacyRow: r.legacy_row })]
+      );
+    }
+    const hist = await c.query(
+      `UPDATE payments p SET late_import = true
+        WHERE p.org_id = $1 AND NOT p.late_import AND p.provider = 'hotmart'
+          AND EXISTS (SELECT 1 FROM payment_transitions t JOIN webhook_receipts r ON r.id = t.receipt_id
+                       WHERE t.payment_id = p.id AND t.from_status IS NULL AND t.to_status = 'approved' AND upper(r.gateway_event) = 'PURCHASE_COMPLETE')`,
+      [orgId]
+    );
+    return { merged: pairs.rowCount ?? 0, historical: hist.rowCount ?? 0 };
+  });
+}
+
 // src/reports/routes.ts
 var uuidOpt = external_exports.string().uuid().optional();
 function reportRoutes(app, ctx) {
@@ -96965,7 +97015,7 @@ function reportRoutes(app, ctx) {
          JOIN payments p ON p.id = t.payment_id
          JOIN webhook_receipts r ON r.id = t.receipt_id
          LEFT JOIN pixels px ON px.id = p.pixel_id
-        WHERE p.org_id = $1 AND t.to_status = 'approved' AND p.status = 'approved'
+        WHERE p.org_id = $1 AND t.to_status = 'approved' AND p.status = 'approved' AND NOT p.late_import
           AND r.received_at > GREATEST($2::timestamptz - interval '15 seconds', COALESCE($4::timestamptz, '-infinity'))
           AND r.received_at <= $3
         ORDER BY r.received_at, t.id LIMIT 50`,
@@ -96977,6 +97027,13 @@ function reportRoutes(app, ctx) {
     const a = requireRole(req, "admin");
     await hit(ctx.db, `recover-utms:org:${a.org.id}`, 6, 3600);
     return recoverPaymentUtms(ctx, a.org.id);
+  });
+  app.post("/v1/payments/fix-duplicates", async (req) => {
+    const a = requireRole(req, "admin");
+    await hit(ctx.db, `fix-duplicates:org:${a.org.id}`, 6, 3600);
+    const r = await fixDuplicateSales(ctx, a.org.id, a.user.id);
+    await audit(ctx, a.org.id, a.user.id, "payments.fix_duplicates", "all", r);
+    return r;
   });
   app.get("/v1/payments", async (req) => {
     const a = requireRole(req, "viewer");

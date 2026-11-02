@@ -11,6 +11,7 @@ import { audit } from '../orgs/routes.js';
 import { dashboard, lifetimeRevenue, monthlyGoal } from './dashboard.js';
 import { hit } from '../lib/rate-limit.js';
 import { recoverPaymentUtms } from '../webhooks/recover-utms.js';
+import { fixDuplicateSales } from '../webhooks/fix-duplicates.js';
 
 const uuidOpt = z.string().uuid().optional();
 
@@ -55,7 +56,7 @@ export function reportRoutes(app: FastifyInstance, ctx: Ctx) {
          JOIN payments p ON p.id = t.payment_id
          JOIN webhook_receipts r ON r.id = t.receipt_id
          LEFT JOIN pixels px ON px.id = p.pixel_id
-        WHERE p.org_id = $1 AND t.to_status = 'approved' AND p.status = 'approved'
+        WHERE p.org_id = $1 AND t.to_status = 'approved' AND p.status = 'approved' AND NOT p.late_import
           AND r.received_at > GREATEST($2::timestamptz - interval '15 seconds', COALESCE($4::timestamptz, '-infinity'))
           AND r.received_at <= $3
         ORDER BY r.received_at, t.id LIMIT 50`,
@@ -69,6 +70,15 @@ export function reportRoutes(app: FastifyInstance, ctx: Ctx) {
     const a = requireRole(req, 'admin');
     await hit(ctx.db, `recover-utms:org:${a.org.id}`, 6, 3600);
     return recoverPaymentUtms(ctx, a.org.id);
+  });
+
+  // vendas duplicadas (cópia do sistema antigo + a mesma venda reenviada pelo gateway): junta numa só
+  app.post('/v1/payments/fix-duplicates', async (req) => {
+    const a = requireRole(req, 'admin');
+    await hit(ctx.db, `fix-duplicates:org:${a.org.id}`, 6, 3600);
+    const r = await fixDuplicateSales(ctx, a.org.id, a.user.id);
+    await audit(ctx, a.org.id, a.user.id, 'payments.fix_duplicates', 'all', r);
+    return r;
   });
 
   app.get('/v1/payments', async (req) => {

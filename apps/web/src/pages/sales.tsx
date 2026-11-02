@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowRight, CheckCircle2, RotateCcw, Search, ShoppingBag, Timer, Wand2 } from 'lucide-react';
+import { ArrowRight, CheckCircle2, CopyX, RotateCcw, Search, ShoppingBag, Timer, Wand2 } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { PeriodPicker, usePeriod } from '../components/period';
 import { PageHeader } from '../components/shell';
 import { useToast } from '../components/toast';
-import { Badge, Button, Card, EmptyState, ErrorState, Input, Pager, Select, Skeleton, STATUS_TONE } from '../components/ui';
+import { Badge, Button, Card, ConfirmButton, EmptyState, ErrorState, Input, Pager, Select, Skeleton, STATUS_TONE } from '../components/ui';
 import { get, post, qs } from '../lib/api';
 import { dateTime, int, money, pct, PROVIDER_LABEL, STATUS_LABEL } from '../lib/format';
 import { useSession } from '../lib/session';
@@ -34,6 +34,15 @@ export default function SalesPage() {
     },
     onError: (e) => toast.err(e),
   });
+  const fixDup = useMutation({
+    mutationFn: () => post<{ merged: number; historical: number }>('/v1/payments/fix-duplicates'),
+    onSuccess: (r) => {
+      if (r.merged > 0) toast.ok(`${r.merged} venda(s) duplicada(s) corrigida(s)`, 'Cada uma ficou como uma venda só, na data original.');
+      else toast.info('Nenhuma venda duplicada encontrada');
+      void qc.invalidateQueries();
+    },
+    onError: (e) => toast.err(e),
+  });
   const q = useQuery({
     queryKey: ['payments', period.query, status, provider, sp.get('busca'), page],
     queryFn: ({ signal }) => get(`/v1/payments${qs({ ...period.query, status, provider, search: sp.get('busca'), page })}`, signal),
@@ -49,6 +58,13 @@ export default function SalesPage() {
               title="Relê os webhooks dos últimos 30 dias e preenche a campanha das vendas que chegaram sem UTM (ex.: Hotmart)">
               Recuperar campanhas
             </Button>
+          )}
+          {s.can('admin') && (
+            <ConfirmButton icon={<CopyX className="h-4 w-4" />} loading={fixDup.isPending} onConfirm={() => fixDup.mutateAsync()}
+              title="Corrigir vendas duplicadas?" confirmLabel="Corrigir agora"
+              description="Junta as vendas que aparecem duas vezes: a cópia importada do sistema antigo e a mesma venda reenviada pela Hotmart no fim da garantia (PURCHASE_COMPLETE). Fica uma venda só, na data original. A cópia removida fica registrada na auditoria.">
+              Corrigir duplicadas
+            </ConfirmButton>
           )}
         </>} />
       <SalesHighlights query={period.query} provider={provider} currency={s.currency} onPending={() => period.set({ status: 'pending', pagina: null })} />

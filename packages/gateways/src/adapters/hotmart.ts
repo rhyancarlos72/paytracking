@@ -83,6 +83,7 @@ export const hotmart: GatewayAdapter = {
         ? [{ id: pick(prod, ['id', 'ucode']), name: pick(prod, ['name']), quantity: 1, priceMinor: value }]
         : [],
       tracking,
+      ...(evKey === 'purchase_complete' ? { lateConfirmation: true } : {}),
     };
   },
 };

@@ -58,6 +58,12 @@ export interface NormalizedPayment {
   customer: CustomerInput;
   products: NormalizedProduct[];
   tracking: NormalizedTracking;
+  /**
+   * Confirmação TARDIA de uma compra já aprovada antes (ex.: Hotmart PURCHASE_COMPLETE, fim da garantia).
+   * Nunca é a primeira aprovação: se a venda não existir aqui, entra só como histórico — sem Purchase,
+   * sem aviso de "nova venda".
+   */
+  lateConfirmation?: boolean;
 }
 
 /** Evento de funil enviado pelo servidor (ex.: Lead do checkout próprio). */
