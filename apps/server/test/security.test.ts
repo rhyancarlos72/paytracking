@@ -186,6 +186,27 @@ describe('cenário 17 — permissões por papel', () => {
   });
 });
 
+describe('assinatura vencida', () => {
+  it('o dono consegue gerar o PIX com o painel bloqueado; Woovi fora do ar dá mensagem clara (não "erro interno")', async () => {
+    const acc = await newAccount(env);
+    await env.db.query(`UPDATE organizations SET plan_expires_at = now() - interval '2 days' WHERE id = $1`, [acc.orgId]);
+    expect((await acc.client.get('/v1/auth/me')).data.plan).toMatchObject({ status: 'expired', blocked: true });
+    expect((await acc.client.get('/v1/reports/dashboard?preset=today')).status).toBe(402);
+    env.fake.on(/openpix\.com\.br\/api\/v1\/charge/, async () => { throw new TypeError('fetch failed'); });
+    const down = await acc.client.post('/v1/billing/charge');
+    expect(down.status).toBe(502);
+    expect(down.data.error.message).toContain('banco do PIX');
+    env.fake.on(/openpix\.com\.br\/api\/v1\/charge/, async (_u, init) => {
+      const b = JSON.parse(String(init?.body));
+      return new Response(JSON.stringify({ charge: { correlationID: b.correlationID, identifier: 'id-venc', brCode: '000201-venc', value: b.value } }), { status: 200 });
+    });
+    const ok = await acc.client.post('/v1/billing/charge');
+    expect(ok.status).toBe(200);
+    expect(ok.data.charge.br_code).toBe('000201-venc');
+    expect((await acc.client.get('/v1/billing')).data.charges).toHaveLength(1);
+  });
+});
+
 describe('assinatura Woovi — renovação idempotente (P-07)', () => {
   it('webhook repetido e evento duplicado renovam só uma vez', async () => {
     const acc = await newAccount(env);

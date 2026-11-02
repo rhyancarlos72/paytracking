@@ -97226,6 +97226,9 @@ function billingRoutes(app, ctx) {
         expiresIn: 86400
       }),
       signal: AbortSignal.timeout(2e4)
+    }).catch((e) => {
+      ctx.log.error({ err: e.name, motivo: e.message }, "Woovi: sem resposta ao criar cobran\xE7a");
+      throw new AppError(502, "billing_provider_unreachable", "N\xE3o foi poss\xEDvel falar com o banco do PIX agora. Tente de novo em alguns instantes.");
     });
     const j = await res.json().catch(() => ({}));
     if (!res.ok || !j.charge) {

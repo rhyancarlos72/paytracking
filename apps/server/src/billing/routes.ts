@@ -63,6 +63,10 @@ export function billingRoutes(app: FastifyInstance, ctx: Ctx) {
         customer: { name: a.org.name.slice(0, 60), email: a.user.email }, expiresIn: 86_400,
       }),
       signal: AbortSignal.timeout(20_000),
+    }).catch((e: Error) => {
+      // Woovi fora do ar / sem rede / tempo esgotado: mensagem clara em vez de "erro interno"
+      ctx.log.error({ err: e.name, motivo: e.message }, 'Woovi: sem resposta ao criar cobrança');
+      throw new AppError(502, 'billing_provider_unreachable', 'Não foi possível falar com o banco do PIX agora. Tente de novo em alguns instantes.');
     });
     const j = (await res.json().catch(() => ({}))) as any;
     if (!res.ok || !j.charge) {

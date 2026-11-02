@@ -2,14 +2,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import {
   BadgeCheck, Bell, Calculator, CalendarClock, Check, CircleDollarSign, Clock, Code2, Copy, Eye, Infinity as InfinityIcon,
-  KeyRound, Layers, LineChart, Lock, MousePointerClick, Plug, QrCode, Receipt, Repeat, ShieldCheck, Smartphone, Sparkles,
+  Crown, KeyRound, Layers, LineChart, Lock, MousePointerClick, Plug, QrCode, Receipt, Repeat, ShieldCheck, Smartphone, Sparkles,
   Target, Trophy, Users, Volume2, Zap,
 } from 'lucide-react';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { LogoMark } from '../components/logo';
 import { PageHeader } from '../components/shell';
 import { useToast } from '../components/toast';
-import { Badge, Button, Card, ErrorState, Input, Skeleton } from '../components/ui';
+import { Badge, Button, Card, ErrorState, Input, Modal, Skeleton } from '../components/ui';
 import { get, post } from '../lib/api';
 import { dateTime, money } from '../lib/format';
 import { useSession } from '../lib/session';
@@ -101,6 +101,17 @@ export default function BillingPage() {
     return () => clearInterval(t);
   }, [pending?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const charge = useMutation({ mutationFn: () => post('/v1/billing/charge'), onSuccess: () => qc.invalidateQueries({ queryKey: ['billing'] }), onError: (e) => toast.err(e) });
+  // popup de assinatura vencida: aparece ao chegar aqui com o painel bloqueado (sem PIX em aberto)
+  const [expiredPopup, setExpiredPopup] = useState(true);
+  // veio do aviso "Pagar com PIX": já gera o PIX (uma vez) em vez de mostrar outro popup
+  const autoPay = useRef(new URLSearchParams(location.search).get('pagar') === '1');
+  useEffect(() => {
+    const d = q.data;
+    if (!autoPay.current || !d || pending || charge.isPending) return;
+    autoPay.current = false;
+    history.replaceState(null, '', '/financeiro');
+    if (d.plan.status !== 'exempt' && d.wooviConfigured && s.can('owner')) { setExpiredPopup(false); charge.mutate(); }
+  }, [q.data, pending]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (q.isError) return <><PageHeader title="Financeiro" /><Card><ErrorState error={q.error} /></Card></>;
   if (!q.data) return <><PageHeader title="Financeiro" /><Skeleton className="h-72" /><Skeleton className="mt-6 h-96" /></>;
@@ -120,6 +131,22 @@ export default function BillingPage() {
   return (
     <>
       <PageHeader title="Financeiro" eyebrow="Assinatura" description="Um plano, tudo incluído. Pagamento mensal por PIX, sem fidelidade e sem taxa por venda." />
+      <Modal open={expired && !pending && expiredPopup && !s.user.isPlatformAdmin} onClose={() => setExpiredPopup(false)}
+        title="Assinatura vencida"
+        footer={<>
+          <Button onClick={() => setExpiredPopup(false)}>Agora não</Button>
+          {owner && q.data.wooviConfigured && (
+            <Button variant="primary" icon={<QrCode className="h-4 w-4" />} loading={charge.isPending} onClick={() => { charge.mutate(); setExpiredPopup(false); }}>Pagar com PIX · {price}</Button>
+          )}
+        </>}>
+        <div className="flex flex-col items-center text-center">
+          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-400/15 text-amber-500 ring-1 ring-inset ring-amber-400/30 dark:text-amber-300"><Lock className="h-7 w-7" aria-hidden /></span>
+          <p className="mt-4 text-lg font-semibold">Pague sua assinatura para liberar o acesso ao painel e às suas vendas.</p>
+          <p className="mt-2 text-sm text-muted">Nada foi perdido: o rastreamento e o envio à Meta continuam guardados. Assim que o PIX de {price} for confirmado, tudo volta na hora, por mais 30 dias.</p>
+          {!owner && <p className="mt-3 text-sm font-medium text-warn">Somente o proprietário da organização pode pagar. Avise o responsável pela conta.</p>}
+          {owner && !q.data.wooviConfigured && <p className="mt-3 text-sm font-medium text-warn">O pagamento por PIX está indisponível no momento. Fale com o suporte.</p>}
+        </div>
+      </Modal>
 
       <div className="space-y-6">
         {/* ====== plano (herói) + pagamento ====== */}
@@ -152,7 +179,7 @@ export default function BillingPage() {
                     <span className="font-semibold">{expired ? (sinceDays === 0 ? 'hoje' : `há ${sinceDays} dia${sinceDays === 1 ? '' : 's'}`) : `${left} dia${left === 1 ? '' : 's'}`}</span>
                   </div>
                   <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
-                    <div className={clsx('h-full rounded-full transition-[width] duration-700', expired ? 'bg-rose-400' : left <= 3 ? 'bg-amber-300' : 'bg-gradient-to-r from-[#a78bfa] to-[#22d3ee]')}
+                    <div className={clsx('h-full rounded-full transition-[width] duration-700', expired ? 'bg-rose-400' : left <= 3 ? 'bg-amber-300' : 'bg-gradient-to-r from-[#60a5fa] to-[#22d3ee]')}
                       style={{ width: `${expired ? 100 : Math.max(4, progress * 100)}%` }} />
                   </div>
                   <p className="mt-1.5 flex items-center gap-1.5 text-xs text-white/50"><CalendarClock className="h-3.5 w-3.5" />{dateTime(plan.expiresAt, s.org.timezone)}</p>
@@ -160,15 +187,26 @@ export default function BillingPage() {
               )}
             </div>
 
+            {plan.status === 'exempt' && (
+              <div className="relative mt-8 rounded-2xl bg-white/[0.06] p-4 ring-1 ring-inset ring-white/10">
+                <p className="flex items-center gap-2 text-sm font-semibold"><Crown className="h-4 w-4 text-amber-300" />{s.user.isPlatformAdmin ? 'Conta do dono da plataforma — isenta, sem cobrança' : 'Organização isenta de cobrança'}</p>
+                <p className="mt-1 text-xs text-white/60">Por isso o botão de pagamento não aparece aqui. As contas dos seus clientes veem o botão “Assinar agora · PIX {price}” neste mesmo lugar{s.user.isPlatformAdmin ? ', e você pode isentar ou estender qualquer conta pelo painel Admin' : ''}.</p>
+                {s.user.isPlatformAdmin && !q.data.wooviConfigured && <p className="mt-2 text-xs font-semibold text-amber-300">Atenção: WOOVI_APP_ID não está configurado no servidor — seus clientes ainda não conseguem gerar o PIX.</p>}
+              </div>
+            )}
             {plan.status !== 'exempt' && !pending && (
               <div className="relative mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
                 {q.data.wooviConfigured ? (
                   <button disabled={!owner || charge.isPending} onClick={() => charge.mutate()}
-                    className="group inline-flex h-14 items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-b from-[#8467ff] to-[#5b3df5] px-7 text-[16px] font-semibold text-white shadow-[0_12px_34px_-10px_rgba(109,74,255,.9)] ring-1 ring-inset ring-white/15 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60">
+                    className="group inline-flex h-14 items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-b from-[#3b82f6] to-[#2563eb] px-7 text-[16px] font-semibold text-white shadow-[0_12px_34px_-10px_rgba(37,99,235,.9)] ring-1 ring-inset ring-white/15 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60">
                     {charge.isPending ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> : <QrCode className="h-5 w-5" />}
                     <span className="whitespace-nowrap">{cta}</span><span className="whitespace-nowrap text-white/75">· PIX {price}</span>
                   </button>
-                ) : <p className="text-sm text-white/70">Pagamento indisponível no momento. Fale com o suporte.</p>}
+                ) : (
+                  <p className="rounded-xl bg-amber-400/10 px-4 py-3 text-sm text-amber-100 ring-1 ring-inset ring-amber-300/25">
+                    {s.user.isPlatformAdmin ? 'Pagamento desligado: defina WOOVI_APP_ID (e WOOVI_WEBHOOK_SECRET) nas variáveis de ambiente do servidor.' : 'Pagamento por PIX indisponível no momento. Fale com o suporte para renovar.'}
+                  </p>
+                )}
                 <p className="flex items-center gap-1.5 text-xs text-white/55"><Lock className="h-3.5 w-3.5" />Sem cobrança automática: você paga só se quiser continuar.</p>
               </div>
             )}

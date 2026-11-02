@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { lazy as reactLazy, StrictMode, Suspense, useEffect, type ComponentType } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import './styles/index.css';
 import './lib/push-client'; // captura o pedido de instalação do app (Android) desde o início
 import { AppShell } from './components/shell';
@@ -56,23 +56,19 @@ const qc = new QueryClient({
 });
 
 const Loading = () => <div className="flex min-h-[40vh] items-center justify-center"><Spinner className="h-6 w-6" /></div>;
-const ALLOWED_WHEN_EXPIRED = ['/financeiro', '/configuracoes', '/ajuda'];
 
 function Protected() {
   const { data, isLoading } = useMe();
   const loc = useLocation();
-  const nav = useNavigate();
   useEffect(() => onApiError((e) => {
     if (e.status === 401) qc.setQueryData(['me'], null);
-    if (e.status === 402) nav('/financeiro?expirado=1');
-  }), [nav]);
+    // assinatura venceu com o painel aberto: recarrega o plano e o aviso de pagamento aparece no lugar da aba
+    if (e.status === 402) void qc.invalidateQueries({ queryKey: ['me'] });
+  }), []);
   if (isLoading) return <Loading />;
   // visitante na página inicial: mostra a página de vendas em vez de mandar para o login
   if (!data && loc.pathname === '/') return <Landing />;
   if (!data) return <Navigate to={`/entrar?voltar=${encodeURIComponent(loc.pathname + loc.search)}`} replace />;
-  if (data.plan.blocked && !data.user.isPlatformAdmin && !ALLOWED_WHEN_EXPIRED.some((p) => loc.pathname.startsWith(p))) {
-    return <Navigate to="/financeiro?expirado=1" replace />;
-  }
   return <AppShell />;
 }
 

@@ -31,7 +31,7 @@ function claim(id: string): boolean {
  * atualiza os números. Consulta a cada 15 s (30 s com a aba em segundo plano) e na hora em que
  * chega um push do service worker.
  */
-export function useSaleNotifier() {
+export function useSaleNotifier(enabled = true) {
   const s = useSession();
   const qc = useQueryClient();
   const toast = useToast();
@@ -39,6 +39,7 @@ export function useSaleNotifier() {
   toastRef.current = toast;
 
   useEffect(() => {
+    if (!enabled) return; // painel bloqueado (assinatura vencida): não consulta o feed de vendas
     armAutoUnlock();
     void syncAccountSound(); // som salvo na conta vira o principal neste aparelho
     let stopped = false;
@@ -96,7 +97,7 @@ export function useSaleNotifier() {
       clearTimeout(timer);
       navigator.serviceWorker?.removeEventListener('message', onMessage);
     };
-  }, [s.org.id, qc]);
+  }, [s.org.id, qc, enabled]);
 }
 
 /** Botão discreto na barra superior enquanto o navegador não liberou o som (política de autoplay). */

@@ -2,7 +2,7 @@ import clsx from 'clsx';
 import { Logo as BrandLogo, LogoMark } from './logo';
 import {
   Activity, BarChart3, BellRing, BookOpen, ChevronsUpDown, CreditCard, Eye, EyeOff, GitBranch, LayoutDashboard, LogOut, Megaphone, Menu, Moon,
-  Plug, Plus, Receipt, Search, Settings, Shield, Sparkles, Stethoscope, Sun, Target, X,
+  Lock, Plug, Plus, QrCode, Receipt, Search, Settings, Shield, Sparkles, Stethoscope, Sun, Target, X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
@@ -69,8 +69,15 @@ function Logo({ compact }: { compact?: boolean }) {
   return compact ? <LogoMark className="h-8 w-8" /> : <BrandLogo markClassName="h-8 w-8" textClassName="text-[18px]" />;
 }
 
+/** Plano vencido (e não é o dono da plataforma): o painel fica atrás do aviso de pagamento. */
+export function usePlanLocked() {
+  const s = useSession();
+  return s.plan.blocked && !s.user.isPlatformAdmin;
+}
+
 function useOpenAlerts() {
-  const q = useQuery<{ alerts: Array<{ resolved_at: string | null }> }>({ queryKey: ['alerts'], queryFn: () => get('/v1/alerts'), refetchInterval: 60_000, staleTime: 30_000 });
+  const locked = usePlanLocked();
+  const q = useQuery<{ alerts: Array<{ resolved_at: string | null }> }>({ queryKey: ['alerts'], queryFn: () => get('/v1/alerts'), refetchInterval: 60_000, staleTime: 30_000, enabled: !locked });
   return (q.data?.alerts ?? []).filter((a) => !a.resolved_at).length;
 }
 
@@ -169,8 +176,9 @@ function Sidebar({ onNavigate, onSearch }: { onNavigate?: () => void; onSearch: 
 
 /** "Meta do mês": progresso da receita confirmada no mês contra a meta mensal da conta. */
 function MonthGoal({ onNavigate }: { onNavigate?: () => void }) {
+  const locked = usePlanLocked();
   const q = useQuery<{ currency: string; goalMinor: string; achievedMinor: string }>({
-    queryKey: ['monthly-goal'], queryFn: ({ signal }) => get('/v1/reports/monthly-goal', signal), refetchInterval: 120_000, staleTime: 60_000,
+    queryKey: ['monthly-goal'], queryFn: ({ signal }) => get('/v1/reports/monthly-goal', signal), refetchInterval: 120_000, staleTime: 60_000, enabled: !locked,
   });
   if (!q.data) return null;
   const goal = Number(q.data.goalMinor);
@@ -217,7 +225,9 @@ export function AppShell() {
   const loc = useLocation();
   const nav = useNavigate();
   const logout = useLogout();
-  useSaleNotifier();
+  const locked = usePlanLocked();
+  const allowed = ['/financeiro', '/configuracoes', '/ajuda'].some((p) => loc.pathname.startsWith(p));
+  useSaleNotifier(!locked);
   useEffect(() => setOpen(false), [loc.pathname]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -275,8 +285,15 @@ export function AppShell() {
         </div>
       </header>
       <main id="conteudo" tabIndex={-1} className="mx-auto w-full max-w-[1440px] px-4 py-6 outline-none lg:px-8 lg:py-8">
+        {locked && allowed && !loc.pathname.startsWith('/financeiro') && (
+          <div className="mb-6">
+            <Callout tone="warn" title="Assinatura vencida" action={<Link to="/financeiro" className="btn-primary inline-flex h-9 items-center rounded-xl px-4 text-sm font-semibold">Pagar agora</Link>}>
+              Pague sua assinatura para liberar o acesso ao painel e às suas vendas.
+            </Callout>
+          </div>
+        )}
         {!s.user.emailVerified && <VerifyBanner />}
-        <div key={loc.pathname} className="animate-slide-up"><Outlet /></div>
+        {locked && !allowed ? <Paywall /> : <div key={loc.pathname} className="animate-slide-up"><Outlet /></div>}
       </main>
       <CommandPalette open={palette} onClose={() => setPalette(false)} commands={commands} />
     </div>
@@ -304,6 +321,41 @@ export function PageHeader({ title, description, actions, eyebrow }: { title: st
         {description && <p className="mt-1 max-w-2xl text-[15px] text-muted">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+    </div>
+  );
+}
+
+/** Assinatura vencida: no lugar da aba, um aviso que não sai até pagar (Financeiro, Configurações e Ajuda continuam abertos). */
+function Paywall() {
+  const s = useSession();
+  useEffect(() => { document.title = 'Assinatura vencida · PayTracking'; }, []);
+  const owner = s.can('owner');
+  const price = money(s.plan.priceMinor, 'BRL');
+  return (
+    <div className="relative min-h-[70vh]">
+      {/* painel "fantasma" desfocado atrás do aviso */}
+      <div className="pointer-events-none select-none space-y-6 opacity-40 blur-[6px]" aria-hidden>
+        <div className="grid gap-6 xl:grid-cols-[1.65fr_1fr]"><div className="hero-blue h-56" /><div className="card-gold h-56" /></div>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{[0, 1, 2, 3].map((i) => <div key={i} className="card h-36" />)}</div>
+        <div className="grid gap-6 xl:grid-cols-[1.65fr_1fr]"><div className="card h-72" /><div className="card h-72" /></div>
+      </div>
+      <div className="absolute inset-0 flex items-start justify-center px-2 pt-6 sm:pt-16">
+        <section role="alertdialog" aria-modal="false" aria-labelledby="paywall-title" aria-describedby="paywall-desc"
+          className="w-full max-w-md rounded-[24px] border border-border bg-surface p-7 text-center shadow-pop animate-scale-in">
+          <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-400/15 text-amber-500 ring-1 ring-inset ring-amber-400/30 dark:text-amber-300"><Lock className="h-7 w-7" aria-hidden /></span>
+          <h2 id="paywall-title" className="mt-5 text-xl font-bold">Assinatura vencida</h2>
+          <p id="paywall-desc" className="mt-2 text-[15px] font-medium">Pague sua assinatura para liberar o acesso ao painel e às suas vendas.</p>
+          <p className="mt-2 text-sm text-muted">Seus pixels, integrações e vendas continuam guardados. Assim que o PIX de {price} for confirmado, tudo volta na hora, por mais 30 dias.</p>
+          {owner ? (
+            <Link to="/financeiro?pagar=1" className="btn-primary mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-[15px] font-semibold">
+              <QrCode className="h-5 w-5" aria-hidden />Pagar com PIX · {price}
+            </Link>
+          ) : (
+            <p className="mt-5 rounded-xl bg-warn/10 px-4 py-3 text-sm font-medium text-warn">Somente o proprietário da organização pode pagar. Avise o responsável pela conta.</p>
+          )}
+          <Link to="/financeiro" className="mt-3 inline-block text-sm font-semibold text-primary hover:underline">Ver detalhes da assinatura</Link>
+        </section>
+      </div>
     </div>
   );
 }
