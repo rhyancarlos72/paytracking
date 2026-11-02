@@ -20,7 +20,44 @@ const clean = (v: Raw): string => (typeof v === 'string' ? v.trim() : v == null 
 const hashed = (v: string): string | null => (v === '' ? null : isHash(v) ? v.toLowerCase() : sha256(v));
 
 export const normEmail = (v: Raw) => hashed(clean(v).toLowerCase());
-export const normPhone = (v: Raw) => hashed(clean(v).replace(/\D+/g, ''));
+/** DDI dos países mais comuns nas vendas (o resto só é aceito quando já vem com +DDI). */
+const DDI: Record<string, string> = {
+  br: '55', pt: '351', us: '1', ca: '1', es: '34', mx: '52', ar: '54', co: '57', cl: '56', pe: '51', uy: '598', py: '595',
+  bo: '591', ec: '593', it: '39', fr: '33', de: '49', gb: '44', ie: '353', ch: '41', ao: '244', mz: '258',
+};
+
+/** Celular/fixo brasileiro sem DDI: DDD 11–99 + 8 ou 9 dígitos (celular começa com 9). */
+const looksBrazilian = (d: string) => /^[1-9][1-9](9\d{8}|[2-5]\d{7})$/.test(d);
+
+/**
+ * Telefone no formato que a Meta exige: só dígitos, COM código do país (E.164 sem "+").
+ * Gateways brasileiros mandam "11999990000" (sem 55) — sem o DDI a Meta não encontra ninguém.
+ * Regras: "+"/"00" → já tem DDI; brasileiro sem DDI (pelo país ou pelo formato) → 55; outro país
+ * conhecido sem o DDI → acrescenta; zero de tronco ("0 11 …") é removido.
+ */
+export function normPhoneE164(v: Raw, country?: Raw): string | null {
+  const raw = clean(v);
+  if (!raw) return null;
+  if (isHash(raw)) return raw.toLowerCase();
+  let d = raw.replace(/\D+/g, '');
+  if (!d) return null;
+  if (raw.startsWith('+')) return d.length >= 8 ? d : null;
+  if (d.startsWith('00')) return d.slice(2).length >= 8 ? d.slice(2) : null;
+  const cc = clean(country).toLowerCase().slice(0, 2);
+  const ddi = DDI[cc];
+  d = d.replace(/^0+/, '');
+  if (cc === 'br' || (!cc && looksBrazilian(d))) {
+    if (/^55[1-9][1-9]\d{8,9}$/.test(d)) return d;          // já veio com 55
+    return looksBrazilian(d) ? `55${d}` : d.length >= 8 ? d : null;
+  }
+  if (ddi && !d.startsWith(ddi)) return `${ddi}${d}`;
+  return d.length >= 8 ? d : null;
+}
+
+export const normPhone = (v: Raw, country?: Raw) => {
+  const e = normPhoneE164(v, country);
+  return e ? (isHash(e) ? e : sha256(e)) : null;
+};
 export const normName = (v: Raw) => hashed(clean(v).toLowerCase());
 export const normCity = (v: Raw) => hashed(removeAccents(clean(v).toLowerCase()).replace(/[^a-z]/g, ''));
 export const normState = normCity;

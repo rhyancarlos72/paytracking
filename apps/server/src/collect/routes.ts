@@ -5,7 +5,7 @@ import { BROWSER_EVENTS, buildServerEvent, mapEventName, normalizeCurrency, pars
 import type { Ctx } from '../context.js';
 import { enqueueCapi } from '../capi/outbox.js';
 import { sha256Hex } from '../lib/crypto.js';
-import { rememberIdentity } from '../tracking/identity.js';
+import { findIdentity, rememberIdentity } from '../tracking/identity.js';
 
 /**
  * Coleta de eventos do NAVEGADOR (porta de api/track.php) + resolução de pixel por produto.
@@ -15,7 +15,7 @@ import { rememberIdentity } from '../tracking/identity.js';
  */
 
 interface PixelRow {
-  id: string; org_id: string; meta_pixel_id: string; currency: string; active: boolean;
+  id: string; org_id: string; meta_pixel_id: string; currency: string; country: string | null; active: boolean;
   capi_token_enc: string | null; allowed_origins: string[];
 }
 
@@ -48,7 +48,7 @@ const str = (v: unknown, n = 500): string | null => (typeof v === 'string' && v.
 
 export function collectRoutes(app: FastifyInstance, ctx: Ctx) {
   async function pixelByKey(key: string, legacyToken: string): Promise<PixelRow | null> {
-    const cols = 'p.id, p.org_id, p.meta_pixel_id, p.currency, p.active, p.capi_token_enc, p.allowed_origins';
+    const cols = 'p.id, p.org_id, p.meta_pixel_id, p.currency, p.country, p.active, p.capi_token_enc, p.allowed_origins';
     if (key && !key.startsWith('itk_')) {
       const r = await ctx.db.query(`SELECT ${cols} FROM pixels p WHERE p.public_key = $1`, [key]);
       return r.rows[0] ?? null;
@@ -106,14 +106,17 @@ export function collectRoutes(app: FastifyInstance, ctx: Ctx) {
       : [];
     const pageUrl = str(body.event_source_url, 1000) ?? str(req.headers.referer, 1000);
 
+    // visitante que volta: completa com o que ele já deixou antes (fbp/fbc de outra página, e-mail digitado no checkout)
+    const known = str(body.external_id, 100) ? await findIdentity(ctx.db, pixel.org_id, { xid: str(body.external_id, 100) }).catch(() => null) : null;
     const event = buildServerEvent({
       eventName, eventId, eventTime: Math.floor(ctx.now().getTime() / 1000), eventSourceUrl: pageUrl,
       customer: {
-        email: str(body.email, 190), phone: str(body.phone, 40), firstName: str(body.first_name, 80), lastName: str(body.last_name, 120),
+        email: str(body.email, 190) ?? known?.email_hash ?? null, phone: str(body.phone, 40), firstName: str(body.first_name, 80), lastName: str(body.last_name, 120),
         document: str(body.document, 30) ?? str(body.cpf, 30), externalId: str(body.external_id, 100),
-        city: str(body.city, 80), state: str(body.state, 80), zip: str(body.zip, 20), country: str(body.country, 2) ?? countryHeader ?? null,
+        city: str(body.city, 80), state: str(body.state, 80), zip: str(body.zip, 20),
+        country: str(body.country, 2) ?? countryHeader ?? known?.country ?? pixel.country?.trim() ?? null,
       },
-      tracking: { fbp: str(body.fbp, 255), fbc: str(body.fbc, 255), clientIp: req.ip, userAgent: ua },
+      tracking: { fbp: str(body.fbp, 255) ?? known?.fbp ?? null, fbc: str(body.fbc, 255) ?? known?.fbc ?? null, clientIp: req.ip, userAgent: ua },
       valueMinor, currency, products, utms,
     });
 

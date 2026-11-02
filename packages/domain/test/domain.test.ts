@@ -4,7 +4,7 @@ import {
   backoffDelayMs, buildServerEvent, canTransition, canonicalDecimal, classifyCapiResponse, classifyGenericStatus,
   convertMinor, convertWithQuote, crossRate, formatMoney, isPublicIp, isPurchaseTransition, mapEventName,
   matchUtmToRow, minorToDecimalString, parseAmount, parseTrackingCode, previousWindow, reportWindow, resolveStatus,
-  localMidnightUtc,
+  localMidnightUtc, normPhone, normPhoneE164,
 } from '../src/index.js';
 
 describe('money — cenário 14/15 (conversão, formatação, nulos, limites, arredondamento)', () => {
@@ -222,5 +222,24 @@ describe('períodos novos', () => {
     expect([lm.since, lm.until]).toEqual(['2026-10-01', '2026-10-31']);
     const jan = reportWindow('last_month', 'America/Sao_Paulo', { now: new Date('2027-01-10T15:00:00Z') });
     expect([jan.since, jan.until]).toEqual(['2026-12-01', '2026-12-31']);
+  });
+});
+
+describe('telefone para a Meta: sempre com o código do país (E.164)', () => {
+  it.each([
+    ['11999990000', null, '5511999990000'],          // Hotmart/Kiwify: sem 55
+    ['(11) 99999-0000', 'BR', '5511999990000'],
+    ['011 99999-0000', 'BR', '5511999990000'],       // zero de tronco
+    ['5511999990000', null, '5511999990000'],        // já com 55
+    ['+55 11 99999-0000', null, '5511999990000'],
+    ['1133334444', 'BR', '551133334444'],            // fixo
+    ['912345678', 'PT', '351912345678'],             // Portugal sem DDI
+    ['+351 912 345 678', null, '351912345678'],
+    ['0044 7700 900123', null, '447700900123'],
+    ['123', 'BR', null],
+  ])('%s (%s) → %s', (raw, country, e164) => expect(normPhoneE164(raw, country)).toBe(e164));
+  it('o hash enviado é do número com DDI', async () => {
+    const { sha256 } = await import('../src/meta-normalize.js');
+    expect(normPhone('11999990000')).toBe(sha256('5511999990000'));
   });
 });

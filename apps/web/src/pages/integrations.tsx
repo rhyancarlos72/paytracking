@@ -22,10 +22,10 @@ interface Revealed { url: string; token: string; provider: string; secret?: stri
 
 const HELP: Record<string, string> = {
   checkout: 'Use o paytracking.php gerado aqui: arquivo independente (convive com o paytrack_dispatch.php antigo), que envia o PIX gerado e o pagamento aprovado com token e assinatura HMAC-SHA256.',
-  kiwify: 'Kiwify → Apps → Webhooks → Adicionar. Cole a URL e copie o "Token" do webhook para o campo segredo.',
-  cakto: 'Cakto → Integrações → Webhooks. Cole a URL e use o mesmo "secret" aqui.',
-  kirvano: 'Kirvano → Integrações → Webhooks. Cole a URL e use o mesmo token (enviado em security-token).',
-  hotmart: 'Hotmart → Ferramentas → Webhook (versão 2.0). Selecione compra aprovada, completa, reembolso, chargeback e cancelamento. Cole o Hottok no segredo.',
+  kiwify: 'Kiwify → Apps → Webhooks → Adicionar. Cole a URL e copie o "Token" do webhook para o campo segredo. Para a Meta não contar a compra duas vezes: não cadastre este mesmo pixel no campo de Pixel do Facebook do gateway (o PayTracking já envia o Purchase pela API, com os dados do clique no anúncio).',
+  cakto: 'Cakto → Integrações → Webhooks. Cole a URL e use o mesmo "secret" aqui. Para a Meta não contar a compra duas vezes: não cadastre este mesmo pixel no campo de Pixel do Facebook do gateway (o PayTracking já envia o Purchase pela API, com os dados do clique no anúncio).',
+  kirvano: 'Kirvano → Integrações → Webhooks. Cole a URL e use o mesmo token (enviado em security-token). Para a Meta não contar a compra duas vezes: não cadastre este mesmo pixel no campo de Pixel do Facebook do gateway (o PayTracking já envia o Purchase pela API, com os dados do clique no anúncio).',
+  hotmart: 'Hotmart → Ferramentas → Webhook (versão 2.0). Selecione compra aprovada, completa, reembolso, chargeback e cancelamento. Cole o Hottok no segredo. Para a Meta não contar a compra duas vezes: não cadastre este mesmo pixel no campo de Pixel do Facebook do gateway (o PayTracking já envia o Purchase pela API, com os dados do clique no anúncio).',
   lowify: 'Lowify → Integrações → Webhooks. A URL já autentica. Confira a unidade do valor (reais ou centavos) com um pagamento de teste.',
   wiapay: 'Wiapay → Configurações → Webhooks. A URL já autentica. Confira a unidade do valor com um pagamento de teste.',
 };

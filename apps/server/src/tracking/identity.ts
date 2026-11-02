@@ -75,6 +75,8 @@ export async function rememberIdentity(c: Q, orgId: string, i: IdentityInput): P
 
 export interface Identity {
   xid: string;
+  /** sha256(e-mail minúsculo) — mesmo formato do "em" da Meta */
+  email_hash?: string | null;
   fbp: string | null;
   fbc: string | null;
   client_ip: string | null;
@@ -88,7 +90,7 @@ export interface Identity {
 export async function findIdentity(
   c: Q, orgId: string, keys: { xid?: string | null; email?: string | null; phone?: string | null },
 ): Promise<Identity | null> {
-  const cols = `xid, fbp, fbc, host(client_ip) AS client_ip, user_agent, country, source_url,
+  const cols = `xid, fbp, fbc, host(client_ip) AS client_ip, user_agent, country, source_url, email_hash,
                 utm_source, utm_medium, utm_campaign, utm_content, utm_term, utm_id`;
   if (keys.xid) {
     const r = await c.query(

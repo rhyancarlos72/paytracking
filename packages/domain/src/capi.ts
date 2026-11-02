@@ -79,7 +79,7 @@ export function buildServerEvent(input: BuildEventInput): MetaServerEvent {
     if (v) user[k] = [v];
   };
   put('em', normEmail(c.email));
-  put('ph', normPhone(c.phone));
+  put('ph', normPhone(c.phone, c.country));
   put('fn', normName(c.firstName));
   put('ln', normName(c.lastName));
   put('ct', normCity(c.city));

@@ -93494,7 +93494,53 @@ var removeAccents = (s) => s.replace(/[áàãâäéèêëíìîïóòõôöúù�
 var clean = (v) => typeof v === "string" ? v.trim() : v == null ? "" : String(v).trim();
 var hashed = (v) => v === "" ? null : isHash(v) ? v.toLowerCase() : sha256(v);
 var normEmail = (v) => hashed(clean(v).toLowerCase());
-var normPhone = (v) => hashed(clean(v).replace(/\D+/g, ""));
+var DDI = {
+  br: "55",
+  pt: "351",
+  us: "1",
+  ca: "1",
+  es: "34",
+  mx: "52",
+  ar: "54",
+  co: "57",
+  cl: "56",
+  pe: "51",
+  uy: "598",
+  py: "595",
+  bo: "591",
+  ec: "593",
+  it: "39",
+  fr: "33",
+  de: "49",
+  gb: "44",
+  ie: "353",
+  ch: "41",
+  ao: "244",
+  mz: "258"
+};
+var looksBrazilian = (d) => /^[1-9][1-9](9\d{8}|[2-5]\d{7})$/.test(d);
+function normPhoneE164(v, country) {
+  const raw = clean(v);
+  if (!raw) return null;
+  if (isHash(raw)) return raw.toLowerCase();
+  let d = raw.replace(/\D+/g, "");
+  if (!d) return null;
+  if (raw.startsWith("+")) return d.length >= 8 ? d : null;
+  if (d.startsWith("00")) return d.slice(2).length >= 8 ? d.slice(2) : null;
+  const cc = clean(country).toLowerCase().slice(0, 2);
+  const ddi = DDI[cc];
+  d = d.replace(/^0+/, "");
+  if (cc === "br" || !cc && looksBrazilian(d)) {
+    if (/^55[1-9][1-9]\d{8,9}$/.test(d)) return d;
+    return looksBrazilian(d) ? `55${d}` : d.length >= 8 ? d : null;
+  }
+  if (ddi && !d.startsWith(ddi)) return `${ddi}${d}`;
+  return d.length >= 8 ? d : null;
+}
+var normPhone = (v, country) => {
+  const e = normPhoneE164(v, country);
+  return e ? isHash(e) ? e : sha256(e) : null;
+};
 var normName = (v) => hashed(clean(v).toLowerCase());
 var normCity = (v) => hashed(removeAccents(clean(v).toLowerCase()).replace(/[^a-z]/g, ""));
 var normState = normCity;
@@ -93549,7 +93595,7 @@ function buildServerEvent(input2) {
     if (v) user[k] = [v];
   };
   put2("em", normEmail(c.email));
-  put2("ph", normPhone(c.phone));
+  put2("ph", normPhone(c.phone, c.country));
   put2("fn", normName(c.firstName));
   put2("ln", normName(c.lastName));
   put2("ct", normCity(c.city));
@@ -95394,7 +95440,7 @@ async function rememberIdentity(c, orgId, i) {
   );
 }
 async function findIdentity(c, orgId, keys) {
-  const cols = `xid, fbp, fbc, host(client_ip) AS client_ip, user_agent, country, source_url,
+  const cols = `xid, fbp, fbc, host(client_ip) AS client_ip, user_agent, country, source_url, email_hash,
                 utm_source, utm_medium, utm_campaign, utm_content, utm_term, utm_id`;
   if (keys.xid) {
     const r = await c.query(
@@ -95655,12 +95701,12 @@ async function applyPayment(ctx, c, integration, n, productIds, rb, ms) {
       });
     } else if (payment.purchase_capi_status) {
     } else {
-      const event = await buildPaymentEvent(c, orgId, n, "Purchase", purchaseEventId(n), amountMinor, currency, at, ctx.now());
+      const event = await buildPaymentEvent(c, orgId, n, "Purchase", purchaseEventId(n), amountMinor, currency, at, ctx.now(), effectivePixel.id);
       await c.query("UPDATE payments SET purchase_event_id = $2 WHERE id = $1", [payment.id, event.event_id]);
       if (integration.send_to_meta) queued = await enqueueCapi(c, { orgId, pixelId: effectivePixel.id, event, paymentId: payment.id, correlationId: rb.correlationId }) !== null;
     }
   } else if (isReversal(to) && from === "approved" && effectivePixel?.send_refund_event) {
-    const event = await buildPaymentEvent(c, orgId, n, "Refund", refundEventId(n), null, null, at, ctx.now());
+    const event = await buildPaymentEvent(c, orgId, n, "Refund", refundEventId(n), null, null, at, ctx.now(), effectivePixel.id);
     if (integration.send_to_meta) queued = await enqueueCapi(c, { orgId, pixelId: effectivePixel.id, event, paymentId: payment.id, correlationId: rb.correlationId }) !== null;
   }
   return {
@@ -95668,9 +95714,10 @@ async function applyPayment(ctx, c, integration, n, productIds, rb, ms) {
     response: { processed: true, paymentId: payment.id, status: to, previousStatus: from, queued, ...integration.send_to_meta ? {} : { shadow: true }, eventName: queued ? to === "approved" ? "Purchase" : "Refund" : null }
   };
 }
-async function buildPaymentEvent(c, orgId, n, eventName, eventId, amountMinor, currency, at, now) {
+async function buildPaymentEvent(c, orgId, n, eventName, eventId, amountMinor, currency, at, now, pixelId) {
   const t = n.tracking;
   const identity = await findIdentity(c, orgId, { xid: t.externalId ?? n.customer.externalId, email: n.customer.email, phone: n.customer.phone });
+  const pixelCountry = (await c.query("SELECT country FROM pixels WHERE id = $1", [pixelId])).rows[0]?.country?.trim() ?? null;
   const nowS = Math.floor(now.getTime() / 1e3);
   const atS = Math.floor(at.getTime() / 1e3);
   const eventTime = atS > nowS || nowS - atS > MAX_EVENT_AGE_S ? nowS : atS;
@@ -95681,7 +95728,13 @@ async function buildPaymentEvent(c, orgId, n, eventName, eventId, amountMinor, c
     eventId,
     eventTime,
     eventSourceUrl: t.eventSourceUrl ?? identity?.source_url ?? null,
-    customer: { ...n.customer, externalId: xid3, country: n.customer.country ?? identity?.country ?? null },
+    customer: {
+      ...n.customer,
+      externalId: xid3,
+      country: n.customer.country ?? identity?.country ?? pixelCountry,
+      // e-mail que o próprio comprador digitou na página (já em hash) quando o gateway não manda
+      email: n.customer.email ?? identity?.email_hash ?? null
+    },
     // IP/UA só do navegador do comprador — nunca do gateway (legado: P-37/BUGFIX)
     tracking: { fbp: t.fbp ?? identity?.fbp, fbc: t.fbc ?? identity?.fbc, clientIp: t.clientIp ?? identity?.client_ip, userAgent: t.userAgent ?? identity?.user_agent },
     valueMinor: amountMinor,
@@ -95700,7 +95753,7 @@ async function ingestServerEvent(ctx, integration, n, productIds, rb, ms) {
       return { httpStatus: 200, body: { success: true, queued: false, ignored: true, reason: "no pixel resolved", correlationId: rb.correlationId } };
     }
     const eventId = n.eventId ?? n.transactionId ?? `srv_${sha256(rb.bodySha + n.eventName).slice(0, 32)}`;
-    const event = await buildPaymentEvent(c, orgId, n, n.eventName, eventId, n.amountMinor, n.currency, ctx.now(), ctx.now());
+    const event = await buildPaymentEvent(c, orgId, n, n.eventName, eventId, n.amountMinor, n.currency, ctx.now(), ctx.now(), pixel.id);
     const te = await c.query(
       `INSERT INTO tracking_events(org_id, pixel_id, event_name, event_id, source, value_minor, currency, match_keys)
        VALUES ($1,$2,$3,$4,'server',$5,$6,$7) ON CONFLICT (pixel_id, event_name, event_id) DO NOTHING RETURNING id`,
@@ -95781,7 +95834,7 @@ function cors(req, reply) {
 var str = (v, n = 500) => typeof v === "string" && v.trim() ? v.trim().slice(0, n) : typeof v === "number" ? String(v) : null;
 function collectRoutes(app, ctx) {
   async function pixelByKey(key, legacyToken) {
-    const cols = "p.id, p.org_id, p.meta_pixel_id, p.currency, p.active, p.capi_token_enc, p.allowed_origins";
+    const cols = "p.id, p.org_id, p.meta_pixel_id, p.currency, p.country, p.active, p.capi_token_enc, p.allowed_origins";
     if (key && !key.startsWith("itk_")) {
       const r2 = await ctx.db.query(`SELECT ${cols} FROM pixels p WHERE p.public_key = $1`, [key]);
       return r2.rows[0] ?? null;
@@ -95838,13 +95891,14 @@ function collectRoutes(app, ctx) {
       priceMinor: currency ? parseAmount(p?.price, currency, "major") : null
     })) : [];
     const pageUrl = str(body.event_source_url, 1e3) ?? str(req.headers.referer, 1e3);
+    const known = str(body.external_id, 100) ? await findIdentity(ctx.db, pixel.org_id, { xid: str(body.external_id, 100) }).catch(() => null) : null;
     const event = buildServerEvent({
       eventName,
       eventId,
       eventTime: Math.floor(ctx.now().getTime() / 1e3),
       eventSourceUrl: pageUrl,
       customer: {
-        email: str(body.email, 190),
+        email: str(body.email, 190) ?? known?.email_hash ?? null,
         phone: str(body.phone, 40),
         firstName: str(body.first_name, 80),
         lastName: str(body.last_name, 120),
@@ -95853,9 +95907,9 @@ function collectRoutes(app, ctx) {
         city: str(body.city, 80),
         state: str(body.state, 80),
         zip: str(body.zip, 20),
-        country: str(body.country, 2) ?? countryHeader ?? null
+        country: str(body.country, 2) ?? countryHeader ?? known?.country ?? pixel.country?.trim() ?? null
       },
-      tracking: { fbp: str(body.fbp, 255), fbc: str(body.fbc, 255), clientIp: req.ip, userAgent: ua },
+      tracking: { fbp: str(body.fbp, 255) ?? known?.fbp ?? null, fbc: str(body.fbc, 255) ?? known?.fbc ?? null, clientIp: req.ip, userAgent: ua },
       valueMinor,
       currency,
       products,

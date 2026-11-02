@@ -317,13 +317,13 @@ async function applyPayment(
     } else if (payment.purchase_capi_status) {
       // Purchase desta venda já foi entregue (o registro da fila foi limpo depois de 6 dias): nunca reenvia
     } else {
-      const event = await buildPaymentEvent(c, orgId, n, 'Purchase', purchaseEventId(n), amountMinor, currency, at, ctx.now());
+      const event = await buildPaymentEvent(c, orgId, n, 'Purchase', purchaseEventId(n), amountMinor, currency, at, ctx.now(), effectivePixel.id);
       await c.query('UPDATE payments SET purchase_event_id = $2 WHERE id = $1', [payment.id, event.event_id]);
       if (integration.send_to_meta) queued = (await enqueueCapi(c, { orgId, pixelId: effectivePixel.id, event, paymentId: payment.id, correlationId: rb.correlationId })) !== null;
     }
   } else if (isReversal(to) && from === 'approved' && effectivePixel?.send_refund_event) {
     // comportamento legado: evento customizado "Refund" (sem valor); o faturamento é abatido em payments
-    const event = await buildPaymentEvent(c, orgId, n, 'Refund', refundEventId(n), null, null, at, ctx.now());
+    const event = await buildPaymentEvent(c, orgId, n, 'Refund', refundEventId(n), null, null, at, ctx.now(), effectivePixel.id);
     if (integration.send_to_meta) queued = (await enqueueCapi(c, { orgId, pixelId: effectivePixel.id, event, paymentId: payment.id, correlationId: rb.correlationId })) !== null;
   }
 
@@ -336,10 +336,12 @@ async function applyPayment(
 async function buildPaymentEvent(
   c: { query: PoolClient['query'] }, orgId: string, n: NormalizedPayment | NormalizedServerEvent,
   eventName: 'Purchase' | 'Refund' | NormalizedServerEvent['eventName'], eventId: string,
-  amountMinor: bigint | null, currency: string | null, at: Date, now: Date,
+  amountMinor: bigint | null, currency: string | null, at: Date, now: Date, pixelId: string,
 ) {
   const t = n.tracking;
   const identity = await findIdentity(c, orgId, { xid: t.externalId ?? n.customer.externalId, email: n.customer.email, phone: n.customer.phone });
+  // país: do comprador → do navegador dele → o do pixel (todo pixel tem país; sem ele o telefone fica sem DDI)
+  const pixelCountry = (await c.query('SELECT country FROM pixels WHERE id = $1', [pixelId])).rows[0]?.country?.trim() ?? null;
   const nowS = Math.floor(now.getTime() / 1000);
   const atS = Math.floor(at.getTime() / 1000);
   const eventTime = atS > nowS || nowS - atS > MAX_EVENT_AGE_S ? nowS : atS;
@@ -351,7 +353,11 @@ async function buildPaymentEvent(
     eventId,
     eventTime,
     eventSourceUrl: t.eventSourceUrl ?? identity?.source_url ?? null,
-    customer: { ...n.customer, externalId: xid, country: n.customer.country ?? identity?.country ?? null },
+    customer: {
+      ...n.customer, externalId: xid, country: n.customer.country ?? identity?.country ?? pixelCountry,
+      // e-mail que o próprio comprador digitou na página (já em hash) quando o gateway não manda
+      email: n.customer.email ?? identity?.email_hash ?? null,
+    },
     // IP/UA só do navegador do comprador — nunca do gateway (legado: P-37/BUGFIX)
     tracking: { fbp: t.fbp ?? identity?.fbp, fbc: t.fbc ?? identity?.fbc, clientIp: t.clientIp ?? identity?.client_ip, userAgent: t.userAgent ?? identity?.user_agent },
     valueMinor: amountMinor,
@@ -374,7 +380,7 @@ async function ingestServerEvent(
       return { httpStatus: 200, body: { success: true, queued: false, ignored: true, reason: 'no pixel resolved', correlationId: rb.correlationId } };
     }
     const eventId = n.eventId ?? n.transactionId ?? `srv_${sha256(rb.bodySha + n.eventName).slice(0, 32)}`;
-    const event = await buildPaymentEvent(c, orgId, n, n.eventName, eventId, n.amountMinor, n.currency, ctx.now(), ctx.now());
+    const event = await buildPaymentEvent(c, orgId, n, n.eventName, eventId, n.amountMinor, n.currency, ctx.now(), ctx.now(), pixel.id);
     const te = await c.query(
       `INSERT INTO tracking_events(org_id, pixel_id, event_name, event_id, source, value_minor, currency, match_keys)
        VALUES ($1,$2,$3,$4,'server',$5,$6,$7) ON CONFLICT (pixel_id, event_name, event_id) DO NOTHING RETURNING id`,
