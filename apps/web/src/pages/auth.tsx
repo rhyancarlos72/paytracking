@@ -8,6 +8,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { Button, Callout, Field, Input, Spinner } from '../components/ui';
 import { Logo } from '../components/logo';
+import { SecurityVisual, TrustBadges } from '../components/auth-visual';
 import { get, post } from '../lib/api';
 import { useMe } from '../lib/session';
 import { platformPixelLoaded, storedUtms, usePlatformPixel } from '../lib/platform-pixel';
@@ -15,44 +16,11 @@ import { platformPixelLoaded, storedUtms, usePlatformPixel } from '../lib/platfo
 const password = z.string().min(10, 'Mínimo de 10 caracteres').max(200)
   .regex(/[A-Z]/, 'Inclua uma letra maiúscula').regex(/[a-z]/, 'Inclua uma letra minúscula').regex(/\d/, 'Inclua um número');
 
-function PreviewCards() {
-  // composição ilustrativa do produto (decorativa: aria-hidden, valores de exemplo)
-  return (
-    <div className="relative mx-auto mt-12 h-[300px] w-full max-w-[440px]" aria-hidden>
-      <div className="absolute left-0 top-4 w-[300px] animate-float rounded-2xl border border-white/10 bg-white/[0.06] p-4 shadow-2xl backdrop-blur-xl">
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-400/15 text-emerald-300"><CheckCircle2 className="h-5 w-5" /></span>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-white">Venda aprovada</p>
-            <p className="text-xs text-white/60">Checkout próprio · PIX</p>
-          </div>
-          <p className="text-sm font-semibold text-white">R$ 197,00</p>
-        </div>
-        <div className="mt-3 flex items-center gap-2 rounded-xl bg-white/[0.06] px-3 py-2 text-xs text-white/75">
-          <Zap className="h-3.5 w-3.5 text-blue-300" />Purchase entregue à Meta em 0,8 s
-        </div>
-      </div>
-      <div className="absolute right-0 top-28 w-[250px] animate-float rounded-2xl border border-white/10 bg-white/[0.06] p-4 shadow-2xl backdrop-blur-xl [animation-delay:-2s]">
-        <p className="text-xs text-white/60">Receita confirmada · 30 dias</p>
-        <p className="mt-1 text-xl font-semibold text-white">R$ 48.920</p>
-        <svg viewBox="0 0 200 50" className="mt-2 h-12 w-full">
-          <defs><linearGradient id="authg" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#60a5fa" stopOpacity=".45" /><stop offset="100%" stopColor="#60a5fa" stopOpacity="0" /></linearGradient></defs>
-          <path d="M0,42 C20,40 30,30 50,32 C70,34 80,20 100,22 C120,24 130,12 150,14 C170,16 180,6 200,4 L200,50 L0,50 Z" fill="url(#authg)" />
-          <path d="M0,42 C20,40 30,30 50,32 C70,34 80,20 100,22 C120,24 130,12 150,14 C170,16 180,6 200,4" fill="none" stroke="#a78bfa" strokeWidth="2.5" strokeLinecap="round" />
-        </svg>
-      </div>
-      <div className="absolute bottom-0 left-10 animate-float rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-xs text-white/80 shadow-xl backdrop-blur-xl [animation-delay:-4s]">
-        <span className="mr-2 inline-block h-2 w-2 rounded-full bg-emerald-400" />Pixel + CAPI deduplicados pelo mesmo event_id
-      </div>
-    </div>
-  );
-}
-
 function AuthLayout({ title, subtitle, children }: { title: string; subtitle?: ReactNode; children: ReactNode }) {
   useEffect(() => { document.title = `${title} · PayTracking`; }, [title]);
   return (
     <div className="grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
-      <aside className="relative hidden overflow-hidden bg-[#07060f] p-12 text-white lg:flex lg:flex-col lg:justify-between">
+      <aside className="relative hidden overflow-hidden bg-[#050915] px-12 py-10 text-white lg:flex lg:flex-col lg:justify-between lg:gap-6">
         <div className="pointer-events-none absolute -left-32 -top-32 h-[480px] w-[480px] animate-drift rounded-full bg-[#2563eb]/35 blur-[120px]" aria-hidden />
         <div className="pointer-events-none absolute -bottom-40 -right-20 h-[420px] w-[420px] animate-drift rounded-full bg-cyan-400/15 blur-[120px] [animation-delay:-7s]" aria-hidden />
         <div className="grid-fade opacity-60 [--fg:255_255_255]" aria-hidden />
@@ -60,27 +28,33 @@ function AuthLayout({ title, subtitle, children }: { title: string; subtitle?: R
           <Logo onDark glow markClassName="h-10 w-10" textClassName="text-[21px]" />
         </Link>
         <div className="relative">
-          <h2 className="max-w-lg text-[38px] font-semibold leading-[1.1] tracking-tight">
-            Cada venda confirmada, <span className="bg-gradient-to-r from-blue-300 via-sky-200 to-cyan-200 bg-clip-text text-transparent">atribuída e entregue à Meta.</span>
+          <p className="inline-flex items-center gap-2 rounded-full border border-sky-300/25 bg-sky-400/10 px-3 py-1 text-xs font-semibold text-sky-200">
+            <ShieldCheck className="h-3.5 w-3.5" aria-hidden />Ambiente protegido de ponta a ponta
+          </p>
+          <h2 className="mt-4 max-w-lg text-[32px] font-semibold leading-[1.1] tracking-tight xl:text-[36px]">
+            Vendas rastreadas com <span className="bg-gradient-to-r from-blue-300 via-sky-200 to-cyan-200 bg-clip-text text-transparent">tecnologia e segurança de verdade.</span>
           </h2>
-          <ul className="mt-7 grid max-w-lg gap-3 text-[15px] text-white/75">
-            <li className="flex gap-3"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-blue-300" />Purchase só com pagamento aprovado pelo gateway.</li>
-            <li className="flex gap-3"><Zap className="mt-0.5 h-5 w-5 shrink-0 text-blue-300" />Pixel + Conversions API sem duplicidade.</li>
-            <li className="flex gap-3"><LineChart className="mt-0.5 h-5 w-5 shrink-0 text-blue-300" />Receita, investimento e ROAS reais, em uma moeda só.</li>
-          </ul>
-          <PreviewCards />
+          <p className="mt-3 max-w-md text-[14px] leading-relaxed text-white/65">Cada webhook é verificado, cada dado sensível é cifrado e só venda aprovada vira Purchase na Meta.</p>
+          <div className="mt-6"><SecurityVisual /></div>
         </div>
-        <p className="relative text-xs text-white/60">Dados protegidos com criptografia em trânsito e em repouso.</p>
+        <TrustBadges className="relative" />
       </aside>
       <main className="relative flex items-center justify-center overflow-hidden px-4 py-12 sm:px-8">
         <div className="aurora" aria-hidden />
-        <div className="w-full max-w-[420px] animate-slide-up">
+        <div className="w-full max-w-[440px] animate-slide-up">
           <Link to="/conheca" className="mb-10 flex w-fit items-center gap-2.5 lg:hidden">
             <Logo markClassName="h-10 w-10" textClassName="text-[21px]" />
           </Link>
+          <div className="relative lg:rounded-[26px] lg:border lg:border-border lg:bg-surface/70 lg:p-9 lg:shadow-pop lg:backdrop-blur-xl">
+          <span className="pointer-events-none absolute inset-x-10 top-0 hidden h-px bg-gradient-to-r from-transparent via-[#60a5fa] to-transparent lg:block" aria-hidden />
+          <span className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-inset ring-primary/20" aria-hidden><ShieldCheck className="h-6 w-6" /></span>
           <h1 className="text-[30px] font-semibold leading-tight">{title}</h1>
           {subtitle && <p className="mt-2 text-[15px] text-muted">{subtitle}</p>}
           <div className="mt-8">{children}</div>
+          </div>
+          <p className="mt-8 flex items-center justify-center gap-2 text-xs text-subtle">
+            <Lock className="h-3.5 w-3.5" aria-hidden />Conexão criptografada (HTTPS) · verificação em duas etapas disponível
+          </p>
         </div>
       </main>
     </div>

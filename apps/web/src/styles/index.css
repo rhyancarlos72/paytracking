@@ -186,3 +186,9 @@
   .no-scrollbar { scrollbar-width: none; }
   .no-scrollbar::-webkit-scrollbar { display: none; }
 }
+
+/* ilustração da tela de login (auth-visual.tsx) */
+@keyframes sv-flow { from { stroke-dashoffset: 126; } to { stroke-dashoffset: 0; } }
+@keyframes sv-pulse { 0% { transform: scale(0.9); opacity: 0.55; } 100% { transform: scale(2.3); opacity: 0; } }
+@keyframes sv-line { 0%, 4% { opacity: 0; transform: translateY(4px); } 10%, 82% { opacity: 1; transform: none; } 92%, 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { [class*="sv-line"] { opacity: 1 !important; } }
