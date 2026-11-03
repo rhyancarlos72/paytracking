@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { MessageCircle } from 'lucide-react';
+import { useSupport, whatsappUrl, WhatsAppIcon } from '../components/support';
 import { Navigate } from 'react-router-dom';
 import { PageHeader } from '../components/shell';
 import { useToast } from '../components/toast';
 import { Badge, Button, Callout, Card, CodeBlock, ErrorState, Input, Select, Skeleton, STATUS_TONE } from '../components/ui';
-import { del, get, post, qs } from '../lib/api';
+import { del, get, post, put, qs } from '../lib/api';
 import { dateTime, int, money } from '../lib/format';
 import { useSession } from '../lib/session';
 
@@ -34,6 +36,7 @@ export default function AdminPage() {
             else toast.err(new Error(r.error ?? 'Falha no envio'), `Falha no envio por ${via}`);
           } catch (e) { toast.err(e); }
         }}>Testar e-mail</Button>} />
+      <SupportSettings />
       <div className="mb-6 grid gap-4 sm:grid-cols-3 xl:grid-cols-6">
         {[['Organizações', overview.data?.orgs], ['Ativas', overview.data?.active], ['Em teste', overview.data?.trial], ['Expiradas', overview.data?.expired], ['Isentas', overview.data?.exempt]].map(([l, v]) => (
           <div key={l as string} className="card p-4"><p className="text-[13px] text-muted">{l}</p><p className="num mt-1 text-xl font-semibold">{int(v as number)}</p></div>
@@ -105,6 +108,39 @@ function GoogleSetup() {
             <li><b className="text-fg">Página “403” ou “Requisição bloqueada” da hospedagem ao voltar do Google</b>: o firewall da hospedagem (ModSecurity/Imunify) barrou o retorno, que traz endereços do Google na URL. Libere a rota /v1/auth/google/callback no painel da hospedagem (Segurança/ModSecurity) ou peça ao suporte.</li>
           </ul>
         </details>
+      </div>
+    </Card>
+  );
+}
+
+/** Número do WhatsApp de suporte (botão verde no painel e na página de vendas). */
+function SupportSettings() {
+  const q = useSupport();
+  const qc = useQueryClient();
+  const toast = useToast();
+  const [v, setV] = useState({ whatsapp: '', message: '' });
+  useEffect(() => { if (q.data) setV({ whatsapp: q.data.whatsapp ? `+${q.data.whatsapp}` : '', message: q.data.message }); }, [q.data]);
+  const save = useMutation({
+    mutationFn: () => put<{ whatsapp: string | null; message: string }>('/v1/admin/support', v),
+    onSuccess: (r) => { qc.setQueryData(['support'], r); toast.ok(r.whatsapp ? 'WhatsApp de suporte salvo' : 'Botão de suporte desligado', r.whatsapp ? `O botão verde já aparece para todos (+${r.whatsapp}).` : undefined); },
+    onError: (e) => toast.err(e),
+  });
+  return (
+    <Card className="mb-6" icon={<MessageCircle />} title="Suporte pelo WhatsApp"
+      description="Número que aparece no botão verde do painel e da página de vendas. Deixe vazio para esconder o botão."
+      footer={<>
+        {q.data?.whatsapp && <a href={whatsappUrl(q.data.whatsapp, q.data.message)} target="_blank" rel="noopener noreferrer" className="inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-[#128c4a] hover:bg-surface-2 dark:text-[#25d366]"><WhatsAppIcon className="h-4 w-4" />Testar link</a>}
+        <Button variant="primary" loading={save.isPending} onClick={() => save.mutate()}>Salvar</Button>
+      </>}>
+      <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+        <label className="block"><span className="label">Seu WhatsApp</span>
+          <Input inputMode="tel" placeholder="(11) 99999-0000" value={v.whatsapp} onChange={(e) => setV({ ...v, whatsapp: e.target.value })} />
+          <span className="hint">DDD + número. Outro país: comece com +DDI.</span>
+        </label>
+        <label className="block"><span className="label">Mensagem que já vem escrita</span>
+          <Input maxLength={300} value={v.message} onChange={(e) => setV({ ...v, message: e.target.value })} />
+          <span className="hint">No painel, o nome da pessoa e da loja entram logo abaixo, para você saber quem está chamando.</span>
+        </label>
       </div>
     </Card>
   );

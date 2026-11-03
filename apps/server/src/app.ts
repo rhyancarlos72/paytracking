@@ -26,6 +26,7 @@ import { pushRoutes } from './notifications/routes.js';
 import { saleSoundRoutes } from './notifications/sound.js';
 import { legalRoutes } from './legal/pages.js';
 import { platformTrackingRoutes } from './platform/tracking.js';
+import { supportRoutes } from './support/routes.js';
 import { AppError } from './lib/errors.js';
 import { FLOOD_LIMITS, FloodGuard } from './lib/flood.js';
 import { SESSION_COOKIE } from './lib/http.js';
@@ -160,6 +161,7 @@ export async function buildApp(ctx: Ctx): Promise<FastifyInstance> {
   saleSoundRoutes(app, ctx);
   legalRoutes(app, ctx);
   platformTrackingRoutes(app, ctx);
+  supportRoutes(app, ctx);
 
   // Scripts do navegador (pixel.js e loaders), com cache curto e CORS aberto.
   // padrões relativos a apps/server/{src,dist}: funcionam sem configurar nada fora do Docker

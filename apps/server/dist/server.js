@@ -79292,6 +79292,8 @@ var schema = external_exports.object({
   PLATFORM_PIXEL_KEY: external_exports.string().default("pt_px_f342a0cca4cfa0ef45db"),
   PLATFORM_PIXEL_ID: external_exports.string().default("2215202246010798"),
   PLATFORM_PIXEL_BROWSER: external_exports.enum(["auto", "on", "off"]).default("auto"),
+  /** WhatsApp de suporte padrão (o Admin pode trocar pelo painel) */
+  SUPPORT_WHATSAPP: external_exports.string().default(""),
   WEBHOOK_BODY_RETENTION_DAYS: external_exports.coerce.number().int().min(1).default(30),
   /** resumo por hora dos eventos (sem dados pessoais) — base dos relatórios de períodos longos */
   TRACKING_RETENTION_DAYS: external_exports.coerce.number().int().min(7).default(180),
@@ -97870,6 +97872,35 @@ function legalRoutes(app, ctx) {
   for (const p of ["/termos", "/termos-de-uso", "/terms"]) app.get(p, send(termsHtml));
 }
 
+// src/support/routes.ts
+var DEFAULT_MESSAGE = "Ol\xE1! Preciso de ajuda com o PayTracking.";
+async function supportSettings(ctx) {
+  const r = await ctx.db.query(`SELECT key, value FROM app_settings WHERE key IN ('support_whatsapp', 'support_message')`);
+  const m = Object.fromEntries(r.rows.map((x) => [x.key, x.value]));
+  const whatsapp = m.support_whatsapp || normPhoneE164(ctx.config.SUPPORT_WHATSAPP, "BR") || null;
+  return { whatsapp, message: m.support_message || DEFAULT_MESSAGE };
+}
+function supportRoutes(app, ctx) {
+  app.get("/v1/public/support", async (_req, reply) => {
+    reply.header("Cache-Control", "no-cache");
+    return supportSettings(ctx);
+  });
+  app.put("/v1/admin/support", async (req) => {
+    const a = requirePlatformAdmin(req);
+    const b = parse5(external_exports.object({ whatsapp: external_exports.string().max(40), message: external_exports.string().max(300).optional() }), req.body);
+    const raw = b.whatsapp.trim();
+    const number4 = raw ? normPhoneE164(raw, "BR") : null;
+    if (raw && (!number4 || number4.length < 10 || number4.length > 15)) throw badRequest("N\xFAmero de WhatsApp inv\xE1lido. Use DDD + n\xFAmero (ex.: 11 99999-0000) ou +DDI para outro pa\xEDs.");
+    await ctx.db.query(
+      `INSERT INTO app_settings(key, value, updated_at) VALUES ('support_whatsapp', $1, now()), ('support_message', $2, now())
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+      [number4 ?? "", (b.message ?? "").trim()]
+    );
+    await ctx.db.query(`INSERT INTO audit_log(org_id, user_id, action, target) VALUES ($1, $2, 'platform.support_changed', 'whatsapp')`, [a.org.id, a.user.id]);
+    return supportSettings(ctx);
+  });
+}
+
 // src/lib/flood.ts
 var FloodGuard = class {
   constructor(windowMs = 6e4, maxKeys = 5e4) {
@@ -98027,6 +98058,7 @@ Canonical: ${ctx.config.APP_URL.replace(/\/$/, "")}/.well-known/security.txt
   saleSoundRoutes(app, ctx);
   legalRoutes(app, ctx);
   platformTrackingRoutes(app, ctx);
+  supportRoutes(app, ctx);
   const here2 = path4.dirname(fileURLToPath2(import.meta.url));
   const firstDir = (...dirs) => dirs.find((d) => existsSync2(d)) ?? dirs[dirs.length - 1];
   const pixelDir = ctx.config.PIXEL_DIST_DIR || firstDir(path4.join(here2, "pixel"), path4.resolve(here2, "../../../packages/pixel/dist"));

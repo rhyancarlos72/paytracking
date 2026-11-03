@@ -2,7 +2,7 @@ import clsx from 'clsx';
 import { Logo as BrandLogo, LogoMark } from './logo';
 import {
   Activity, BarChart3, BellRing, BookOpen, ChevronsUpDown, CreditCard, Eye, EyeOff, GitBranch, LayoutDashboard, LogOut, Megaphone, Menu, Moon,
-  Lock, Plug, Plus, QrCode, Receipt, Search, Settings, Shield, Sparkles, Stethoscope, Sun, Target, Trophy, X,
+  Lock, MessageCircle, Plug, Plus, QrCode, Receipt, Search, Settings, Shield, Sparkles, Stethoscope, Sun, Target, Trophy, X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
@@ -13,6 +13,7 @@ import { namesHidden as namesHiddenNow, setNamesHidden, useNamesHidden, useSyncH
 import { useLogout, useSession } from '../lib/session';
 import { CommandPalette, SHORTCUT, type Command } from './command';
 import { SoundUnlockButton, useSaleNotifier } from './sale-notifier';
+import { SupportButton, useSupport, whatsappUrl } from './support';
 import { Avatar, Button, Callout } from './ui';
 
 interface NavItem { to: string; label: string; icon: ReactNode; admin?: boolean; keywords?: string }
@@ -237,6 +238,7 @@ export function AppShell() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  const support = useSupport().data;
   const commands = useMemo<Command[]>(() => [
     ...NAV.flatMap((g) => g.items.filter((i) => !i.admin || s.user.isPlatformAdmin).map((i) => ({
       id: `nav:${i.to}`, label: i.label, group: 'Ir para', icon: i.icon, keywords: i.keywords, run: () => nav(i.to),
@@ -250,8 +252,10 @@ export function AppShell() {
     { id: 'act:awards', label: 'Premiações (placas de 100 mil, 500 mil e 1 milhão)', group: 'Ações', icon: <Trophy />, keywords: 'placa premio conquista awards faturamento', run: () => nav('/configuracoes?aba=premiacoes') },
     { id: 'act:2fa', label: 'Segurança da conta', group: 'Ações', icon: <Shield />, keywords: 'senha sessões duas etapas 2fa', run: () => nav('/configuracoes?aba=seguranca') },
     { id: 'act:theme', label: dark ? 'Usar tema claro' : 'Usar tema escuro', group: 'Ações', icon: dark ? <Sun /> : <Moon />, keywords: 'tema escuro claro dark light', run: toggle },
+    ...(support?.whatsapp ? [{ id: 'act:support', label: 'Falar com o suporte (WhatsApp)', group: 'Ações', icon: <MessageCircle />, keywords: 'ajuda duvida suporte whatsapp zap contato',
+      run: () => window.open(whatsappUrl(support.whatsapp!, `${support.message}\n\nSou ${s.user.name ?? 'cliente'}, da loja "${s.org.name}".`), '_blank', 'noopener') }] : []),
     { id: 'act:logout', label: 'Sair', group: 'Ações', icon: <LogOut />, keywords: 'logout encerrar', run: logout },
-  ], [s, dark, nav, toggle, logout]);
+  ], [s, dark, nav, toggle, logout, support]);
 
   return (
     <div className="min-h-screen lg:pl-[264px]">
@@ -297,6 +301,7 @@ export function AppShell() {
         {locked && !allowed ? <Paywall /> : <div key={loc.pathname} className="animate-slide-up"><Outlet /></div>}
       </main>
       <CommandPalette open={palette} onClose={() => setPalette(false)} commands={commands} />
+      <SupportButton context={`Sou ${s.user.name ?? 'cliente'}, da loja "${s.org.name}".`} />
     </div>
   );
 }

@@ -24612,6 +24612,8 @@ var schema = external_exports.object({
   PLATFORM_PIXEL_KEY: external_exports.string().default("pt_px_f342a0cca4cfa0ef45db"),
   PLATFORM_PIXEL_ID: external_exports.string().default("2215202246010798"),
   PLATFORM_PIXEL_BROWSER: external_exports.enum(["auto", "on", "off"]).default("auto"),
+  /** WhatsApp de suporte padrão (o Admin pode trocar pelo painel) */
+  SUPPORT_WHATSAPP: external_exports.string().default(""),
   WEBHOOK_BODY_RETENTION_DAYS: external_exports.coerce.number().int().min(1).default(30),
   /** resumo por hora dos eventos (sem dados pessoais) — base dos relatórios de períodos longos */
   TRACKING_RETENTION_DAYS: external_exports.coerce.number().int().min(7).default(180),

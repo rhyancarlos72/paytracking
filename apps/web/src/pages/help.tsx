@@ -1,5 +1,7 @@
 import { PageHeader } from '../components/shell';
+import { useSupport, whatsappUrl, WhatsAppIcon } from '../components/support';
 import { Card } from '../components/ui';
+import { useSession } from '../lib/session';
 
 const SECTIONS: Array<{ q: string; a: string[] }> = [
   { q: 'Como uma venda vira Purchase na Meta?', a: [
@@ -32,10 +34,24 @@ const SECTIONS: Array<{ q: string; a: string[] }> = [
 ];
 
 export default function HelpPage() {
+  const s = useSession();
+  const support = useSupport().data;
   return (
     <>
       <PageHeader title="Ajuda" description="Como o PayTracking funciona e como resolver os problemas mais comuns." />
       <div className="max-w-3xl space-y-3">
+        {support?.whatsapp && (
+          <section className="card flex flex-wrap items-center justify-between gap-4 p-5">
+            <div className="flex items-center gap-3.5">
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#25d366]/15 text-[#128c4a] ring-1 ring-inset ring-[#25d366]/30 dark:text-[#25d366]" aria-hidden><WhatsAppIcon className="h-6 w-6" /></span>
+              <div><h2 className="text-[17px] font-semibold">Ainda com dúvida?</h2><p className="text-[13px] text-muted">Fale direto com o suporte pelo WhatsApp.</p></div>
+            </div>
+            <a href={whatsappUrl(support.whatsapp, `${support.message}\n\nSou ${s.user.name ?? 'cliente'}, da loja "${s.org.name}".`)} target="_blank" rel="noopener noreferrer"
+              className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#25d366] px-5 text-sm font-bold text-[#0b2e17] transition hover:brightness-105">
+              <WhatsAppIcon className="h-5 w-5" />Chamar no WhatsApp
+            </a>
+          </section>
+        )}
         {SECTIONS.map((s) => (
           <Card key={s.q} padded={false}>
             <details className="group">

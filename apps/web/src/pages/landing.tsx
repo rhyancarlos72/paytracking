@@ -8,6 +8,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Logo, LogoMark } from '../components/logo';
 import { get } from '../lib/api';
+import { SupportButton } from '../components/support';
 import { usePlatformPixel } from '../lib/platform-pixel';
 
 /**
@@ -556,6 +557,8 @@ export default function LandingPage() {
       </main>
       <Footer />
       <MobileBar plan={plan.data} />
+      {/* no celular fica acima da barra fixa de "Começar grátis" */}
+      <SupportButton context="Vim pela página do PayTracking e tenho uma dúvida." className="bottom-24 sm:bottom-6" />
     </div>
   );
 }

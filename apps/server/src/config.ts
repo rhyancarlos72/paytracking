@@ -78,6 +78,8 @@ const schema = z.object({
   PLATFORM_PIXEL_ID: z.string().default('2215202246010798'),
   PLATFORM_PIXEL_BROWSER: z.enum(['auto', 'on', 'off']).default('auto'),
 
+  /** WhatsApp de suporte padrão (o Admin pode trocar pelo painel) */
+  SUPPORT_WHATSAPP: z.string().default(''),
   WEBHOOK_BODY_RETENTION_DAYS: z.coerce.number().int().min(1).default(30),
   /** resumo por hora dos eventos (sem dados pessoais) — base dos relatórios de períodos longos */
   TRACKING_RETENTION_DAYS: z.coerce.number().int().min(7).default(180),
