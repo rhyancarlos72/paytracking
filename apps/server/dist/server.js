@@ -98049,6 +98049,27 @@ Preferred-Languages: pt-BR, en
 Canonical: ${ctx.config.APP_URL.replace(/\/$/, "")}/.well-known/security.txt
 `;
   });
+  app.get("/llms.txt", async (_req, reply) => {
+    const base2 = ctx.config.APP_URL.replace(/\/+$/, "");
+    reply.type("text/markdown; charset=utf-8").header("Cache-Control", "public, max-age=86400");
+    return [
+      "# PayTracking",
+      "",
+      "> Rastreamento de vendas para Meta Ads: recebe as vendas confirmadas dos gateways (Hotmart, Kiwify, Cakto, Kirvano e checkout pr\xF3prio), atribui cada venda \xE0 campanha, ao conjunto e ao an\xFAncio e envia o Purchase \xE0 Conversions API da Meta. Pre\xE7o fixo mensal, sem taxa por venda.",
+      "",
+      "## P\xE1ginas",
+      "",
+      `- [P\xE1gina inicial](${base2}/): o que o PayTracking faz, planos e teste gr\xE1tis.`,
+      `- [Criar conta](${base2}/criar-conta): teste gr\xE1tis.`,
+      `- [Pol\xEDtica de privacidade](${base2}/privacidade): dados tratados, finalidade e reten\xE7\xE3o.`,
+      `- [Termos de uso](${base2}/termos): condi\xE7\xF5es do servi\xE7o.`,
+      "",
+      "## Privado (n\xE3o indexar nem usar)",
+      "",
+      "- O painel (ap\xF3s o login) e a API `/v1/` cont\xEAm dados das contas dos clientes.",
+      ""
+    ].join("\n");
+  });
   authRoutes(app, ctx);
   twoFactorRoutes(app, ctx);
   googleRoutes(app, ctx);
@@ -98126,7 +98147,8 @@ Canonical: ${ctx.config.APP_URL.replace(/\/$/, "")}/.well-known/security.txt
     const indexHtml = readFileSync(path4.join(webDir, "index.html"), "utf8").replace("</head>", gsv ? `  <meta name="google-site-verification" content="${gsv}" />
   </head>` : "</head>");
     app.setNotFoundHandler((req, reply) => {
-      const isAsset = /^\/assets\//.test(req.url) || /\.(?:js|mjs|css|map|woff2?|png|svg|ico|webmanifest)(?:\?|$)/.test(req.url);
+      const pathOnly = req.url.split("?")[0];
+      const isAsset = /^\/assets\//.test(pathOnly) || pathOnly.startsWith("/.well-known/") || /\.[a-z0-9]{1,12}$/i.test(pathOnly);
       if (req.method === "GET" && !isAsset && !req.url.startsWith("/v1/") && !req.url.startsWith("/api/")) {
         reply.header("Content-Security-Policy", [
           "default-src 'self'",

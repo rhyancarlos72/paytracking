@@ -145,6 +145,30 @@ export async function buildApp(ctx: Ctx): Promise<FastifyInstance> {
     return `Contact: ${contact}\nExpires: ${expires}\nPreferred-Languages: pt-BR, en\nCanonical: ${ctx.config.APP_URL.replace(/\/$/, '')}/.well-known/security.txt\n`;
   });
 
+  // llms.txt (llmstxt.org): Markdown com título H1, resumo e links das páginas públicas.
+  // Antes o endereço caía no index.html e as auditorias (Lighthouse) liam HTML no lugar do arquivo.
+  app.get('/llms.txt', async (_req, reply) => {
+    const base = ctx.config.APP_URL.replace(/\/+$/, '');
+    reply.type('text/markdown; charset=utf-8').header('Cache-Control', 'public, max-age=86400');
+    return [
+      '# PayTracking',
+      '',
+      '> Rastreamento de vendas para Meta Ads: recebe as vendas confirmadas dos gateways (Hotmart, Kiwify, Cakto, Kirvano e checkout próprio), atribui cada venda à campanha, ao conjunto e ao anúncio e envia o Purchase à Conversions API da Meta. Preço fixo mensal, sem taxa por venda.',
+      '',
+      '## Páginas',
+      '',
+      `- [Página inicial](${base}/): o que o PayTracking faz, planos e teste grátis.`,
+      `- [Criar conta](${base}/criar-conta): teste grátis.`,
+      `- [Política de privacidade](${base}/privacidade): dados tratados, finalidade e retenção.`,
+      `- [Termos de uso](${base}/termos): condições do serviço.`,
+      '',
+      '## Privado (não indexar nem usar)',
+      '',
+      '- O painel (após o login) e a API `/v1/` contêm dados das contas dos clientes.',
+      '',
+    ].join('\n');
+  });
+
   authRoutes(app, ctx);
   twoFactorRoutes(app, ctx);
   googleRoutes(app, ctx);
@@ -232,7 +256,10 @@ export async function buildApp(ctx: Ctx): Promise<FastifyInstance> {
     app.setNotFoundHandler((req, reply) => {
       // arquivo de build inexistente (ex.: aba aberta durante um deploy pedindo um chunk antigo):
       // 404 de verdade, nunca o index.html — senão o navegador recebe HTML no lugar de JS
-      const isAsset = /^\/assets\//.test(req.url) || /\.(?:js|mjs|css|map|woff2?|png|svg|ico|webmanifest)(?:\?|$)/.test(req.url);
+      // também qualquer outro arquivo (ex.: /.well-known/ai-catalog.json, /sitemap.xml): HTML com 200 no lugar de
+      // JSON/XML quebra buscadores, agentes de IA e o Lighthouse ("Malformed JSON … <!doctype")
+      const pathOnly = req.url.split('?')[0]!;
+      const isAsset = /^\/assets\//.test(pathOnly) || pathOnly.startsWith('/.well-known/') || /\.[a-z0-9]{1,12}$/i.test(pathOnly);
       if (req.method === 'GET' && !isAsset && !req.url.startsWith('/v1/') && !req.url.startsWith('/api/')) {
         reply.header('Content-Security-Policy', [
           "default-src 'self'", "script-src 'self' https://connect.facebook.net", "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
