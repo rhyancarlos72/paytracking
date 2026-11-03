@@ -10,7 +10,7 @@ const READS = [
   '/v1/pixels', '/v1/integrations', '/v1/payments?preset=last_90d', '/v1/events?preset=last_90d', '/v1/alerts', '/v1/webhook-receipts',
   '/v1/reports/dashboard?preset=last_90d', '/v1/reports/attribution?preset=last_90d&dimension=utm_campaign', '/v1/reports/capi?preset=last_90d',
   '/v1/reports/coverage?preset=last_90d', '/v1/reports/reconciliation?preset=last_90d', '/v1/reports/monthly-goal', '/v1/org/members', '/v1/org/audit',
-  '/v1/push/devices', '/v1/me/sale-sound', '/v1/meta/status', '/v1/billing', '/v1/sales/feed',
+  '/v1/push/devices', '/v1/me/sale-sound', '/v1/meta/status', '/v1/billing', '/v1/sales/feed', '/v1/reports/lifetime',
 ];
 
 describe('cada conta começa do zero e só enxerga o que é dela', () => {
@@ -41,6 +41,8 @@ describe('cada conta começa do zero e só enxerga o que é dela', () => {
     expect(d.current).toMatchObject({ sales: 0, revenueMinor: '0', paymentsCreated: 0, byProvider: [] });
     expect(d.events.received).toBe(0);
     expect((await c.get('/v1/reports/monthly-goal')).data).toMatchObject({ goalMinor: '0', achievedMinor: '0', sales: 0 });
+    expect((await c.get('/v1/reports/lifetime')).data).toMatchObject({ revenueMinor: '0', sales: 0 }); // placas: só as vendas dela
+    expect((await c.post('/v1/payments/fix-duplicates')).data).toMatchObject({ merged: 0 });          // nunca mexe em outra conta
     expect((await c.get('/v1/meta/status')).data.connection).toBeNull();
     const members = (await c.get('/v1/org/members')).data.members;
     expect(members).toHaveLength(1);

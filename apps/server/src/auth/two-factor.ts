@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { createHmac, hkdfSync, randomBytes } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import type { Ctx } from '../context.js';
@@ -49,18 +49,33 @@ async function checkTotp(ctx: Ctx, userId: string, row: TfaRow, input: string): 
 }
 
 /** Consome um código de recuperação (uso único). */
+/**
+ * Hash do código de recuperação: HMAC-SHA256 com chave do servidor e AMARRADO ao usuário.
+ * Mesmo com uma cópia do banco, não dá para testar códigos por força bruta sem a chave, e o
+ * código de uma conta nunca vale em outra. (Hash antigo, sha256 puro, ainda é aceito até o
+ * usuário gerar códigos novos.)
+ */
+let recoveryKey: { src: string; key: Buffer } | null = null;
+function recoveryHash(ctx: Ctx, userId: string, code: string): string {
+  // chave própria, derivada (HKDF) da chave mestra — nunca a chave de cifragem em si
+  if (recoveryKey?.src !== ctx.config.ENCRYPTION_KEY) {
+    recoveryKey = { src: ctx.config.ENCRYPTION_KEY, key: Buffer.from(hkdfSync('sha256', Buffer.from(ctx.config.ENCRYPTION_KEY, 'base64'), Buffer.alloc(0), 'pt-2fa-recovery-v1', 32)) };
+  }
+  return createHmac('sha256', recoveryKey.key).update(`${userId}:${normalizeRecoveryCode(code)}`).digest('hex');
+}
+
 async function useRecoveryCode(ctx: Ctx, userId: string, input: string): Promise<boolean> {
   const norm = normalizeRecoveryCode(input);
   if (norm.length !== 8) return false;
   const u = await ctx.db.query(
-    `UPDATE users SET totp_recovery_hashes = array_remove(totp_recovery_hashes, $2)
-      WHERE id = $1 AND $2 = ANY(totp_recovery_hashes)`,
-    [userId, sha256Hex(norm)],
+    `UPDATE users SET totp_recovery_hashes = array_remove(array_remove(totp_recovery_hashes, $2), $3)
+      WHERE id = $1 AND ($2 = ANY(totp_recovery_hashes) OR $3 = ANY(totp_recovery_hashes))`,
+    [userId, recoveryHash(ctx, userId, norm), sha256Hex(norm)],
   );
   return (u.rowCount ?? 0) > 0;
 }
 
-const hashCodes = (codes: string[]) => codes.map((c) => sha256Hex(normalizeRecoveryCode(c)));
+const hashCodes = (ctx: Ctx, userId: string, codes: string[]) => codes.map((c) => recoveryHash(ctx, userId, c));
 
 /** Desafio do 2º passo do login: cifrado e com validade curta, não dá acesso a nada sozinho. */
 export function issueChallenge(ctx: Ctx, userId: string): string {
@@ -152,7 +167,7 @@ export function twoFactorRoutes(app: FastifyInstance, ctx: Ctx) {
     await ctx.db.query(
       `UPDATE users SET totp_secret_enc = $2, totp_pending_enc = NULL, totp_enabled_at = now(), totp_last_counter = $3,
               totp_recovery_hashes = $4 WHERE id = $1`,
-      [a.user.id, row.totp_pending_enc, counter, hashCodes(codes)],
+      [a.user.id, row.totp_pending_enc, counter, hashCodes(ctx, a.user.id, codes)],
     );
     // outras sessões abertas antes da ativação deixam de valer
     const revoked = await revokeSessions(ctx, a.user.id, a.sessionId);
@@ -190,7 +205,7 @@ export function twoFactorRoutes(app: FastifyInstance, ctx: Ctx) {
     if (!row.totp_enabled_at) throw badRequest('Ative a verificação em duas etapas primeiro.');
     if (!(await checkTotp(ctx, a.user.id, row, body.code))) throw badRequest('Código incorreto ou já usado.');
     const codes = generateRecoveryCodes();
-    await ctx.db.query('UPDATE users SET totp_recovery_hashes = $2 WHERE id = $1', [a.user.id, hashCodes(codes)]);
+    await ctx.db.query('UPDATE users SET totp_recovery_hashes = $2 WHERE id = $1', [a.user.id, hashCodes(ctx, a.user.id, codes)]);
     await ctx.db.query(`INSERT INTO audit_log(org_id, user_id, action) VALUES ($1, $2, 'auth.2fa_recovery_regenerated')`, [a.org.id, a.user.id]);
     return { ok: true, recoveryCodes: codes };
   });

@@ -22,6 +22,51 @@ async function enable(client: Client) {
 }
 
 describe('verificação em duas etapas (TOTP)', () => {
+  it('códigos de recuperação antigos (antes da troca do hash) continuam valendo uma única vez', async () => {
+    const { createHash } = await import('node:crypto');
+    const acc = await newAccount(env);
+    await enable(acc.client);
+    await env.db.query('UPDATE users SET totp_recovery_hashes = $2 WHERE id = $1', [acc.userId, [createHash('sha256').update('abcd2345').digest('hex')]]);
+    const login = async () => (await new Client(env).post('/v1/auth/login', { email: acc.email, password: 'SenhaForte123' })).data.challenge as string;
+    expect((await new Client(env).post('/v1/auth/login/2fa', { challenge: await login(), recoveryCode: 'abcd-2345' })).status).toBe(200);
+    expect((await new Client(env).post('/v1/auth/login/2fa', { challenge: await login(), recoveryCode: 'abcd-2345' })).status).toBe(401);
+  });
+
+  it('cada usuário tem o SEU segredo e os SEUS códigos: o código de uma conta não abre outra', async () => {
+    const a = await newAccount(env);
+    const b = await newAccount(env);
+    const ea = await enable(a.client);
+    const eb = await enable(b.client);
+    expect(ea.secret).not.toBe(eb.secret);                       // segredos diferentes (160 bits aleatórios cada)
+    expect(ea.secret).toMatch(/^[A-Z2-7]{32}$/);
+    expect(ea.recoveryCodes.some((c) => eb.recoveryCodes.includes(c))).toBe(false);
+    // no banco: segredo cifrado (nunca em claro) e hashes de recuperação diferentes por usuário
+    const rows = (await env.db.query('SELECT id, totp_secret_enc, totp_recovery_hashes FROM users WHERE id = ANY($1)', [[a.userId, b.userId]])).rows;
+    for (const r of rows) {
+      expect(r.totp_secret_enc).not.toContain(ea.secret);
+      expect(r.totp_secret_enc).not.toContain(eb.secret);
+      expect(env.ctx.box.decrypt(r.totp_secret_enc)).toBe(r.id === a.userId ? ea.secret : eb.secret);
+    }
+    const [ha, hb] = [rows.find((r) => r.id === a.userId).totp_recovery_hashes, rows.find((r) => r.id === b.userId).totp_recovery_hashes];
+    expect(ha.some((h: string) => hb.includes(h))).toBe(false);
+    // login de B: o código atual de A e um código de recuperação de A NÃO servem
+    advance(60);
+    const loginB = async () => (await new Client(env).post('/v1/auth/login', { email: b.email, password: 'SenhaForte123' })).data.challenge as string;
+    const chB = await loginB();
+    expect((await new Client(env).post('/v1/auth/login/2fa', { challenge: chB, code: codeAt(ea.secret) })).status).toBe(401);
+    expect((await new Client(env).post('/v1/auth/login/2fa', { challenge: chB, recoveryCode: ea.recoveryCodes[0] })).status).toBe(401);
+    // o desafio de B não aceita o código de A nem com o desafio de A
+    const chA = (await new Client(env).post('/v1/auth/login', { email: a.email, password: 'SenhaForte123' })).data.challenge as string;
+    expect(chA).not.toBe(chB);
+    // cada um entra só com o próprio código
+    const okB = new Client(env);
+    expect((await okB.post('/v1/auth/login/2fa', { challenge: chB, code: codeAt(eb.secret) })).status).toBe(200);
+    expect((await okB.get('/v1/auth/me')).data.user.id).toBe(b.userId);
+    const okA = new Client(env);
+    expect((await okA.post('/v1/auth/login/2fa', { challenge: chA, recoveryCode: ea.recoveryCodes[0] })).status).toBe(200);
+    expect((await okA.get('/v1/auth/me')).data.user.id).toBe(a.userId);
+  });
+
   it('ativa, exige o código no login, bloqueia reuso do código e avisa por e-mail', async () => {
     const { email, client } = await newAccount(env);
     const { secret, recoveryCodes } = await enable(client);

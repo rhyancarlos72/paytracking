@@ -92683,7 +92683,7 @@ function jsonSafe(v) {
 }
 
 // src/auth/two-factor.ts
-import { randomBytes as randomBytes3 } from "node:crypto";
+import { createHmac as createHmac2, hkdfSync, randomBytes as randomBytes3 } from "node:crypto";
 
 // src/notifications/push.ts
 var import_web_push2 = __toESM(require_src2(), 1);
@@ -92930,17 +92930,24 @@ async function checkTotp(ctx, userId, row, input2) {
   );
   return (u.rowCount ?? 0) > 0;
 }
+var recoveryKey = null;
+function recoveryHash(ctx, userId, code2) {
+  if (recoveryKey?.src !== ctx.config.ENCRYPTION_KEY) {
+    recoveryKey = { src: ctx.config.ENCRYPTION_KEY, key: Buffer.from(hkdfSync("sha256", Buffer.from(ctx.config.ENCRYPTION_KEY, "base64"), Buffer.alloc(0), "pt-2fa-recovery-v1", 32)) };
+  }
+  return createHmac2("sha256", recoveryKey.key).update(`${userId}:${normalizeRecoveryCode(code2)}`).digest("hex");
+}
 async function useRecoveryCode(ctx, userId, input2) {
   const norm = normalizeRecoveryCode(input2);
   if (norm.length !== 8) return false;
   const u = await ctx.db.query(
-    `UPDATE users SET totp_recovery_hashes = array_remove(totp_recovery_hashes, $2)
-      WHERE id = $1 AND $2 = ANY(totp_recovery_hashes)`,
-    [userId, sha256Hex(norm)]
+    `UPDATE users SET totp_recovery_hashes = array_remove(array_remove(totp_recovery_hashes, $2), $3)
+      WHERE id = $1 AND ($2 = ANY(totp_recovery_hashes) OR $3 = ANY(totp_recovery_hashes))`,
+    [userId, recoveryHash(ctx, userId, norm), sha256Hex(norm)]
   );
   return (u.rowCount ?? 0) > 0;
 }
-var hashCodes = (codes) => codes.map((c) => sha256Hex(normalizeRecoveryCode(c)));
+var hashCodes = (ctx, userId, codes) => codes.map((c) => recoveryHash(ctx, userId, c));
 function issueChallenge(ctx, userId) {
   return ctx.box.encrypt(JSON.stringify({ t: "2fa", uid: userId, exp: ctx.now().getTime() + CHALLENGE_TTL_MS, n: randomBytes3(8).toString("hex") }));
 }
@@ -93026,7 +93033,7 @@ function twoFactorRoutes(app, ctx) {
     await ctx.db.query(
       `UPDATE users SET totp_secret_enc = $2, totp_pending_enc = NULL, totp_enabled_at = now(), totp_last_counter = $3,
               totp_recovery_hashes = $4 WHERE id = $1`,
-      [a.user.id, row.totp_pending_enc, counter, hashCodes(codes)]
+      [a.user.id, row.totp_pending_enc, counter, hashCodes(ctx, a.user.id, codes)]
     );
     const revoked = await revokeSessions(ctx, a.user.id, a.sessionId);
     await ctx.db.query(`INSERT INTO audit_log(org_id, user_id, action) VALUES ($1, $2, 'auth.2fa_enabled')`, [a.org.id, a.user.id]);
@@ -93061,7 +93068,7 @@ function twoFactorRoutes(app, ctx) {
     if (!row.totp_enabled_at) throw badRequest("Ative a verifica\xE7\xE3o em duas etapas primeiro.");
     if (!await checkTotp(ctx, a.user.id, row, body.code)) throw badRequest("C\xF3digo incorreto ou j\xE1 usado.");
     const codes = generateRecoveryCodes();
-    await ctx.db.query("UPDATE users SET totp_recovery_hashes = $2 WHERE id = $1", [a.user.id, hashCodes(codes)]);
+    await ctx.db.query("UPDATE users SET totp_recovery_hashes = $2 WHERE id = $1", [a.user.id, hashCodes(ctx, a.user.id, codes)]);
     await ctx.db.query(`INSERT INTO audit_log(org_id, user_id, action) VALUES ($1, $2, 'auth.2fa_recovery_regenerated')`, [a.org.id, a.user.id]);
     return { ok: true, recoveryCodes: codes };
   });
@@ -94611,7 +94618,7 @@ function pixelRoutes(app, ctx) {
 }
 
 // ../../packages/gateways/src/util.ts
-import { createHmac as createHmac2, timingSafeEqual as timingSafeEqual2 } from "node:crypto";
+import { createHmac as createHmac3, timingSafeEqual as timingSafeEqual2 } from "node:crypto";
 var isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
 var obj = (v) => isObj(v) ? v : {};
 function pick2(o, keys) {
@@ -94633,7 +94640,7 @@ function safeEqual(a, b) {
   const bb = Buffer.from(b);
   return ba.length === bb.length && timingSafeEqual2(ba, bb);
 }
-var hmacHex = (algo, body, secret) => createHmac2(algo, secret).update(body, "utf8").digest("hex");
+var hmacHex = (algo, body, secret) => createHmac3(algo, secret).update(body, "utf8").digest("hex");
 function currencyOr(raw, fallback) {
   return normalizeCurrency(raw) ?? fallback;
 }
@@ -94787,7 +94794,7 @@ var cakto = {
 };
 
 // ../../packages/gateways/src/adapters/checkout.ts
-import { createHmac as createHmac3 } from "node:crypto";
+import { createHmac as createHmac4 } from "node:crypto";
 var STATUS_KEYS = ["status", "payment_status", "paymentStatus", "transaction_status", "situacao", "state", "order_status", "purchase_status", "paymentState"];
 var STATUS_OBJECTS = ["payment", "transaction", "order", "charge", "sale", "pix"];
 var SERVER_EVENTS = ["Lead", "ViewContent", "AddToCart", "AddPaymentInfo", "PageView"];
@@ -94848,7 +94855,7 @@ function extractProductIds(body) {
 }
 function signCheckoutBody(rawBody, secret, timestamp) {
   const base2 = timestamp ? `${timestamp}.${rawBody}` : rawBody;
-  return "sha256=" + createHmac3("sha256", secret).update(base2, "utf8").digest("hex");
+  return "sha256=" + createHmac4("sha256", secret).update(base2, "utf8").digest("hex");
 }
 var checkout = {
   provider: "checkout",
@@ -96256,7 +96263,7 @@ var FxTable = class _FxTable {
 };
 
 // src/meta/client.ts
-import { createHmac as createHmac4 } from "node:crypto";
+import { createHmac as createHmac5 } from "node:crypto";
 var MetaApiError = class extends Error {
   constructor(message, code2, httpStatus, fbtraceId) {
     super(message);
@@ -96312,7 +96319,7 @@ var MetaClient = class {
   }
   withProof(params) {
     if (this.ctx.config.META_APP_SECRET) {
-      params.set("appsecret_proof", createHmac4("sha256", this.ctx.config.META_APP_SECRET).update(this.token).digest("hex"));
+      params.set("appsecret_proof", createHmac5("sha256", this.ctx.config.META_APP_SECRET).update(this.token).digest("hex"));
     }
   }
   async request(method, urlOrPath, params = {}) {
@@ -97320,10 +97327,10 @@ function reportRoutes(app, ctx) {
 }
 
 // src/billing/routes.ts
-import { createHmac as createHmac5 } from "node:crypto";
+import { createHmac as createHmac6 } from "node:crypto";
 var PERIOD_DAYS = 30;
 function wooviSignature(rawBody, secret) {
-  return createHmac5("sha256", secret).update(rawBody, "utf8").digest("base64");
+  return createHmac6("sha256", secret).update(rawBody, "utf8").digest("base64");
 }
 function billingRoutes(app, ctx) {
   app.get("/v1/public/plan", async (_req, reply) => {
