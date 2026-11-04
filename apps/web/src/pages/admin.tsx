@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { MessageCircle } from 'lucide-react';
+import { Building2, MessageCircle, Settings2, Users } from 'lucide-react';
 import { useSupport, whatsappUrl, WhatsAppIcon } from '../components/support';
 import { Navigate } from 'react-router-dom';
 import { PageHeader } from '../components/shell';
 import { useToast } from '../components/toast';
-import { Badge, Button, Callout, Card, CodeBlock, ErrorState, Input, Select, Skeleton, STATUS_TONE } from '../components/ui';
+import { Badge, Button, Callout, Card, CodeBlock, ErrorState, Input, Select, Skeleton, STATUS_TONE, Tabs } from '../components/ui';
+import { AdminUsers } from './admin-users';
 import { del, get, post, put, qs } from '../lib/api';
 import { dateTime, int, money } from '../lib/format';
 import { useSession } from '../lib/session';
@@ -23,10 +24,11 @@ export default function AdminPage() {
     onSuccess: () => { toast.ok('Plano atualizado'); void qc.invalidateQueries({ queryKey: ['admin-orgs'] }); void qc.invalidateQueries({ queryKey: ['admin-overview'] }); },
     onError: (e) => toast.err(e),
   });
+  const [tab, setTab] = useState<'users' | 'orgs' | 'config'>('users');
   if (!s.user.isPlatformAdmin) return <Navigate to="/" replace />;
   return (
     <>
-      <PageHeader title="Administração da plataforma" description="Organizações, assinaturas e ações administrativas (todas auditadas)."
+      <PageHeader title="Administração da plataforma" description="Usuários, organizações, assinaturas e ações administrativas (todas auditadas)."
         actions={<Button onClick={async () => {
           try {
             const r = await post<{ ok: boolean; channel: string; to?: string; error?: string }>('/v1/admin/test-email');
@@ -36,15 +38,20 @@ export default function AdminPage() {
             else toast.err(new Error(r.error ?? 'Falha no envio'), `Falha no envio por ${via}`);
           } catch (e) { toast.err(e); }
         }}>Testar e-mail</Button>} />
-      <SupportSettings />
       <div className="mb-6 grid gap-4 sm:grid-cols-3 xl:grid-cols-6">
         {[['Organizações', overview.data?.orgs], ['Ativas', overview.data?.active], ['Em teste', overview.data?.trial], ['Expiradas', overview.data?.expired], ['Isentas', overview.data?.exempt]].map(([l, v]) => (
           <div key={l as string} className="card p-4"><p className="text-[13px] text-muted">{l}</p><p className="num mt-1 text-xl font-semibold">{int(v as number)}</p></div>
         ))}
         <div className="card p-4"><p className="text-[13px] text-muted">Recebido 30 dias</p><p className="num mt-1 text-xl font-semibold">{overview.data ? money(overview.data.revenueLast30dMinor, 'BRL') : '—'}</p></div>
       </div>
-      <GoogleSetup />
-      <Card padded={false}>
+      <div className="mb-6"><Tabs value={tab} onChange={setTab} tabs={[
+        { value: 'users', label: 'Usuários', icon: <Users /> },
+        { value: 'orgs', label: 'Organizações e planos', icon: <Building2 /> },
+        { value: 'config', label: 'Configurações', icon: <Settings2 /> },
+      ]} /></div>
+      {tab === 'users' && <AdminUsers />}
+      {tab === 'config' && <><SupportSettings /><GoogleSetup /></>}
+      {tab === 'orgs' && <Card padded={false}>
         <div className="flex flex-wrap gap-2 border-b border-border p-4">
           <Input aria-label="Buscar" placeholder="Buscar por nome ou e-mail" className="min-w-[220px] flex-1" value={search} onChange={(e) => setSearch(e.target.value)} />
           <Select aria-label="Status" className="w-[160px]" value={status} onChange={(e) => setStatus(e.target.value)}>
@@ -80,7 +87,7 @@ export default function AdminPage() {
             </table>
           </div>
         )}
-      </Card>
+      </Card>}
     </>
   );
 }

@@ -586,7 +586,7 @@ var require_textParsers = __commonJS({
 var require_pg_int8 = __commonJS({
   "../../node_modules/.pnpm/pg-int8@1.0.1/node_modules/pg-int8/index.js"(exports, module) {
     "use strict";
-    var BASE = 1e6;
+    var BASE2 = 1e6;
     function readInt8(buffer) {
       var high = buffer.readInt32BE(0);
       var low = buffer.readUInt32BE(4);
@@ -604,11 +604,11 @@ var require_pg_int8 = __commonJS({
       var l;
       var i;
       {
-        carry = high % BASE;
-        high = high / BASE >>> 0;
+        carry = high % BASE2;
+        high = high / BASE2 >>> 0;
         t = 4294967296 * carry + low;
-        low = t / BASE >>> 0;
-        digits = "" + (t - BASE * low);
+        low = t / BASE2 >>> 0;
+        digits = "" + (t - BASE2 * low);
         if (low === 0 && high === 0) {
           return sign2 + digits + result;
         }
@@ -620,11 +620,11 @@ var require_pg_int8 = __commonJS({
         result = pad + digits + result;
       }
       {
-        carry = high % BASE;
-        high = high / BASE >>> 0;
+        carry = high % BASE2;
+        high = high / BASE2 >>> 0;
         t = 4294967296 * carry + low;
-        low = t / BASE >>> 0;
-        digits = "" + (t - BASE * low);
+        low = t / BASE2 >>> 0;
+        digits = "" + (t - BASE2 * low);
         if (low === 0 && high === 0) {
           return sign2 + digits + result;
         }
@@ -636,11 +636,11 @@ var require_pg_int8 = __commonJS({
         result = pad + digits + result;
       }
       {
-        carry = high % BASE;
-        high = high / BASE >>> 0;
+        carry = high % BASE2;
+        high = high / BASE2 >>> 0;
         t = 4294967296 * carry + low;
-        low = t / BASE >>> 0;
-        digits = "" + (t - BASE * low);
+        low = t / BASE2 >>> 0;
+        digits = "" + (t - BASE2 * low);
         if (low === 0 && high === 0) {
           return sign2 + digits + result;
         }
@@ -652,9 +652,9 @@ var require_pg_int8 = __commonJS({
         result = pad + digits + result;
       }
       {
-        carry = high % BASE;
+        carry = high % BASE2;
         t = 4294967296 * carry + low;
-        digits = "" + t % BASE;
+        digits = "" + t % BASE2;
         return sign2 + digits + result;
       }
     }
@@ -786,7 +786,7 @@ var require_binaryParsers = __commonJS({
     };
     var parseArray = function(value) {
       var dim = parseBits(value, 32);
-      var flags = parseBits(value, 32, 32);
+      var flags2 = parseBits(value, 32, 32);
       var elementType = parseBits(value, 32, 64);
       var offset = 96;
       var dims = [];
@@ -12060,12 +12060,12 @@ var require_sonic_boom = __commonJS({
           process.nextTick(() => sonic.emit("drain"));
         }
       }
-      const flags = sonic.append ? "a" : "w";
+      const flags2 = sonic.append ? "a" : "w";
       const mode = sonic.mode;
       if (sonic.sync) {
         try {
           if (sonic.mkdir) fs4.mkdirSync(path5.dirname(file2), { recursive: true });
-          const fd = fs4.openSync(file2, flags, mode);
+          const fd = fs4.openSync(file2, flags2, mode);
           fileOpened(null, fd);
         } catch (err) {
           fileOpened(err);
@@ -12074,10 +12074,10 @@ var require_sonic_boom = __commonJS({
       } else if (sonic.mkdir) {
         fs4.mkdir(path5.dirname(file2), { recursive: true }, (err) => {
           if (err) return fileOpened(err);
-          fs4.open(file2, flags, mode, fileOpened);
+          fs4.open(file2, flags2, mode, fileOpened);
         });
       } else {
-        fs4.open(file2, flags, mode, fileOpened);
+        fs4.open(file2, flags2, mode, fileOpened);
       }
     }
     function SonicBoom(opts) {
@@ -23278,7 +23278,7 @@ var require_core = __commonJS({
     var util_1 = require_util();
     var $dataRefSchema = require_data();
     var uri_1 = require_uri();
-    var defaultRegExp = (str2, flags) => new RegExp(str2, flags);
+    var defaultRegExp = (str2, flags2) => new RegExp(str2, flags2);
     defaultRegExp.code = "new RegExp";
     var META_IGNORE_OPTIONS = ["removeAdditional", "useDefaults", "coerceTypes"];
     var EXT_SCOPE_NAMES = /* @__PURE__ */ new Set([
@@ -55485,7 +55485,7 @@ var require_node2 = __commonJS({
       if (state.parent === null)
         return input2.wrapResult(state.children[0]._decode(input2, options));
       let result = state["default"];
-      let present = true;
+      let present2 = true;
       let prevKey = null;
       if (state.key !== null)
         prevKey = input2.enterKey(state.key);
@@ -55504,21 +55504,21 @@ var require_node2 = __commonJS({
               this._decodeGeneric(state.tag, input2, options);
             else
               this._decodeChoice(input2, options);
-            present = true;
+            present2 = true;
           } catch (e) {
-            present = false;
+            present2 = false;
           }
           input2.restore(save);
         } else {
-          present = this._peekTag(input2, tag, state.any);
-          if (input2.isError(present))
-            return present;
+          present2 = this._peekTag(input2, tag, state.any);
+          if (input2.isError(present2))
+            return present2;
         }
       }
       let prevObj;
-      if (state.obj && present)
+      if (state.obj && present2)
         prevObj = input2.enterObject();
-      if (present) {
+      if (present2) {
         if (state.explicit !== null) {
           const explicit = this._decodeTag(input2, state.explicit);
           if (input2.isError(explicit))
@@ -55564,9 +55564,9 @@ var require_node2 = __commonJS({
           result = this._getUse(state.contains, input2._reporterState.obj)._decode(data, options);
         }
       }
-      if (state.obj && present)
+      if (state.obj && present2)
         result = input2.leaveObject(prevObj);
-      if (state.key !== null && (result !== null || present === true))
+      if (state.key !== null && (result !== null || present2 === true))
         input2.leaveKey(prevKey, state.key, result);
       else if (prevKey !== null)
         input2.exitKey(prevKey);
@@ -92528,7 +92528,10 @@ async function authenticate(ctx, email4, password) {
   }
   return { id: row.id };
 }
+var BLOCKED_MESSAGE = "Acesso bloqueado. Se acha que \xE9 um engano, fale com o suporte.";
 async function createSession(ctx, userId, meta3) {
+  const b = await ctx.db.query("SELECT blocked_at FROM users WHERE id = $1", [userId]);
+  if (b.rows[0]?.blocked_at) throw forbidden(BLOCKED_MESSAGE);
   const token = randomToken(32);
   const expires = new Date(ctx.now().getTime() + ctx.config.SESSION_TTL_DAYS * 864e5);
   await ctx.db.query(
@@ -92564,7 +92567,7 @@ async function resolveSession(ctx, token) {
     `SELECT s.id AS session_id, s.active_org_id, s.expires_at, s.last_seen_at,
             u.id AS user_id, u.email, u.name, u.is_platform_admin, u.email_verified_at, u.hide_email, u.hide_names, u.totp_enabled_at
        FROM sessions s JOIN users u ON u.id = s.user_id
-      WHERE s.id = $1 AND s.revoked_at IS NULL AND s.expires_at > now()`,
+      WHERE s.id = $1 AND s.revoked_at IS NULL AND s.expires_at > now() AND u.blocked_at IS NULL`,
     [id]
   );
   const s = r.rows[0];
@@ -92993,6 +92996,7 @@ function twoFactorRoutes(app, ctx) {
     const row = await loadUser(ctx, userId);
     if (!row.totp_enabled_at) throw badRequest("A verifica\xE7\xE3o expirou. Entre com e-mail e senha de novo.");
     const ok = body.code ? await checkTotp(ctx, userId, row, body.code) : await useRecoveryCode(ctx, userId, body.recoveryCode);
+    if (!ok) await ctx.db.query(`INSERT INTO audit_log(user_id, action, ip) VALUES ($1, 'auth.2fa_failed', $2)`, [userId, clientIp(req) || null]);
     if (!ok) throw unauthorized(body.code ? "C\xF3digo incorreto ou j\xE1 usado. Confira o hor\xE1rio do celular e use o c\xF3digo atual." : "C\xF3digo de recupera\xE7\xE3o inv\xE1lido ou j\xE1 usado.");
     await clear(ctx.db, bucket);
     const s = await createSession(ctx, userId, { ip: clientIp(req), ua: req.headers["user-agent"] });
@@ -93438,9 +93442,9 @@ function classifyByEventName(raw) {
   return EXPLICIT_EVENTS[statusToken(raw)];
 }
 function resolveStatus(values) {
-  const present = values.filter((v) => statusToken(v) !== "");
-  if (present.length === 0) return "none";
-  const classes = present.map(classifyGenericStatus).filter((s) => !!s);
+  const present2 = values.filter((v) => statusToken(v) !== "");
+  if (present2.length === 0) return "none";
+  const classes = present2.map(classifyGenericStatus).filter((s) => !!s);
   if (classes.length === 0) return "unknown";
   const order = ["refunded", "chargeback", "canceled", "failed", "pending", "approved"];
   for (const s of order) if (classes.includes(s)) return s;
@@ -94022,10 +94026,14 @@ O link expira em 3 dias. Com o e-mail confirmado, voc\xEA consegue recuperar o a
     await hit(ctx.db, ipBucket, 30, 900);
     await hit(ctx.db, emailBucket, 8, 900);
     const user = await authenticate(ctx, body.email, body.password);
-    if (!user) throw unauthorized("E-mail ou senha incorretos.");
+    if (!user) {
+      await ctx.db.query(`INSERT INTO audit_log(user_id, action, ip) SELECT id, 'auth.login_failed', $2 FROM users WHERE email = $1`, [body.email.trim().toLowerCase(), clientIp(req) || null]);
+      throw unauthorized("E-mail ou senha incorretos.");
+    }
     await clear(ctx.db, emailBucket);
     if (await hasTwoFactor(ctx, user.id)) return { ok: false, twoFactorRequired: true, challenge: issueChallenge(ctx, user.id) };
     const s = await createSession(ctx, user.id, { ip: clientIp(req), ua: req.headers["user-agent"] });
+    await ctx.db.query(`INSERT INTO audit_log(user_id, action, ip) VALUES ($1, 'auth.login', $2)`, [user.id, clientIp(req) || null]);
     setSessionCookie(reply, s.token, s.expires, secure);
     return { ok: true };
   });
@@ -94269,10 +94277,13 @@ function googleRoutes(app, ctx) {
         await trackSignup(ctx, req, { userId, orgId: r.orgId, email: email4, name: token.name ?? null });
       }
     }
+    const blocked = await ctx.db.query("SELECT 1 FROM users WHERE id = $1 AND blocked_at IS NOT NULL", [userId]);
+    if (blocked.rowCount) return fail(reply, "conta_bloqueada");
     if (await hasTwoFactor(ctx, userId)) {
       return reply.redirect(`${appUrl}/entrar?voltar=${encodeURIComponent(flow.back)}#desafio=${encodeURIComponent(issueChallenge(ctx, userId))}`, 302);
     }
     const s = await createSession(ctx, userId, { ip: clientIp(req), ua: req.headers["user-agent"] });
+    await ctx.db.query(`INSERT INTO audit_log(user_id, action, ip) VALUES ($1, 'auth.login_google', $2)`, [userId, clientIp(req) || null]);
     setSessionCookie(reply, s.token, s.expires, secure);
     return reply.redirect(`${appUrl}${created ? "/?bem-vindo=1" : flow.back}`, 302);
   });
@@ -97554,6 +97565,137 @@ Painel: ${ctx.config.APP_URL}`
   });
 }
 
+// src/admin/users.ts
+var RISK = { failed24h: 5, ips7d: 6, sharedIp: 2, rejected7d: 20 };
+var maskIp = (ip) => {
+  if (!ip) return null;
+  if (ip.includes(":")) return ip.split(":").slice(0, 3).join(":") + ":\u2026";
+  const p = ip.split(".");
+  return p.length === 4 ? `${p[0]}.${p[1]}.\u2022.\u2022` : "\u2022";
+};
+var PUBLIC_IP = (col) => `${col} IS NOT NULL AND NOT (${col} << '10.0.0.0/8' OR ${col} << '172.16.0.0/12' OR ${col} << '192.168.0.0/16' OR ${col} << '127.0.0.0/8' OR ${col} << '100.64.0.0/10' OR ${col} << '::1/128' OR ${col} << 'fc00::/7' OR ${col} << 'fe80::/10')`;
+var BASE = `
+  SELECT u.id, u.email, u.name, u.created_at, u.email_verified_at IS NOT NULL AS email_verified,
+         u.google_sub IS NOT NULL AS google, u.totp_enabled_at IS NOT NULL AS two_factor, u.blocked_at, u.blocked_reason,
+         (SELECT max(s.last_seen_at) FROM sessions s WHERE s.user_id = u.id) AS last_seen_at,
+         o.id AS org_id, o.name AS org_name, o.plan_status, o.plan_expires_at, m.role,
+         (SELECT count(*) FROM memberships mm WHERE mm.user_id = u.id)::int AS orgs,
+         (SELECT count(*) FROM billing_charges b WHERE b.org_id = o.id AND b.status = 'paid')::int AS paid_count,
+         (SELECT COALESCE(sum(b.amount_minor), 0) FROM billing_charges b WHERE b.org_id = o.id AND b.status = 'paid')::bigint AS paid_total_minor,
+         (SELECT max(b.paid_at) FROM billing_charges b WHERE b.org_id = o.id AND b.status = 'paid') AS last_paid_at,
+         (SELECT count(*) FROM pixels p WHERE p.org_id = o.id)::int AS pixels,
+         (SELECT count(*) FROM pixels p WHERE p.org_id = o.id AND p.active)::int AS pixels_active,
+         COALESCE((SELECT array_agg(DISTINCT i.provider ORDER BY i.provider) FROM integrations i WHERE i.org_id = o.id), '{}') AS providers,
+         EXISTS (SELECT 1 FROM meta_connections mc WHERE mc.org_id = o.id AND mc.status = 'active') AS meta_connected,
+         (SELECT count(*) FROM payments p WHERE p.org_id = o.id AND p.status = 'approved' AND p.approved_at > now() - interval '30 days')::int AS sales_30d,
+         (SELECT count(*) FROM tracking_events t WHERE t.org_id = o.id AND t.received_at > now() - interval '3 days')::int AS events_3d,
+         (SELECT count(*) FROM audit_log a WHERE a.user_id = u.id AND a.action IN ('auth.login_failed', 'auth.2fa_failed') AND a.created_at > now() - interval '24 hours')::int AS failed_24h,
+         (SELECT count(DISTINCT s.ip) FROM sessions s WHERE s.user_id = u.id AND ${PUBLIC_IP("s.ip")} AND s.created_at > now() - interval '7 days')::int AS ips_7d,
+         (SELECT count(DISTINCT s2.user_id) FROM sessions s1 JOIN sessions s2 ON s2.ip = s1.ip AND s2.user_id <> s1.user_id
+           WHERE s1.user_id = u.id AND ${PUBLIC_IP("s1.ip")} AND s1.created_at > now() - interval '30 days' AND s2.created_at > now() - interval '30 days')::int AS shared_ip_accounts,
+         (SELECT count(*) FROM webhook_receipts w WHERE w.org_id = o.id AND w.outcome = 'rejected' AND w.received_at > now() - interval '7 days')::int AS rejected_7d
+    FROM users u
+    LEFT JOIN LATERAL (SELECT mm.org_id, mm.role FROM memberships mm WHERE mm.user_id = u.id ORDER BY (mm.role = 'owner') DESC, mm.created_at LIMIT 1) m ON true
+    LEFT JOIN organizations o ON o.id = m.org_id`;
+var RISK_SQL = `(failed_24h >= ${RISK.failed24h} OR ips_7d >= ${RISK.ips7d} OR shared_ip_accounts >= ${RISK.sharedIp} OR rejected_7d >= ${RISK.rejected7d})`;
+var FILTERS = {
+  all: "true",
+  risk: RISK_SQL,
+  blocked: "blocked_at IS NOT NULL",
+  unpaid: `paid_count = 0 AND COALESCE(plan_status, '') <> 'exempt'`,
+  paid: "paid_count > 0",
+  no_pixel: "pixels = 0",
+  trial: `plan_status = 'trial'`
+};
+function flags(r) {
+  const f = [];
+  if (r.failed_24h >= RISK.failed24h) f.push({ code: "failed_logins", label: `${r.failed_24h} tentativas de senha/c\xF3digo erradas em 24 h` });
+  if (r.ips_7d >= RISK.ips7d) f.push({ code: "many_ips", label: `Entrou de ${r.ips_7d} IPs diferentes em 7 dias (conta compartilhada?)` });
+  if (r.shared_ip_accounts >= RISK.sharedIp) f.push({ code: "shared_ip", label: `Mesmo IP de ${r.shared_ip_accounts} outras contas em 30 dias (v\xE1rias contas no teste gr\xE1tis? pode ser IP de operadora)` });
+  if (r.rejected_7d >= RISK.rejected7d) f.push({ code: "rejected_webhooks", label: `${r.rejected_7d} webhooks recusados em 7 dias (token/assinatura inv\xE1lidos)` });
+  return f;
+}
+var present = (r) => ({
+  id: r.id,
+  email: r.email,
+  name: r.name,
+  createdAt: r.created_at,
+  lastSeenAt: r.last_seen_at,
+  emailVerified: r.email_verified,
+  google: r.google,
+  twoFactor: r.two_factor,
+  blocked: r.blocked_at ? { at: r.blocked_at, reason: r.blocked_reason } : null,
+  org: r.org_id ? { id: r.org_id, name: r.org_name, role: r.role, planStatus: r.plan_status, planExpiresAt: r.plan_expires_at, count: r.orgs } : null,
+  billing: { paidCount: r.paid_count, paidTotalMinor: r.paid_total_minor, lastPaidAt: r.last_paid_at },
+  usage: { pixels: r.pixels, pixelsActive: r.pixels_active, providers: r.providers, metaConnected: r.meta_connected, sales30d: r.sales_30d, events3d: r.events_3d },
+  flags: flags(r)
+});
+function adminUserRoutes(app, ctx) {
+  app.get("/v1/admin/users", async (req) => {
+    requirePlatformAdmin(req);
+    const q = parse5(external_exports.object({
+      q: external_exports.string().trim().max(120).optional(),
+      filter: external_exports.enum(["all", "risk", "blocked", "unpaid", "paid", "no_pixel", "trial"]).default("all"),
+      page: external_exports.coerce.number().int().min(1).max(1e3).default(1)
+    }), req.query);
+    const term = q.q ? `%${q.q.replace(/[%_\\]/g, (c) => `\\${c}`)}%` : null;
+    const where = `(${FILTERS[q.filter]}) AND ($1::text IS NULL OR email ILIKE $1 OR name ILIKE $1 OR org_name ILIKE $1)`;
+    const [rows, counts] = await Promise.all([
+      ctx.db.query(`WITH b AS (${BASE}) SELECT * FROM b WHERE ${where} ORDER BY ${q.filter === "risk" ? "failed_24h DESC, shared_ip_accounts DESC," : ""} created_at DESC LIMIT 50 OFFSET $2`, [term, (q.page - 1) * 50]),
+      ctx.db.query(`WITH b AS (${BASE}) SELECT count(*)::int AS total, count(*) FILTER (WHERE ${RISK_SQL})::int AS risk,
+              count(*) FILTER (WHERE blocked_at IS NOT NULL)::int AS blocked, count(*) FILTER (WHERE paid_count > 0)::int AS paid,
+              count(*) FILTER (WHERE pixels = 0)::int AS no_pixel FROM b WHERE ($1::text IS NULL OR email ILIKE $1 OR name ILIKE $1 OR org_name ILIKE $1)`, [term])
+    ]);
+    return jsonSafe({ users: rows.rows.map(present), counts: counts.rows[0], page: q.page, pageSize: 50 });
+  });
+  app.get("/v1/admin/users/:id", async (req) => {
+    requirePlatformAdmin(req);
+    const { id } = parse5(external_exports.object({ id: external_exports.string().uuid() }), req.params);
+    const r = await ctx.db.query(`WITH b AS (${BASE}) SELECT * FROM b WHERE id = $1`, [id]);
+    if (!r.rows[0]) throw notFound("Usu\xE1rio n\xE3o encontrado.");
+    const [sessions, activity, orgs] = await Promise.all([
+      ctx.db.query(
+        `SELECT host(ip) AS ip, user_agent, created_at, last_seen_at, (revoked_at IS NULL AND expires_at > now()) AS active
+           FROM sessions WHERE user_id = $1 ORDER BY last_seen_at DESC LIMIT 15`,
+        [id]
+      ),
+      // só o tipo da ação, quando e de onde — sem detalhes (que podem ter nomes de pixel/campanha)
+      ctx.db.query(`SELECT action, created_at, host(ip) AS ip FROM audit_log WHERE user_id = $1 ORDER BY id DESC LIMIT 60`, [id]),
+      ctx.db.query(
+        `SELECT o.id, o.name, m.role, o.plan_status, o.plan_expires_at FROM memberships m JOIN organizations o ON o.id = m.org_id
+          WHERE m.user_id = $1 ORDER BY m.created_at`,
+        [id]
+      )
+    ]);
+    return jsonSafe({
+      user: present(r.rows[0]),
+      orgs: orgs.rows,
+      sessions: sessions.rows.map((s) => ({ ip: maskIp(s.ip), device: s.user_agent ? String(s.user_agent).slice(0, 160) : null, createdAt: s.created_at, lastSeenAt: s.last_seen_at, active: s.active })),
+      activity: activity.rows.map((a) => ({ action: a.action, at: a.created_at, ip: maskIp(a.ip) }))
+    });
+  });
+  app.post("/v1/admin/users/:id/block", async (req) => {
+    const admin = requirePlatformAdmin(req);
+    const { id } = parse5(external_exports.object({ id: external_exports.string().uuid() }), req.params);
+    const b = parse5(external_exports.object({ blocked: external_exports.boolean(), reason: external_exports.string().trim().max(200).optional() }), req.body);
+    const u = await ctx.db.query("SELECT email, email_verified_at FROM users WHERE id = $1", [id]);
+    if (!u.rows[0]) throw notFound("Usu\xE1rio n\xE3o encontrado.");
+    if (id === admin.user.id) throw badRequest("Voc\xEA n\xE3o pode bloquear a pr\xF3pria conta.");
+    if (isPlatformAdminEmail(ctx, u.rows[0].email, true)) throw badRequest("N\xE3o \xE9 poss\xEDvel bloquear um administrador da plataforma.");
+    if (b.blocked) {
+      await ctx.db.query("UPDATE users SET blocked_at = COALESCE(blocked_at, now()), blocked_reason = $2, updated_at = now() WHERE id = $1", [id, b.reason || null]);
+      await ctx.db.query("UPDATE sessions SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL", [id]);
+    } else {
+      await ctx.db.query("UPDATE users SET blocked_at = NULL, blocked_reason = NULL, updated_at = now() WHERE id = $1", [id]);
+    }
+    await ctx.db.query(
+      `INSERT INTO audit_log(user_id, action, target, metadata) VALUES ($1, $2, $3, $4)`,
+      [admin.user.id, b.blocked ? "admin.user_blocked" : "admin.user_unblocked", id, JSON.stringify(b.reason ? { reason: b.reason } : {})]
+    );
+    return { ok: true, blocked: b.blocked };
+  });
+}
+
 // src/notifications/sound.ts
 var MAX_SOUND_BYTES = 1024 * 1024;
 function sniffAudio(b) {
@@ -98096,6 +98238,7 @@ Canonical: ${ctx.config.APP_URL.replace(/\/$/, "")}/.well-known/security.txt
   metaRoutes(app, ctx);
   billingRoutes(app, ctx);
   adminRoutes(app, ctx);
+  adminUserRoutes(app, ctx);
   pushRoutes(app, ctx);
   saleSoundRoutes(app, ctx);
   legalRoutes(app, ctx);

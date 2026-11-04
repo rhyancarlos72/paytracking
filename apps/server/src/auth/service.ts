@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import { tx } from '@pt/db';
 import type { Ctx } from '../context.js';
 import { randomToken, sha256Hex } from '../lib/crypto.js';
-import { badRequest, conflict } from '../lib/errors.js';
+import { badRequest, conflict, forbidden } from '../lib/errors.js';
 
 export type Role = 'owner' | 'admin' | 'analyst' | 'viewer';
 export const ROLE_RANK: Record<Role, number> = { viewer: 0, analyst: 1, admin: 2, owner: 3 };
@@ -105,7 +105,12 @@ export async function authenticate(ctx: Ctx, email: string, password: string): P
   return { id: row.id };
 }
 
+export const BLOCKED_MESSAGE = 'Acesso bloqueado. Se acha que é um engano, fale com o suporte.';
+
 export async function createSession(ctx: Ctx, userId: string, meta: { ip?: string; ua?: string; orgId?: string | null }) {
+  // conta bloqueada pelo dono da plataforma: nenhum caminho de entrada (senha, Google, 2FA) abre sessão
+  const b = await ctx.db.query<{ blocked_at: Date | null }>('SELECT blocked_at FROM users WHERE id = $1', [userId]);
+  if (b.rows[0]?.blocked_at) throw forbidden(BLOCKED_MESSAGE);
   const token = randomToken(32);
   const expires = new Date(ctx.now().getTime() + ctx.config.SESSION_TTL_DAYS * 86_400_000);
   await ctx.db.query(
@@ -150,7 +155,7 @@ export async function resolveSession(ctx: Ctx, token: string): Promise<AuthConte
     `SELECT s.id AS session_id, s.active_org_id, s.expires_at, s.last_seen_at,
             u.id AS user_id, u.email, u.name, u.is_platform_admin, u.email_verified_at, u.hide_email, u.hide_names, u.totp_enabled_at
        FROM sessions s JOIN users u ON u.id = s.user_id
-      WHERE s.id = $1 AND s.revoked_at IS NULL AND s.expires_at > now()`,
+      WHERE s.id = $1 AND s.revoked_at IS NULL AND s.expires_at > now() AND u.blocked_at IS NULL`,
     [id],
   );
   const s = r.rows[0];

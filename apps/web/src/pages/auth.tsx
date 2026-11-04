@@ -130,6 +130,7 @@ const GOOGLE_ERRORS: Record<string, string> = {
   google_falhou: 'Não foi possível entrar com o Google agora. Tente de novo.',
   google_email_nao_verificado: 'Esse e-mail ainda não foi verificado pelo Google.',
   google_outra_conta: 'Este e-mail já está ligado a outra conta Google. Entre com e-mail e senha.',
+  conta_bloqueada: 'Acesso bloqueado. Se acha que é um engano, fale com o suporte.',
   google_desativado: 'O login com Google não está disponível.',
 };
 

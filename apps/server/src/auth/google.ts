@@ -138,11 +138,14 @@ export function googleRoutes(app: FastifyInstance, ctx: Ctx) {
       }
     }
 
+    const blocked = await ctx.db.query('SELECT 1 FROM users WHERE id = $1 AND blocked_at IS NOT NULL', [userId]);
+    if (blocked.rowCount) return fail(reply, 'conta_bloqueada');
     if (await hasTwoFactor(ctx, userId)) {
       // o desafio vai no fragmento (#): não aparece em logs nem no Referer
       return reply.redirect(`${appUrl}/entrar?voltar=${encodeURIComponent(flow.back)}#desafio=${encodeURIComponent(issueChallenge(ctx, userId))}`, 302);
     }
     const s = await createSession(ctx, userId, { ip: clientIp(req), ua: req.headers['user-agent'] });
+    await ctx.db.query(`INSERT INTO audit_log(user_id, action, ip) VALUES ($1, 'auth.login_google', $2)`, [userId, clientIp(req) || null]);
     setSessionCookie(reply, s.token, s.expires, secure);
     return reply.redirect(`${appUrl}${created ? '/?bem-vindo=1' : flow.back}`, 302);
   });

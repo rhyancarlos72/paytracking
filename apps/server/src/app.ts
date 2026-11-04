@@ -22,6 +22,7 @@ import { reportRoutes } from './reports/routes.js';
 import { metaRoutes } from './meta/routes.js';
 import { billingRoutes } from './billing/routes.js';
 import { adminRoutes } from './admin/routes.js';
+import { adminUserRoutes } from './admin/users.js';
 import { pushRoutes } from './notifications/routes.js';
 import { saleSoundRoutes } from './notifications/sound.js';
 import { legalRoutes } from './legal/pages.js';
@@ -181,6 +182,7 @@ export async function buildApp(ctx: Ctx): Promise<FastifyInstance> {
   metaRoutes(app, ctx);
   billingRoutes(app, ctx);
   adminRoutes(app, ctx);
+  adminUserRoutes(app, ctx);
   pushRoutes(app, ctx);
   saleSoundRoutes(app, ctx);
   legalRoutes(app, ctx);

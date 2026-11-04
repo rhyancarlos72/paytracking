@@ -46,11 +46,16 @@ export function authRoutes(app: FastifyInstance, ctx: Ctx) {
     await hit(ctx.db, ipBucket, 30, 900);
     await hit(ctx.db, emailBucket, 8, 900);
     const user = await authenticate(ctx, body.email, body.password);
-    if (!user) throw unauthorized('E-mail ou senha incorretos.');
+    if (!user) {
+      // registro para o Admin (sinal de tentativa de invasão): só quando o e-mail é de uma conta
+      await ctx.db.query(`INSERT INTO audit_log(user_id, action, ip) SELECT id, 'auth.login_failed', $2 FROM users WHERE email = $1`, [body.email.trim().toLowerCase(), clientIp(req) || null]);
+      throw unauthorized('E-mail ou senha incorretos.');
+    }
     await clear(ctx.db, emailBucket);
     // senha certa + verificação em duas etapas ativa: ainda sem sessão, pede o código do app
     if (await hasTwoFactor(ctx, user.id)) return { ok: false, twoFactorRequired: true, challenge: issueChallenge(ctx, user.id) };
     const s = await createSession(ctx, user.id, { ip: clientIp(req), ua: req.headers['user-agent'] });
+    await ctx.db.query(`INSERT INTO audit_log(user_id, action, ip) VALUES ($1, 'auth.login', $2)`, [user.id, clientIp(req) || null]);
     setSessionCookie(reply, s.token, s.expires, secure);
     return { ok: true };
   });

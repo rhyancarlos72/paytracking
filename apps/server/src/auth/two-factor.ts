@@ -123,6 +123,7 @@ export function twoFactorRoutes(app: FastifyInstance, ctx: Ctx) {
     const row = await loadUser(ctx, userId);
     if (!row.totp_enabled_at) throw badRequest('A verificação expirou. Entre com e-mail e senha de novo.');
     const ok = body.code ? await checkTotp(ctx, userId, row, body.code) : await useRecoveryCode(ctx, userId, body.recoveryCode!);
+    if (!ok) await ctx.db.query(`INSERT INTO audit_log(user_id, action, ip) VALUES ($1, 'auth.2fa_failed', $2)`, [userId, clientIp(req) || null]);
     if (!ok) throw unauthorized(body.code ? 'Código incorreto ou já usado. Confira o horário do celular e use o código atual.' : 'Código de recuperação inválido ou já usado.');
     await clear(ctx.db, bucket);
     const s = await createSession(ctx, userId, { ip: clientIp(req), ua: req.headers['user-agent'] });
