@@ -93839,19 +93839,27 @@ function safeDecode4(s) {
     return s;
   }
 }
+var splitParts = (v) => {
+  const t = (v ?? "").trim().toLowerCase();
+  if (!t || t === "null") return [];
+  return t.includes("|") ? [t, ...t.split("|").map((x) => x.trim()).filter(Boolean)] : [t];
+};
 function matchUtmToRow(utmValues, rows) {
-  const fields = utmValues.flatMap((v) => {
-    const t = (v ?? "").trim().toLowerCase();
-    return t.includes("|") ? [t, ...t.split("|").map((x) => x.trim())] : [t];
-  }).filter((v) => v !== "" && v !== "null");
-  if (!fields.length) return -1;
+  const perField = utmValues.map(splitParts).filter((f) => f.length);
+  if (!perField.length) return -1;
+  const all = perField.flat();
   for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
-    const name2 = row.name.trim().toLowerCase();
-    const id = row.id.trim();
-    for (const v of fields) {
-      if (name2 !== "" && v === name2 || id !== "" && v.includes(id)) return i;
+    const id = rows[i].id.trim();
+    if (id && all.some((v) => v === id || v.includes(id))) return i;
+  }
+  for (const field of perField) {
+    let best = -1;
+    for (let i = 0; i < rows.length; i++) {
+      const name2 = rows[i].name.trim().toLowerCase();
+      if (!name2 || !field.includes(name2)) continue;
+      if (best < 0 || (rows[i].rank ?? 0) > (rows[best].rank ?? 0)) best = i;
     }
+    if (best >= 0) return best;
   }
   return -1;
 }
@@ -96556,6 +96564,10 @@ function metaError(e) {
   }
   throw e;
 }
+function rankOf(r) {
+  const active = (r.effectiveStatus || r.status || "").toUpperCase() === "ACTIVE" ? 1e12 : 0;
+  return active + (Number.parseFloat(r.spend ?? "0") || 0);
+}
 function metaRoutes(app, ctx) {
   const configured = () => !!ctx.config.META_APP_ID && !!ctx.config.META_APP_SECRET;
   app.get("/v1/meta/status", async (req) => {
@@ -96658,7 +96670,14 @@ function metaRoutes(app, ctx) {
     let adsetMap = /* @__PURE__ */ new Map();
     if (q.level === "campaign") {
       const adsets = await entities(ctx, a.org.id, "adset", w.since, w.until).catch(() => null);
-      adsetMap = new Map((adsets?.rows ?? []).flatMap((s) => [[`id:${s.id}`, s.campaignId ?? ""], [`name:${s.name.toLowerCase()}`, s.campaignId ?? ""]]));
+      const byName = /* @__PURE__ */ new Map();
+      for (const a2 of adsets?.rows ?? []) {
+        adsetMap.set(`id:${a2.id}`, a2.campaignId ?? "");
+        const k = a2.name.trim().toLowerCase();
+        const cur = byName.get(k);
+        if (!cur || rankOf(a2) > cur.rank) byName.set(k, { campaignId: a2.campaignId ?? "", rank: rankOf(a2) });
+      }
+      for (const [k, v] of byName) adsetMap.set(`name:${k}`, v.campaignId);
     }
     const pays = await ctx.db.query(
       `SELECT amount_minor, currency, approved_at, utm_campaign, utm_content, utm_term, utm_medium, utm_id
@@ -96667,18 +96686,13 @@ function metaRoutes(app, ctx) {
     );
     const fx = await FxTable.loadFor(ctx, [rep, data.currency, ...pays.rows.map((p) => String(p.currency ?? "").trim())], w.since, w.until);
     const acc = data.rows.map(() => ({ sales: 0, revenue: 0n, unconverted: 0 }));
-    const rows = data.rows.map((r) => ({ id: r.id, name: r.name }));
+    const rows = data.rows.map((r) => ({ id: r.id, name: r.name, rank: rankOf(r) }));
     for (const p of pays.rows) {
-      const values = [p.utm_campaign, p.utm_content, p.utm_term, p.utm_medium, p.utm_id].filter(Boolean);
+      const values = (q.level === "adset" ? [p.utm_medium, p.utm_content, p.utm_campaign, p.utm_term, p.utm_id] : [p.utm_campaign, p.utm_id, p.utm_medium, p.utm_content, p.utm_term]).filter(Boolean);
       if (q.level === "campaign") {
-        const parts = values.flatMap((v) => [v, ...String(v).split("|").map((x) => x.trim())]).filter(Boolean);
-        for (const v of parts) {
-          const parent = adsetMap.get(`id:${v}`) ?? adsetMap.get(`name:${String(v).toLowerCase()}`);
-          if (parent) {
-            values.push(parent);
-            break;
-          }
-        }
+        const parts = [p.utm_medium, p.utm_content, p.utm_term].filter(Boolean).flatMap((v) => [String(v).trim(), ...String(v).split("|").map((x) => x.trim())]).filter(Boolean);
+        const parent = parts.map((v) => adsetMap.get(`id:${v}`)).find(Boolean) ?? parts.map((v) => adsetMap.get(`name:${v.toLowerCase()}`)).find(Boolean);
+        if (parent) values.push(parent);
       }
       const i = matchUtmToRow(values, rows);
       if (i < 0) continue;

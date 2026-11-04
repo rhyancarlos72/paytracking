@@ -27,6 +27,12 @@ function metaError(e: unknown): never {
   throw e;
 }
 
+/** Desempate entre cópias com o mesmo nome: ativa primeiro, depois a que mais gastou no período. */
+function rankOf(r: { effectiveStatus?: string; status?: string; spend?: string }): number {
+  const active = (r.effectiveStatus || r.status || '').toUpperCase() === 'ACTIVE' ? 1e12 : 0;
+  return active + (Number.parseFloat(r.spend ?? '0') || 0);
+}
+
 export function metaRoutes(app: FastifyInstance, ctx: Ctx) {
   const configured = () => !!ctx.config.META_APP_ID && !!ctx.config.META_APP_SECRET;
 
@@ -145,7 +151,15 @@ export function metaRoutes(app: FastifyInstance, ctx: Ctx) {
     let adsetMap: Map<string, string> = new Map();
     if (q.level === 'campaign') {
       const adsets = await entities(ctx, a.org.id, 'adset', w.since, w.until).catch(() => null);
-      adsetMap = new Map((adsets?.rows ?? []).flatMap((s) => [[`id:${s.id}`, s.campaignId ?? ''], [`name:${s.name.toLowerCase()}`, s.campaignId ?? '']]));
+      // por ID sempre; por nome, a cópia ativa e com mais gasto (nomes duplicados não se sobrescrevem ao acaso)
+      const byName = new Map<string, { campaignId: string; rank: number }>();
+      for (const a of adsets?.rows ?? []) {
+        adsetMap.set(`id:${a.id}`, a.campaignId ?? '');
+        const k = a.name.trim().toLowerCase();
+        const cur = byName.get(k);
+        if (!cur || rankOf(a) > cur.rank) byName.set(k, { campaignId: a.campaignId ?? '', rank: rankOf(a) });
+      }
+      for (const [k, v] of byName) adsetMap.set(`name:${k}`, v.campaignId);
     }
 
     const pays = await ctx.db.query(
@@ -155,16 +169,19 @@ export function metaRoutes(app: FastifyInstance, ctx: Ctx) {
     );
     const fx = await FxTable.loadFor(ctx, [rep, data.currency, ...pays.rows.map((p) => String(p.currency ?? '').trim())], w.since, w.until);
     const acc = data.rows.map(() => ({ sales: 0, revenue: 0n, unconverted: 0 }));
-    const rows = data.rows.map((r) => ({ id: r.id, name: r.name }));
+    const rows = data.rows.map((r) => ({ id: r.id, name: r.name, rank: rankOf(r) }));
     for (const p of pays.rows) {
-      const values: string[] = [p.utm_campaign, p.utm_content, p.utm_term, p.utm_medium, p.utm_id].filter(Boolean);
+      // campo do próprio nível primeiro: conjunto = utm_medium ({{adset.name}}|{{adset.id}}), campanha = utm_campaign
+      const values: string[] = (q.level === 'adset'
+        ? [p.utm_medium, p.utm_content, p.utm_campaign, p.utm_term, p.utm_id]
+        : [p.utm_campaign, p.utm_id, p.utm_medium, p.utm_content, p.utm_term]).filter(Boolean);
       if (q.level === 'campaign') {
-        // conjunto → campanha, aceitando "nome|id" (parâmetros de URL recomendados)
-        const parts = values.flatMap((v) => [v, ...String(v).split('|').map((x) => x.trim())]).filter(Boolean);
-        for (const v of parts) {
-          const parent = adsetMap.get(`id:${v}`) ?? adsetMap.get(`name:${String(v).toLowerCase()}`);
-          if (parent) { values.push(parent); break; }
-        }
+        // conjunto → campanha ("nome|id"): primeiro pelo ID do conjunto, depois pelo nome (campo do conjunto primeiro)
+        const parts = [p.utm_medium, p.utm_content, p.utm_term].filter(Boolean)
+          .flatMap((v) => [String(v).trim(), ...String(v).split('|').map((x) => x.trim())]).filter(Boolean);
+        const parent = parts.map((v) => adsetMap.get(`id:${v}`)).find(Boolean)
+          ?? parts.map((v) => adsetMap.get(`name:${v.toLowerCase()}`)).find(Boolean);
+        if (parent) values.push(parent);
       }
       const i = matchUtmToRow(values, rows);
       if (i < 0) continue;

@@ -208,6 +208,23 @@ describe('UTM', () => {
     expect(matchUtmToRow(['Remarketing 7 dias|999999999999999'], rows)).toBe(1); // campanha duplicada: ID novo, mesmo nome
     expect(matchUtmToRow(['Outra|999999999999999'], rows)).toBe(-1);
   });
+  it('cópias com o MESMO nome: o ID da UTM manda (a cópia pausada que vem antes na lista não rouba a venda)', () => {
+    const rows = [
+      { id: '120210000000010', name: 'Conjunto Lookalike', rank: 0 },          // cópia antiga, pausada, sem gasto
+      { id: '120210000000011', name: 'Conjunto Lookalike', rank: 1e12 + 593 }, // ativa e gastando
+    ];
+    expect(matchUtmToRow(['Conjunto Lookalike|120210000000011'], rows)).toBe(1);
+    expect(matchUtmToRow(['Conjunto Lookalike|120210000000010'], rows)).toBe(0); // venda que veio mesmo da antiga
+    // só o nome (sem ID): fica com a cópia ativa e gastando, não com a primeira da lista
+    expect(matchUtmToRow(['Conjunto Lookalike'], rows)).toBe(1);
+  });
+  it('o campo do nível vem primeiro: nome da campanha não casa com um conjunto homônimo de outra campanha', () => {
+    const adsets = [{ id: '120210000000020', name: 'G4A', rank: 0 }, { id: '120210000000021', name: 'Frio 25-45', rank: 1 }];
+    // utm_medium (conjunto) antes de utm_campaign — sem IDs na lista, ganha o nome do conjunto
+    expect(matchUtmToRow(['Frio 25-45', 'G4A'], adsets)).toBe(1);
+    // com o ID do conjunto, nunca erra
+    expect(matchUtmToRow(['Frio 25-45|120210000000021', 'G4A|120210000000099'], adsets)).toBe(1);
+  });
 });
 
 describe('períodos novos', () => {

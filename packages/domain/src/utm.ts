@@ -48,26 +48,43 @@ function safeDecode(s: string): string {
 export interface AttributionRow {
   id: string;
   name: string;
+  /** desempate entre linhas com o MESMO nome (cópias duplicadas): maior primeiro (ex.: ativa e com gasto) */
+  rank?: number;
 }
 
+const splitParts = (v: string | null | undefined): string[] => {
+  const t = (v ?? '').trim().toLowerCase();
+  if (!t || t === 'null') return [];
+  return t.includes('|') ? [t, ...t.split('|').map((x) => x.trim()).filter(Boolean)] : [t];
+};
+
 /**
- * Casa uma venda com UMA linha (campanha/conjunto):
- * qualquer UTM (campaign/content/term/medium) igual ao nome (case-insensitive)
- * ou contendo o ID numérico. Retorna o índice da primeira linha casada ou -1.
+ * Casa uma venda com UMA linha (campanha/conjunto).
+ *  1) Pelo ID (único na Meta), em qualquer UTM — "nome|id" do modelo recomendado, ou um texto que contenha o ID.
+ *  2) Só sem ID que case: pelo nome, olhando os campos NA ORDEM recebida (o chamador põe primeiro o campo do
+ *     nível: conjunto = utm_medium, campanha = utm_campaign). Várias linhas com o mesmo nome (cópias
+ *     duplicadas) → a de maior `rank` (ativa e gastando), e não a primeira da lista.
+ * Antes a primeira linha que casasse por nome OU por ID vencia: uma cópia pausada com o mesmo nome
+ * "roubava" a venda do conjunto certo, e o nome da campanha podia casar com um conjunto homônimo.
  */
 export function matchUtmToRow(utmValues: Array<string | null | undefined>, rows: AttributionRow[]): number {
-  // "nome|id" (modelo recomendado {{campaign.name}}|{{campaign.id}}): vale o texto inteiro e cada parte
-  const fields = utmValues
-    .flatMap((v) => { const t = (v ?? '').trim().toLowerCase(); return t.includes('|') ? [t, ...t.split('|').map((x) => x.trim())] : [t]; })
-    .filter((v) => v !== '' && v !== 'null');
-  if (!fields.length) return -1;
+  const perField = utmValues.map(splitParts).filter((f) => f.length);
+  if (!perField.length) return -1;
+  const all = perField.flat();
+  // 1) ID
   for (let i = 0; i < rows.length; i++) {
-    const row = rows[i]!;
-    const name = row.name.trim().toLowerCase();
-    const id = row.id.trim();
-    for (const v of fields) {
-      if ((name !== '' && v === name) || (id !== '' && v.includes(id))) return i;
+    const id = rows[i]!.id.trim();
+    if (id && all.some((v) => v === id || v.includes(id))) return i;
+  }
+  // 2) nome, campo a campo
+  for (const field of perField) {
+    let best = -1;
+    for (let i = 0; i < rows.length; i++) {
+      const name = rows[i]!.name.trim().toLowerCase();
+      if (!name || !field.includes(name)) continue;
+      if (best < 0 || (rows[i]!.rank ?? 0) > (rows[best]!.rank ?? 0)) best = i;
     }
+    if (best >= 0) return best;
   }
   return -1;
 }
