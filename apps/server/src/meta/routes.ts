@@ -209,7 +209,7 @@ export function metaRoutes(app: FastifyInstance, ctx: Ctx) {
           : r.lifetimeBudgetMinor != null ? { type: 'lifetime', amountMinor: r.lifetimeBudgetMinor, currency: data!.currency } : null,
         spendMinor: conv(r.spend).amountMinor,
         cpcMinor: conv(r.cpc).amountMinor,
-        impressions: r.impressions, clicks: r.clicks, linkClicks: r.linkClicks, landingPageViews: r.landingPageViews, ctr: r.ctr,
+        impressions: r.impressions, clicks: r.clicks, linkClicks: r.linkClicks, uniqueLinkClicks: r.uniqueLinkClicks, landingPageViews: r.landingPageViews, ctr: r.ctr,
         meta: { purchases: r.purchases, revenueMinor: conv(r.revenue).amountMinor },
         tracked: { sales: acc[i]!.sales, revenueMinor: acc[i]!.revenue, unconverted: acc[i]!.unconverted },
       })),
@@ -240,11 +240,11 @@ export function metaRoutes(app: FastifyInstance, ctx: Ctx) {
     const { id } = parse(entityParams, req.params);
     const { type } = parse(z.object({ type: z.enum(['campaign', 'adset']) }), req.body);
     const conn = await client(a.org.id);
-    let res: any;
+    let res: Awaited<ReturnType<typeof conn.client.duplicate>> | undefined;
     try { res = await conn.client.duplicate(id, type); } catch (e) { metaError(e); }
     await invalidateCache(ctx, a.org.id);
-    await audit(ctx, a.org.id, a.user.id, 'meta.duplicated', id, { type });
-    return { ok: true, newId: String(res?.copied_campaign_id ?? res?.copied_adset_id ?? res?.id ?? '') };
+    await audit(ctx, a.org.id, a.user.id, 'meta.duplicated', id, { type, newId: res!.newId, adsets: res!.adsets, ads: res!.ads, failed: res!.failed });
+    return { ok: true, ...res! };
   });
 
   /** Orçamento informado NA MOEDA DA CONTA (exibida na tela) — sem câmbio implícito. */

@@ -23,6 +23,8 @@ export interface MetricRow {
   impressions: number;
   clicks: number;
   linkClicks: number;
+  /** pessoas que clicaram no link (cada pessoa conta uma vez) */
+  uniqueLinkClicks: number;
   landingPageViews: number;
   purchases: number;
   revenue: string;
@@ -31,7 +33,7 @@ export interface MetricRow {
   currency: string | null;
 }
 
-const INSIGHT_FIELDS = 'spend,impressions,clicks,inline_link_clicks,ctr,cpc,actions,action_values,account_currency';
+const INSIGHT_FIELDS = 'spend,impressions,clicks,inline_link_clicks,unique_inline_link_clicks,ctr,cpc,actions,action_values,account_currency';
 
 /** Um único action_type canônico — sem contar a mesma compra 3-4x (legado: extractPurchase). */
 export function extractPurchase(actions: unknown): number {
@@ -55,6 +57,7 @@ export function metricsFromInsight(i: Record<string, any> | undefined): MetricRo
     impressions: Number(x.impressions ?? 0),
     clicks: Number(x.clicks ?? 0),
     linkClicks: Number(x.inline_link_clicks ?? 0),
+    uniqueLinkClicks: Number(x.unique_inline_link_clicks ?? 0),
     landingPageViews: extractAction(x.actions, 'landing_page_view'),
     purchases: extractPurchase(x.actions),
     revenue: String(extractPurchase(x.action_values)),
@@ -156,11 +159,39 @@ export class MetaClient {
   }
 
   /**
-   * Cópia já ATIVA, com tudo dentro (campanha → conjuntos e anúncios; conjunto → anúncios).
-   * Sem deep_copy a Meta copiaria só a "casca" da campanha, sem conjuntos — ativar isso não veicula nada.
+   * Duplica campanha (com conjuntos e anúncios) ou conjunto (com anúncios), em ETAPAS: a Meta só aceita
+   * a "cópia completa" (deep_copy) num pedido só com até 3 itens — acima disso recusa, e era por isso que
+   * duplicar não funcionava em campanhas maiores. Aqui: copia o item de cima já ATIVO, depois cada filho
+   * apontando para a cópia (mantendo o status de origem: o que estava pausado continua pausado).
+   * Itens excluídos/arquivados não são copiados. Pode ser repetido quantas vezes quiser.
    */
-  duplicate(id: string, _type: 'campaign' | 'adset') {
-    return this.request('POST', `/${id}/copies`, { status_option: 'ACTIVE', deep_copy: 'true' });
+  async duplicate(id: string, type: 'campaign' | 'adset'): Promise<{ newId: string; adsets: number; ads: number; failed: number; firstError: string | null }> {
+    const top = await this.request('POST', `/${id}/copies`, { status_option: 'ACTIVE', deep_copy: 'false' });
+    const newId = String(top?.copied_campaign_id ?? top?.copied_adset_id ?? top?.id ?? '');
+    if (!newId) throw new MetaApiError('A Meta não devolveu o ID da cópia.', null, 0);
+    const live = (rows: any[]) => rows.filter((x) => !['DELETED', 'ARCHIVED'].includes(String(x?.effective_status ?? x?.status ?? '').toUpperCase()));
+    const out = { newId, adsets: 0, ads: 0, failed: 0, firstError: null as string | null };
+    const fail = (e: unknown) => { out.failed++; out.firstError ??= (e as Error).message; };
+    const copyAds = async (fromAdset: string, toAdset: string) => {
+      const ads = live(await this.getAll(`/${fromAdset}/ads`, { fields: 'id,effective_status', limit: '200' }, 5));
+      for (const ad of ads) {
+        try { await this.request('POST', `/${ad.id}/copies`, { adset_id: toAdset, status_option: 'INHERITED_FROM_SOURCE' }); out.ads++; } catch (e) { fail(e); }
+      }
+    };
+    if (type === 'adset') {
+      await copyAds(id, newId);
+      return out;
+    }
+    const adsets = live(await this.getAll(`/${id}/adsets`, { fields: 'id,effective_status', limit: '200' }, 5));
+    for (const s of adsets) {
+      try {
+        const r = await this.request('POST', `/${s.id}/copies`, { campaign_id: newId, deep_copy: 'false', status_option: 'INHERITED_FROM_SOURCE' });
+        const nid = String(r?.copied_adset_id ?? r?.id ?? '');
+        out.adsets++;
+        if (nid) await copyAds(String(s.id), nid);
+      } catch (e) { fail(e); }
+    }
+    return out;
   }
 
   /** Orçamento em unidade mínima da MOEDA DA CONTA (sem conversão — corrige P-25/P-27). */

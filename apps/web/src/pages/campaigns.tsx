@@ -15,13 +15,13 @@ import { useSession } from '../lib/session';
 interface Row {
   id: string; name: string; status: string; effectiveStatus: string; campaignId?: string; campaignName?: string;
   budget: { type: 'daily' | 'lifetime'; amountMinor: string; currency: string } | null;
-  spendMinor: string; cpcMinor: string; impressions: number; clicks: number; linkClicks: number; landingPageViews: number; ctr: number;
+  spendMinor: string; cpcMinor: string; impressions: number; clicks: number; linkClicks: number; uniqueLinkClicks?: number; landingPageViews: number; ctr: number;
   meta: { purchases: number; revenueMinor: string }; tracked: { sales: number; revenueMinor: string; unconverted: number };
 }
 interface Resp { connected: boolean; accountCurrency: string; reportingCurrency: string; fx: { date: string; converted: boolean; rate: string | null }; rows: Row[] }
 
 type Source = 'tracked' | 'meta';
-type SortKey = 'name' | 'spend' | 'sales' | 'revenue' | 'roas' | 'cpa' | 'ctr';
+type SortKey = 'name' | 'spend' | 'sales' | 'revenue' | 'roas' | 'cpa' | 'ctr' | 'cpc' | 'uclicks';
 
 /** Faixa de ROAS: prejuízo (< 1), no limite (1–2), lucrativo (2–3), excelente (≥ 3). */
 function roasTier(roas: number | null) {
@@ -36,7 +36,7 @@ function RoasPill({ roas }: { roas: number | null }) {
   const t = roasTier(roas);
   return (
     <span className={clsx('inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset', t.cls)} title={t.label}>
-      <span className="num">{ratio(roas)}</span><span className="hidden font-medium opacity-80 xl:inline">{t.label}</span>
+      <span className="num">{ratio(roas)}</span><span className="hidden font-medium opacity-80 2xl:inline">{t.label}</span>
     </span>
   );
 }
@@ -67,7 +67,14 @@ export default function CampaignsPage() {
 
   const act = useMutation({
     mutationFn: ({ id, path, body }: { id: string; path: string; body: object }) => post(`/v1/meta/entities/${id}/${path}`, body),
-    onSuccess: (_d, v) => { toast.ok(v.path === 'duplicate' ? 'Cópia criada e já ativa' : v.path === 'budget' ? 'Orçamento atualizado na Meta' : 'Alteração enviada à Meta', v.path === 'duplicate' ? 'Com os conjuntos e anúncios. Ela aparece aqui em instantes.' : undefined); void qc.invalidateQueries({ queryKey: ['campaigns'] }); },
+    onSuccess: (d: any, v) => {
+      if (v.path === 'duplicate') {
+        const parts = [d?.adsets ? `${d.adsets} conjunto(s)` : '', d?.ads ? `${d.ads} anúncio(s)` : ''].filter(Boolean).join(' e ');
+        toast.ok('Cópia criada e já ativa', `${parts ? `Com ${parts}. ` : ''}Ela aparece aqui em instantes.`);
+        if (d?.failed) toast.err(new Error(d.firstError ?? 'A Meta recusou parte dos itens.'), `${d.failed} item(ns) não foram copiados`);
+      } else toast.ok(v.path === 'budget' ? 'Orçamento atualizado na Meta' : 'Alteração enviada à Meta');
+      void qc.invalidateQueries({ queryKey: ['campaigns'] });
+    },
     onError: (e) => toast.err(e),
   });
 
@@ -76,17 +83,17 @@ export default function CampaignsPage() {
     const sales = source === 'tracked' ? r.tracked.sales : r.meta.purchases;
     const revenue = Number(source === 'tracked' ? r.tracked.revenueMinor : r.meta.revenueMinor);
     const spend = Number(r.spendMinor);
-    return { r, sales, revenue, spend, roas: spend > 0 ? revenue / spend : null, cpa: sales > 0 ? spend / sales : null, active: r.status === 'ACTIVE' };
+    return { r, sales, revenue, spend, roas: spend > 0 ? revenue / spend : null, cpa: sales > 0 ? spend / sales : null, cpc: r.linkClicks > 0 ? spend / r.linkClicks : null, active: r.status === 'ACTIVE' };
   }), [q.data, source]);
 
   const rows = useMemo(() => {
     const term = search.trim().toLowerCase();
     const list = all.filter((x) => (status === 'all' || (status === 'active') === x.active) && (!onlySales || x.sales > 0) && (!term || x.r.name.toLowerCase().includes(term) || (x.r.campaignName ?? '').toLowerCase().includes(term)));
-    const val = (x: (typeof list)[number]) => ({ name: x.r.name.toLowerCase(), spend: x.spend, sales: x.sales, revenue: x.revenue, roas: x.roas ?? -1, cpa: x.cpa ?? Infinity, ctr: x.r.ctr })[sort.key];
+    const val = (x: (typeof list)[number]) => ({ name: x.r.name.toLowerCase(), spend: x.spend, sales: x.sales, revenue: x.revenue, roas: x.roas ?? -1, cpa: x.cpa ?? Infinity, ctr: x.r.ctr, cpc: x.cpc ?? Infinity, uclicks: x.r.uniqueLinkClicks ?? 0 })[sort.key];
     return [...list].sort((a, b) => (val(a) > val(b) ? 1 : val(a) < val(b) ? -1 : 0) * sort.dir);
   }, [all, sort, search, status, onlySales]);
 
-  const tot = rows.reduce((t, x) => ({ spend: t.spend + x.spend, revenue: t.revenue + x.revenue, sales: t.sales + x.sales, clicks: t.clicks + x.r.linkClicks, lpv: t.lpv + x.r.landingPageViews }), { spend: 0, revenue: 0, sales: 0, clicks: 0, lpv: 0 });
+  const tot = rows.reduce((t, x) => ({ spend: t.spend + x.spend, revenue: t.revenue + x.revenue, sales: t.sales + x.sales, clicks: t.clicks + x.r.linkClicks, uclicks: t.uclicks + (x.r.uniqueLinkClicks ?? 0), lpv: t.lpv + x.r.landingPageViews }), { spend: 0, revenue: 0, sales: 0, clicks: 0, uclicks: 0, lpv: 0 });
   const totRoas = tot.spend > 0 ? tot.revenue / tot.spend : null;
   const profit = tot.revenue - tot.spend;
   const unconverted = (q.data?.rows ?? []).reduce((n, r) => n + (r.tracked.unconverted ?? 0), 0);
@@ -170,7 +177,7 @@ export default function CampaignsPage() {
                   { l: 'Resultado', v: money(profit, cur), icon: profit >= 0 ? <TrendingUp /> : <TrendingDown />, tone: tot.spend > 0 ? (profit >= 0 ? 'text-ok' : 'text-err') : undefined, sub: 'receita − investimento' },
                   { l: 'ROAS', v: ratio(totRoas), icon: <Target />, tone: totRoas === null ? undefined : totRoas >= 1 ? 'text-ok' : 'text-err', sub: roasTier(totRoas).label },
                   { l: 'Vendas', v: int(tot.sales), icon: <ShoppingBag />, sub: tot.sales > 0 ? `CPA ${money(Math.round(tot.spend / tot.sales), cur)}` : 'sem vendas no período' },
-                  { l: 'Connect rate', v: tot.clicks > 0 ? pct(tot.lpv / tot.clicks) : '—', icon: <MousePointerClick />, sub: `${int(tot.clicks)} cliques no link` },
+                  { l: 'Connect rate', v: tot.clicks > 0 ? pct(tot.lpv / tot.clicks) : '—', icon: <MousePointerClick />, sub: `${int(tot.clicks)} cliques no link${tot.clicks > 0 ? ` · CPC ${money(Math.round(tot.spend / tot.clicks), cur)}` : ''}` },
                 ].map((k) => (
                   <div key={k.l} className="p-4 sm:p-5">
                     <p className="flex items-center gap-2 text-[13px] font-medium text-muted"><span className="text-primary [&>svg]:h-4 [&>svg]:w-4" aria-hidden>{k.icon}</span>{k.l}</p>
@@ -237,6 +244,8 @@ export default function CampaignsPage() {
                     <option value="cpa:1">Menor CPA</option>
                     <option value="spend:-1">Maior gasto</option>
                     <option value="ctr:-1">Maior CTR</option>
+                    <option value="cpc:1">Menor CPC</option>
+                    <option value="uclicks:-1">Mais cliques únicos</option>
                     <option value="name:1">Nome (A–Z)</option>
                   </select>
                 </div>
@@ -273,7 +282,7 @@ export default function CampaignsPage() {
                   <>
                     {/* celular: cartões */}
                     <ul className="divide-y divide-border md:hidden">
-                      {rows.map(({ r, sales, revenue, spend, roas, cpa, active }) => (
+                      {rows.map(({ r, sales, revenue, spend, roas, cpa, cpc, active }) => (
                         <li key={r.id} className={clsx('p-4', spend > 0 && sales === 0 && 'bg-err/[0.03]')}>
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
@@ -293,7 +302,7 @@ export default function CampaignsPage() {
                             ))}
                           </dl>
                           <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted">
-                            <span>CTR {pct(r.ctr / 100, 2)}</span>
+                            <span>CTR {pct(r.ctr / 100, 2)} · CPC {cpc !== null ? money(Math.round(cpc), cur) : '—'} · {int(r.uniqueLinkClicks ?? 0)} cliques únicos</span>
                             <span className="flex items-center gap-1">{budget(r)}</span>
                           </div>
                         </li>
@@ -302,22 +311,22 @@ export default function CampaignsPage() {
 
                     {/* computador: tabela */}
                     <div className="hidden overflow-x-auto md:block">
-                      <table className="table-base min-w-[960px]">
+                      <table className="table-base min-w-[1040px] [&_td]:px-3 [&_th]:px-3 [&_th]:whitespace-nowrap">
                         <thead><tr>
                           {level === 'campaign' && <th className="w-10"><span className="sr-only">Selecionar</span></th>}
                           {header('name', level === 'campaign' ? 'Campanha' : 'Conjunto', false)}
                           <th>Orçamento</th>
                           {header('spend', 'Gasto')}{header('cpa', 'CPA')}{header('sales', 'Vendas')}{header('revenue', 'Receita')}{header('roas', 'ROAS')}
-                          {header('ctr', 'CTR')}<th className="text-right">Connect</th>
+                          {header('ctr', 'CTR')}{header('cpc', 'CPC')}{header('uclicks', 'Únicos')}<th className="text-right">Connect</th>
                         </tr></thead>
                         <tbody>
-                          {rows.map(({ r, sales, revenue, spend, roas, cpa, active }) => (
+                          {rows.map(({ r, sales, revenue, spend, roas, cpa, cpc, active }) => (
                             <tr key={r.id} className={clsx('group', spend > 0 && sales === 0 && 'bg-err/[0.03]')}>
                               {level === 'campaign' && (
                                 <td><input type="checkbox" aria-label={`Selecionar ${hideNames ? alias(kind, r.name) : r.name}`} className="h-4 w-4 accent-[rgb(var(--primary))]" checked={selected.has(r.id)}
                                   onChange={(e) => setSelected((p) => { const n = new Set(p); e.target.checked ? n.add(r.id) : n.delete(r.id); return n; })} /></td>
                               )}
-                              <td className="max-w-[360px] 2xl:max-w-[480px]">
+                              <td className="max-w-[230px] xl:max-w-[260px] 2xl:max-w-[440px]">
                                 <div className="flex items-center gap-2.5">
                                   <span className={clsx('h-8 w-1 shrink-0 rounded-full', roasTier(roas).bar)} aria-hidden />
                                   {actions(r, active)}
@@ -346,6 +355,8 @@ export default function CampaignsPage() {
                               <td className="num text-right">{money(revenue, cur)}</td>
                               <td className="text-right"><RoasPill roas={roas} /></td>
                               <td className="num text-right">{pct(r.ctr / 100, 2)}</td>
+                              <td className="num text-right" title="Custo por clique no link (gasto ÷ cliques no link)">{cpc !== null ? money(Math.round(cpc), cur) : '—'}</td>
+                              <td className="num text-right" title={`Cliques únicos no link (pessoas). ${int(r.linkClicks)} cliques no link no total`}>{int(r.uniqueLinkClicks ?? 0)}</td>
                               <td className="num text-right">{r.linkClicks > 0 ? pct(r.landingPageViews / r.linkClicks) : '—'}</td>
                             </tr>
                           ))}
@@ -361,6 +372,8 @@ export default function CampaignsPage() {
                             <td className="num border-t border-border px-4 py-3 text-right">{money(tot.revenue, cur)}</td>
                             <td className="border-t border-border px-4 py-3 text-right"><RoasPill roas={totRoas} /></td>
                             <td className="border-t border-border px-4 py-3" />
+                            <td className="num border-t border-border px-4 py-3 text-right">{tot.clicks > 0 ? money(Math.round(tot.spend / tot.clicks), cur) : '—'}</td>
+                            <td className="num border-t border-border px-4 py-3 text-right" title="Soma das linhas: a mesma pessoa pode ter clicado em mais de uma">{int(tot.uclicks)}</td>
                             <td className="num border-t border-border px-4 py-3 text-right">{tot.clicks > 0 ? pct(tot.lpv / tot.clicks) : '—'}</td>
                           </tr>
                         </tfoot>
