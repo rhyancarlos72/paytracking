@@ -96438,7 +96438,12 @@ var MetaClient = class {
           await this.request("POST", `/${ad.id}/copies`, { adset_id: toAdset, status_option: "INHERITED_FROM_SOURCE" });
           out.ads++;
         } catch (e) {
-          fail(e);
+          try {
+            await this.adFromSameCreative(String(ad.id), toAdset);
+            out.ads++;
+          } catch (e2) {
+            fail(e2 instanceof MetaApiError && e2.httpStatus > 0 ? e2 : e);
+          }
         }
       }
     };
@@ -96458,6 +96463,21 @@ var MetaClient = class {
       }
     }
     return out;
+  }
+  /** Anúncio novo no conjunto `toAdset` usando o criativo já existente do anúncio `adId` (mesmo nome + " - Cópia", mesmo status). */
+  async adFromSameCreative(adId, toAdset) {
+    const src = await this.request("GET", `/${adId}`, { fields: "name,status,account_id,creative{id},tracking_specs" });
+    const creativeId = src?.creative?.id;
+    const account = String(src?.account_id ?? "").replace(/\D+/g, "");
+    if (!creativeId || !account) throw new MetaApiError("N\xE3o foi poss\xEDvel ler o criativo do an\xFAncio original.", null, 0);
+    const params = {
+      name: `${String(src.name ?? "An\xFAncio").slice(0, 380)} - C\xF3pia`,
+      adset_id: toAdset,
+      creative: JSON.stringify({ creative_id: String(creativeId) }),
+      status: String(src.status ?? "").toUpperCase() === "ACTIVE" ? "ACTIVE" : "PAUSED"
+    };
+    if (Array.isArray(src.tracking_specs) && src.tracking_specs.length) params.tracking_specs = JSON.stringify(src.tracking_specs);
+    return this.request("POST", `/act_${account}/ads`, params);
   }
   /** Orçamento em unidade mínima da MOEDA DA CONTA (sem conversão — corrige P-25/P-27). */
   updateBudget(id, field, amountMinor) {

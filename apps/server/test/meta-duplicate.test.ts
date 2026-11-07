@@ -48,7 +48,28 @@ describe('duplicar campanha/conjunto na Meta', () => {
     env.fake.on(/\/120210000000050\/ads/, () => json(200, { data: [{ id: '120220000000050', effective_status: 'ACTIVE' }, { id: '120220000000051', effective_status: 'ACTIVE' }] }));
     env.fake.on(/\/120220000000050\/copies$/, () => json(200, { copied_ad_id: '1' }));
     env.fake.on(/\/120220000000051\/copies$/, () => json(400, { error: { code: 100, message: 'Anúncio reprovado não pode ser copiado' } }));
+    // plano B (mesmo criativo) também recusado pela Meta: o aviso mostra o motivo da Meta
+    env.fake.on(/\/120220000000051\?/, () => json(200, { name: 'Reprovado', status: 'ACTIVE', account_id: '444', creative: { id: '1' } }));
+    env.fake.on(/\/act_444\/ads$/, () => json(400, { error: { code: 100, message: 'Anúncio reprovado não pode ser copiado' } }));
     const r = await acc.client.post('/v1/meta/entities/120210000000050/duplicate', { type: 'adset' });
     expect(r.data).toMatchObject({ ok: true, newId: '120210000000051', adsets: 0, ads: 1, failed: 1, firstError: 'Anúncio reprovado não pode ser copiado' });
+  });
+
+  it('anúncio com "aprimoramentos padrão" (descontinuado pela Meta): copia criando o anúncio com o MESMO criativo', async () => {
+    const acc = await newAccount(env);
+    await env.db.query(`INSERT INTO meta_connections(org_id, access_token_enc, selected_ad_account_id, ad_account_currency, status) VALUES ($1, $2, 'act_9', 'BRL', 'active')`, [acc.orgId, env.ctx.box.encrypt('TOK')]);
+    env.fake.on(/\/120210000000070\/copies$/, () => json(200, { copied_adset_id: '120210000000071' }));
+    env.fake.on(/\/120210000000070\/ads/, () => json(200, { data: [{ id: '120220000000070', effective_status: 'ACTIVE' }] }));
+    env.fake.on(/\/120220000000070\/copies$/, () => json(400, { error: { code: 100, message: 'O recurso de inclusão do campo de aprimoramentos padrão no criativo foi descontinuado. Defina recursos individuais.' } }));
+    env.fake.on(/\/120220000000070\?/, () => json(200, { name: 'Criativo 03', status: 'ACTIVE', account_id: '555', creative: { id: '777000' } }));
+    env.fake.on(/\/act_555\/ads$/, () => json(200, { id: '120220000000099' }));
+    const start = env.fake.calls.length;
+    const r = await acc.client.post('/v1/meta/entities/120210000000070/duplicate', { type: 'adset' });
+    expect(r.data).toMatchObject({ ok: true, newId: '120210000000071', ads: 1, failed: 0 });
+    const created = env.fake.calls.slice(start).find((c) => c.method === 'POST' && /act_555\/ads$/.test(c.url))!;
+    const b = new URLSearchParams(created.body!);
+    expect(b.get('adset_id')).toBe('120210000000071');
+    expect(JSON.parse(b.get('creative')!)).toEqual({ creative_id: '777000' });
+    expect([b.get('name'), b.get('status')]).toEqual(['Criativo 03 - Cópia', 'ACTIVE']);
   });
 });
