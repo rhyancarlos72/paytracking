@@ -24598,6 +24598,11 @@ var schema = external_exports.object({
   MAIL_FROM: external_exports.string().default("PayTracking <no-reply@paytracking.com.br>"),
   /** contato publicado em /.well-known/security.txt (mailto: ou https:); padrão: o e-mail do MAIL_FROM */
   SECURITY_CONTACT: external_exports.string().default(""),
+  /** App Android (TWA): pacote e impressões digitais SHA-256 do certificado de assinatura (separadas por vírgula),
+   *  publicados em /.well-known/assetlinks.json — é isso que faz o app abrir em tela cheia, sem barra de endereço.
+   *  A impressão digital é pública (não é a chave); a chave (.jks) nunca fica no servidor nem no repositório. */
+  ANDROID_APP_PACKAGE: external_exports.string().default("br.com.paytracking.app"),
+  ANDROID_CERT_SHA256: external_exports.string().default("56:8F:EE:82:E7:AD:17:B4:71:06:C7:94:EA:B1:DA:70:7D:87:B0:23:17:53:11:02:95:E9:2B:EF:11:13:FF:97"),
   /** Páginas legais (/privacidade e /termos): quem opera o serviço e o contato de privacidade (encarregado/DPO) */
   LEGAL_NAME: external_exports.string().default(""),
   LEGAL_DOCUMENT: external_exports.string().default(""),

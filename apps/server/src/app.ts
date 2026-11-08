@@ -146,6 +146,18 @@ export async function buildApp(ctx: Ctx): Promise<FastifyInstance> {
     return `Contact: ${contact}\nExpires: ${expires}\nPreferred-Languages: pt-BR, en\nCanonical: ${ctx.config.APP_URL.replace(/\/$/, '')}/.well-known/security.txt\n`;
   });
 
+  // Digital Asset Links: autoriza o app Android (TWA) a abrir o painel em tela cheia
+  app.get('/.well-known/assetlinks.json', async (_req, reply) => {
+    const pkg = ctx.config.ANDROID_APP_PACKAGE.trim();
+    const fingerprints = ctx.config.ANDROID_CERT_SHA256.split(',').map((f) => f.trim().toUpperCase()).filter((f) => /^([0-9A-F]{2}:){31}[0-9A-F]{2}$/.test(f));
+    reply.type('application/json; charset=utf-8').header('Cache-Control', 'public, max-age=3600').header('Access-Control-Allow-Origin', '*');
+    if (!pkg || !fingerprints.length) return [];
+    return [{
+      relation: ['delegate_permission/common.handle_all_urls'],
+      target: { namespace: 'android_app', package_name: pkg, sha256_cert_fingerprints: fingerprints },
+    }];
+  });
+
   // llms.txt (llmstxt.org): Markdown com título H1, resumo e links das páginas públicas.
   // Antes o endereço caía no index.html e as auditorias (Lighthouse) liam HTML no lugar do arquivo.
   app.get('/llms.txt', async (_req, reply) => {
@@ -247,6 +259,12 @@ export async function buildApp(ctx: Ctx): Promise<FastifyInstance> {
       setHeaders(res, filePath) {
         // service worker e manifest sempre revalidados (senão o celular fica com a versão antiga)
         if (/(?:^|[\\/])(?:sw\.js|manifest\.webmanifest)$/.test(filePath)) res.header('Cache-Control', 'no-cache');
+        // app Android: baixa como arquivo (com o nome certo) e sempre a versão mais nova
+        else if (/\.apk$/i.test(filePath)) {
+          res.header('Content-Type', 'application/vnd.android.package-archive');
+          res.header('Content-Disposition', 'attachment; filename="PayTracking.apk"');
+          res.header('Cache-Control', 'no-cache');
+        }
         // arquivos com hash no nome nunca mudam
         else if (/[\\/]assets[\\/]/.test(filePath)) res.header('Cache-Control', 'public, max-age=31536000, immutable');
       },

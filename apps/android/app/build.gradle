@@ -1,0 +1,58 @@
+// App Android do PayTracking: uma Trusted Web Activity (TWA) que abre o painel em tela cheia.
+// O conteúdo vem do site (atualiza sozinho a cada deploy); aqui só ficam ícone, cores e a URL.
+//
+// Assinatura: a chave NUNCA fica no repositório. Defina as variáveis antes de gerar o APK:
+//   PT_KEYSTORE=/caminho/paytracking-release.jks  PT_KEYSTORE_PASSWORD=...  (alias: paytracking)
+plugins {
+    id 'com.android.application'
+}
+
+def appHost = System.getenv('PT_APP_HOST') ?: 'paytracking.com.br'
+def appUrl = "https://${appHost}/?origem=app-android"
+
+android {
+    namespace 'br.com.paytracking.app'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'br.com.paytracking.app'
+        minSdk 24
+        targetSdk 36
+        versionCode 1
+        versionName '1.0.0'
+
+        manifestPlaceholders = [hostName: appHost, launchUrl: appUrl]
+        resValue 'string', 'appName', 'PayTracking'
+        resValue 'string', 'launcherName', 'PayTracking'
+        resValue 'string', 'assetStatements', """[{"relation":["delegate_permission/common.handle_all_urls"],"target":{"namespace":"web","site":"https://${appHost}"}}]"""
+    }
+
+    signingConfigs {
+        release {
+            def ks = System.getenv('PT_KEYSTORE')
+            if (ks) {
+                storeFile file(ks)
+                storePassword System.getenv('PT_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('PT_KEY_ALIAS') ?: 'paytracking'
+                keyPassword System.getenv('PT_KEY_PASSWORD') ?: System.getenv('PT_KEYSTORE_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt')
+            if (System.getenv('PT_KEYSTORE')) signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.7.4'
+}

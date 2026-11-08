@@ -79278,6 +79278,11 @@ var schema = external_exports.object({
   MAIL_FROM: external_exports.string().default("PayTracking <no-reply@paytracking.com.br>"),
   /** contato publicado em /.well-known/security.txt (mailto: ou https:); padrão: o e-mail do MAIL_FROM */
   SECURITY_CONTACT: external_exports.string().default(""),
+  /** App Android (TWA): pacote e impressões digitais SHA-256 do certificado de assinatura (separadas por vírgula),
+   *  publicados em /.well-known/assetlinks.json — é isso que faz o app abrir em tela cheia, sem barra de endereço.
+   *  A impressão digital é pública (não é a chave); a chave (.jks) nunca fica no servidor nem no repositório. */
+  ANDROID_APP_PACKAGE: external_exports.string().default("br.com.paytracking.app"),
+  ANDROID_CERT_SHA256: external_exports.string().default("56:8F:EE:82:E7:AD:17:B4:71:06:C7:94:EA:B1:DA:70:7D:87:B0:23:17:53:11:02:95:E9:2B:EF:11:13:FF:97"),
   /** Páginas legais (/privacidade e /termos): quem opera o serviço e o contato de privacidade (encarregado/DPO) */
   LEGAL_NAME: external_exports.string().default(""),
   LEGAL_DOCUMENT: external_exports.string().default(""),
@@ -98265,6 +98270,16 @@ Preferred-Languages: pt-BR, en
 Canonical: ${ctx.config.APP_URL.replace(/\/$/, "")}/.well-known/security.txt
 `;
   });
+  app.get("/.well-known/assetlinks.json", async (_req, reply) => {
+    const pkg = ctx.config.ANDROID_APP_PACKAGE.trim();
+    const fingerprints = ctx.config.ANDROID_CERT_SHA256.split(",").map((f) => f.trim().toUpperCase()).filter((f) => /^([0-9A-F]{2}:){31}[0-9A-F]{2}$/.test(f));
+    reply.type("application/json; charset=utf-8").header("Cache-Control", "public, max-age=3600").header("Access-Control-Allow-Origin", "*");
+    if (!pkg || !fingerprints.length) return [];
+    return [{
+      relation: ["delegate_permission/common.handle_all_urls"],
+      target: { namespace: "android_app", package_name: pkg, sha256_cert_fingerprints: fingerprints }
+    }];
+  });
   app.get("/llms.txt", async (_req, reply) => {
     const base2 = ctx.config.APP_URL.replace(/\/+$/, "");
     reply.type("text/markdown; charset=utf-8").header("Cache-Control", "public, max-age=86400");
@@ -98357,7 +98372,11 @@ Canonical: ${ctx.config.APP_URL.replace(/\/$/, "")}/.well-known/security.txt
       index: false,
       setHeaders(res, filePath) {
         if (/(?:^|[\\/])(?:sw\.js|manifest\.webmanifest)$/.test(filePath)) res.header("Cache-Control", "no-cache");
-        else if (/[\\/]assets[\\/]/.test(filePath)) res.header("Cache-Control", "public, max-age=31536000, immutable");
+        else if (/\.apk$/i.test(filePath)) {
+          res.header("Content-Type", "application/vnd.android.package-archive");
+          res.header("Content-Disposition", 'attachment; filename="PayTracking.apk"');
+          res.header("Cache-Control", "no-cache");
+        } else if (/[\\/]assets[\\/]/.test(filePath)) res.header("Cache-Control", "public, max-age=31536000, immutable");
       }
     });
     const gsv = ctx.config.GOOGLE_SITE_VERIFICATION.replace(/[^\w-]/g, "");

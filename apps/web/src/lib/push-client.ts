@@ -3,6 +3,16 @@
 export const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 export const isStandalone = () =>
   window.matchMedia?.('(display-mode: standalone)').matches || (navigator as unknown as { standalone?: boolean }).standalone === true;
+export const isAndroid = () => /Android/i.test(navigator.userAgent);
+/** Aberto pelo app Android (TWA)? O app abre com ?origem=app-android (e o Chrome passa referrer android-app://). */
+const ANDROID_APP_KEY = 'pt_android_app';
+export const isAndroidApp = () => {
+  try {
+    if (/[?&]origem=app-android\b/.test(location.search) || document.referrer.startsWith('android-app://')) sessionStorage.setItem(ANDROID_APP_KEY, '1');
+    return sessionStorage.getItem(ANDROID_APP_KEY) === '1';
+  } catch { return false; }
+};
+export const ANDROID_APK_URL = '/download/paytracking.apk';
 export const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 export const permission = (): NotificationPermission | 'unsupported' => ('Notification' in window ? Notification.permission : 'unsupported');
 

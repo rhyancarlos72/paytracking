@@ -8,7 +8,7 @@ import { useToast } from '../components/toast';
 import { Badge, Button, Callout, Card, ConfirmButton, Field, Input, Select, Switch, Tabs } from '../components/ui';
 import { del, get, patch, post } from '../lib/api';
 import { dateTime, exponent, int, maskEmail, minorToNumber, money, pct, relative } from '../lib/format';
-import { canInstall, currentSubscription, endpointHash, isIOS, isStandalone, onInstallChange, permission, promptInstall, pushSupported, subscribe } from '../lib/push-client';
+import { ANDROID_APK_URL, canInstall, currentSubscription, endpointHash, isAndroid, isAndroidApp, isIOS, isStandalone, onInstallChange, permission, promptInstall, pushSupported, subscribe } from '../lib/push-client';
 import { customSound, loadSettings, onSoundChange, playSaleSound, PRESETS, removeCustomSound, saveSettings, setCustomSound, unlockAudio, type SoundPreset, type SoundSettings } from '../lib/sale-sound';
 import { useSession, type Role } from '../lib/session';
 
@@ -401,7 +401,9 @@ function PushCard() {
           </div>
         )}
 
-        {canInstall() && (
+        {!ios && !isAndroidApp() && <AndroidAppDownload />}
+
+        {canInstall() && !isAndroid() && (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/25 bg-primary/[0.06] p-4">
             <p className="text-sm"><span className="font-semibold">Instale o app</span> <span className="text-muted">— abre em tela cheia, como um aplicativo, e as notificações ficam mais confiáveis.</span></p>
             <Button variant="primary" icon={<Download className="h-4 w-4" />} onClick={async () => { if (await promptInstall()) toast.ok('App instalado'); }}>Instalar app</Button>
@@ -581,5 +583,41 @@ function Awards() {
         {q.data.unconverted > 0 && <> {int(q.data.unconverted)} venda(s) em outra moeda ainda sem cotação não entraram na soma.</>}
       </p>
     </>
+  );
+}
+
+/** App Android (APK assinado, instalação direta, sem loja). No computador mostra um QR code para abrir no celular. */
+function AndroidAppDownload() {
+  const android = isAndroid();
+  const url = `${location.origin}${ANDROID_APK_URL}`;
+  const [qr, setQr] = useState<string | null>(null);
+  useEffect(() => {
+    if (android) return;
+    void QRCode.toDataURL(url, { margin: 1, width: 160, errorCorrectionLevel: 'M' }).then(setQr).catch(() => setQr(null));
+  }, [android, url]);
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-primary/25 bg-primary/[0.06] p-4">
+      <div className="min-w-0 flex-1 basis-64">
+        <p className="flex items-center gap-2 text-sm font-semibold"><Smartphone className="h-4 w-4 text-primary" aria-hidden />App PayTracking para Android</p>
+        <p className="mt-1 text-xs leading-relaxed text-muted">
+          Abre em tela cheia, com o aviso de venda como notificação do app. Atualiza sozinho: não precisa baixar de novo a cada novidade.
+        </p>
+        <ol className="mt-2 list-decimal space-y-0.5 pl-5 text-xs text-muted">
+          <li>{android ? 'Toque em Baixar app' : 'Aponte a câmera do celular para o QR code'} e abra o arquivo baixado.</li>
+          <li>Se o Android pedir, permita <strong className="text-fg">instalar apps desta fonte</strong> (Chrome ou Arquivos).</li>
+          <li>Toque em <strong className="text-fg">Instalar</strong>, abra o app, entre na conta e ative as notificações aqui.</li>
+        </ol>
+      </div>
+      {android ? (
+        <a href={ANDROID_APK_URL} download="PayTracking.apk" className="btn-primary inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 text-sm font-medium">
+          <Download className="h-4 w-4" aria-hidden />Baixar app
+        </a>
+      ) : (
+        <div className="flex items-center gap-3">
+          {qr && <img src={qr} alt="QR code para baixar o app Android" width={112} height={112} className="rounded-lg bg-white p-1" />}
+          <a href={ANDROID_APK_URL} download="PayTracking.apk" className="text-xs font-semibold text-primary underline-offset-2 hover:underline">Baixar .apk</a>
+        </div>
+      )}
+    </div>
   );
 }
