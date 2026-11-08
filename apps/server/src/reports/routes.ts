@@ -8,7 +8,7 @@ import { notFound } from '../lib/errors.js';
 import { jsonSafe, parse, requireRole } from '../lib/http.js';
 import { periodQuery } from '../meta/routes.js';
 import { audit } from '../orgs/routes.js';
-import { dashboard, lifetimeRevenue, monthlyGoal } from './dashboard.js';
+import { businessSummary, dashboard, lifetimeRevenue, monthlyGoal } from './dashboard.js';
 import { hit } from '../lib/rate-limit.js';
 import { recoverPaymentUtms } from '../webhooks/recover-utms.js';
 import { fixDuplicateSales } from '../webhooks/fix-duplicates.js';
@@ -20,6 +20,12 @@ export function reportRoutes(app: FastifyInstance, ctx: Ctx) {
     const a = requireRole(req, 'viewer');
     const q = parse(periodQuery.extend({ pixelId: uuidOpt, provider: z.string().max(20).optional() }), req.query);
     return jsonSafe(await dashboard(ctx, a.org, { ...q, preset: q.preset as PeriodPreset }));
+  });
+
+  // resultado da empresa: semana e mês correntes (faturamento, gasto com anúncios e lucro)
+  app.get('/v1/reports/business', async (req) => {
+    const a = requireRole(req, 'viewer');
+    return jsonSafe(await businessSummary(ctx, a.org));
   });
 
   app.get('/v1/reports/lifetime', async (req) => {

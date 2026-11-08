@@ -233,3 +233,43 @@ describe('aviso de venda (feed para o som/notificação do painel)', () => {
     expect(foreign.sales).toEqual([]); // isolamento entre organizações
   });
 });
+
+describe('resultado da empresa (semana e mês)', () => {
+  it('faturamento, gasto com anúncios e lucro da semana e do mês, sem filtros', async () => {
+    await seedRates();
+    const acc = await newAccount(env);
+    await env.db.query(`INSERT INTO meta_connections(org_id, access_token_enc, selected_ad_account_id, ad_account_currency, status) VALUES ($1, $2, 'act_9', 'BRL', 'active')`, [acc.orgId, env.ctx.box.encrypt('TOK')]);
+    await newPixel(acc.client);
+    const ck = await newIntegration(acc.client, 'checkout');
+    await checkout(ck.token, { event: 'paid', transaction_id: 'B-1', value: 300 });
+    await checkout(ck.token, { event: 'paid', transaction_id: 'B-2', value: 200 });
+    await checkout(ck.token, { event: 'paid', transaction_id: 'B-3', value: 100 });
+    await checkout(ck.token, { event: 'refunded', transaction_id: 'B-3', value: 100 }); // reembolsada não conta
+    await checkout(ck.token, { event: 'pix_generated', transaction_id: 'B-4', value: 999 }); // pendente não conta
+    env.fake.on(/act_9\/insights/, () => json(200, { data: [{ date_start: today(), spend: '120.00', impressions: '1000', clicks: '10', inline_link_clicks: '8' }] }));
+
+    const b = (await acc.client.get('/v1/reports/business')).data;
+    expect(b.metaConnected).toBe(true);
+    for (const k of ['week', 'month'] as const) {
+      expect(b[k].until).toBe(today());
+      expect(b[k].current).toMatchObject({ sales: 2, revenueMinor: '50000', spendMinor: '12000', profitMinor: '38000' });
+      expect(b[k].current.roas).toBeCloseTo(500 / 120);
+      expect(b[k].previous).toMatchObject({ sales: 0, revenueMinor: '0' });
+      expect(b[k].series.at(-1)).toMatchObject({ day: today(), revenueMinor: '50000', spendMinor: '12000' });
+    }
+    expect(b.week.since <= today() && b.month.since === today().slice(0, 8) + '01').toBe(true);
+    expect(new Date(`${b.week.since}T12:00:00Z`).getUTCDay()).toBe(1); // semana começa na segunda
+    expect(b.lastMonth.total).toMatchObject({ sales: 0, revenueMinor: '0', profitMinor: '0' });
+    expect(env.fake.calls.filter((c) => /act_9\/insights/.test(c.url)).length).toBe(1); // uma só chamada à Meta
+  });
+
+  it('sem Meta conectado: só o faturamento (gasto e lucro nulos)', async () => {
+    const acc = await newAccount(env);
+    await newPixel(acc.client);
+    const ck = await newIntegration(acc.client, 'checkout');
+    await checkout(ck.token, { event: 'paid', transaction_id: 'N-1', value: 80 });
+    const b = (await acc.client.get('/v1/reports/business')).data;
+    expect(b.metaConnected).toBe(false);
+    expect(b.month.current).toMatchObject({ sales: 1, revenueMinor: '8000', spendMinor: null, profitMinor: null, roas: null });
+  });
+});

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { AlertTriangle, ArrowDownRight, ArrowRight, ArrowUpRight, BarChart3, CheckCircle2, Timer, Info, Megaphone, PieChart as PieIcon, Radio, Receipt, RotateCcw, ShoppingCart, Target, TrendingUp, Trophy, Zap } from 'lucide-react';
+import { AlertTriangle, ArrowDownRight, ArrowRight, ArrowUpRight, BarChart3, Briefcase, CalendarDays, CalendarRange, CheckCircle2, Timer, Info, Megaphone, PieChart as PieIcon, Radio, Receipt, RotateCcw, ShoppingCart, Target, TrendingUp, Trophy, Zap } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Donut, HourlyBars, RevenueChart, Sparkline } from '../components/charts';
@@ -27,6 +27,13 @@ interface Dashboard {
   reportingCurrency: string; current: Kpis; previous: Kpis;
   goals: { daily: { goalMinor: string; achievedMinor: string }; monthly: { goalMinor: string; achievedMinor: string } };
   events: { received: number; capi: Record<string, number> }; openAlerts: number;
+}
+interface Totals { sales: number; revenueMinor: string; spendMinor: string | null; profitMinor: string | null; roas: number | null }
+interface Business {
+  metaConnected: boolean;
+  week: { since: string; until: string; current: Totals; previous: Totals; series: Kpis['series'] };
+  month: { since: string; until: string; current: Totals; previous: Totals; series: Kpis['series'] };
+  lastMonth: { since: string; until: string; total: Totals };
 }
 interface RecentPayment { id: string; provider: string; transaction_id: string; status: string; amount_minor: string | null; currency: string | null; utm_campaign: string | null; created_at: string; approved_at: string | null }
 
@@ -106,6 +113,153 @@ function HeroSpark({ c, cur }: { c: Kpis; cur: string }) {
   return <Sparkline values={values} height={88} color="#a5d8ff" className="relative w-full shrink-0 sm:w-[38%] sm:max-w-[300px]" />;
 }
 
+/** Gastos com anúncios no período do filtro, ao lado do faturamento. */
+function AdSpendCard({ c, p, cur, periodLabel, filtered }: { c: Kpis; p: Kpis; cur: string; periodLabel: string; filtered: boolean }) {
+  const head = (
+    <h2 id="ads-title" className="flex items-center gap-2.5 text-[15px] font-semibold text-violet-600 dark:text-violet-300">
+      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/15 ring-1 ring-inset ring-violet-400/30" aria-hidden><Megaphone className="h-4 w-4" /></span>
+      Gastos com Ads · {periodLabel.toLowerCase()}
+    </h2>
+  );
+  const shell = 'card relative flex flex-col overflow-hidden p-6 lg:p-7';
+  const glow = <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-violet-500/[0.12] via-transparent to-fuchsia-500/[0.06]" aria-hidden />;
+  if (!c.meta.connected) {
+    return (
+      <section className={shell} aria-labelledby="ads-title">
+        {glow}
+        <div className="relative flex h-full flex-col">
+          {head}
+          {filtered ? (
+            <p className="mt-4 text-[13px] text-muted">O gasto é da conta de anúncios inteira. Volte para <strong className="text-fg">Todas as origens</strong> e <strong className="text-fg">Todos os pixels</strong> para ver o investimento e o lucro.</p>
+          ) : (
+            <>
+              <p className="mt-4 text-[13px] text-muted">Conecte o Meta Ads para ver quanto foi investido, o ROAS e o lucro ao lado do faturamento.</p>
+              <Link to="/integracoes/meta" className="mt-auto inline-flex items-center gap-1 pt-5 text-sm font-semibold text-violet-600 hover:underline dark:text-violet-300">Conectar Meta Ads <ArrowRight className="h-4 w-4" aria-hidden /></Link>
+            </>
+          )}
+        </div>
+      </section>
+    );
+  }
+  const profit = c.profitMinor !== null ? Number(c.profitMinor) : null;
+  return (
+    <section className={shell} aria-labelledby="ads-title">
+      {glow}
+      <div className="relative flex h-full flex-col">
+        <div className="flex items-center justify-between gap-3">
+          {head}
+          <Delta cur={Number(c.meta.spendMinor ?? 0)} prev={Number(p.meta.spendMinor ?? 0)} invert />
+        </div>
+        <p className="num mt-4 font-display text-[34px] font-bold leading-none tracking-[-0.02em]">
+          <AnimatedMoney minor={c.meta.spendMinor ?? '0'} currency={cur} />
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2 text-[13px]">
+          <span className="rounded-full bg-surface-2 px-2.5 py-1 ring-1 ring-inset ring-border"><span className="text-muted">ROAS</span> <span className="num font-semibold">{ratio(c.roas)}</span></span>
+          <span className="rounded-full bg-surface-2 px-2.5 py-1 ring-1 ring-inset ring-border"><span className="text-muted">CPA</span> <span className="num font-semibold">{c.cpaMinor ? money(c.cpaMinor, cur) : '—'}</span></span>
+        </div>
+        {profit !== null && (
+          <div className="mt-auto pt-5">
+            <div className={clsx('flex items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 text-sm ring-1 ring-inset', profit >= 0 ? 'bg-ok/10 ring-ok/20' : 'bg-err/10 ring-err/20')}>
+              <span className="text-muted">Lucro (faturamento − ads)</span>
+              <span className={clsx('num font-bold', profit >= 0 ? 'text-ok' : 'text-err')}>{money(c.profitMinor!, cur)}</span>
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+const ddmm = (ymd: string) => `${ymd.slice(8, 10)}/${ymd.slice(5, 7)}`;
+const MONTHS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+const monthName = (ymd: string) => MONTHS[Number(ymd.slice(5, 7)) - 1] ?? '';
+
+/** Resultado da empresa: semana e mês correntes — faturamento, investimento em ads e lucro (independe dos filtros). */
+function BusinessResult({ cur }: { cur: string }) {
+  const q = useQuery<Business>({
+    queryKey: ['business'],
+    queryFn: ({ signal }) => get('/v1/reports/business', signal),
+    refetchInterval: 120_000,
+  });
+  if (q.isError) return null;
+  if (!q.data) return <div className="grid gap-6 lg:grid-cols-2"><Skeleton className="h-[260px]" /><Skeleton className="h-[260px]" /></div>;
+  const b = q.data;
+  return (
+    <section aria-labelledby="biz-title">
+      <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h2 id="biz-title" className="flex items-center gap-2 text-lg font-semibold"><Briefcase className="h-5 w-5 text-primary" aria-hidden />Resultado da empresa</h2>
+          <p className="text-[13px] text-muted">Quanto entrou, quanto foi investido em anúncios e quanto sobrou — todas as origens e pixels, comparado ao mesmo trecho do período anterior.</p>
+        </div>
+      </div>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <ResultCard title="Esta semana" icon={<CalendarDays />} range={`${ddmm(b.week.since)} a ${ddmm(b.week.until)}`} compareLabel="mesmos dias da semana passada"
+          cur={cur} meta={b.metaConnected} t={b.week.current} prev={b.week.previous} series={b.week.series} />
+        <ResultCard title={`Mês de ${monthName(b.month.since)}`} icon={<CalendarRange />} range={`${ddmm(b.month.since)} a ${ddmm(b.month.until)}`} compareLabel={`dias 1 a ${Number(b.month.until.slice(8))} de ${monthName(b.lastMonth.since)}`}
+          cur={cur} meta={b.metaConnected} t={b.month.current} prev={b.month.previous} series={b.month.series}
+          footer={<>
+            <span className="text-muted">{monthName(b.lastMonth.since).replace(/^./, (x) => x.toUpperCase())} fechado:</span>
+            <span>faturou <strong className="num text-fg">{money(b.lastMonth.total.revenueMinor, cur)}</strong></span>
+            {b.lastMonth.total.spendMinor !== null && <span>· ads <strong className="num text-fg">{money(b.lastMonth.total.spendMinor, cur)}</strong></span>}
+            {b.lastMonth.total.profitMinor !== null && <span>· lucro <strong className={clsx('num', Number(b.lastMonth.total.profitMinor) >= 0 ? 'text-ok' : 'text-err')}>{money(b.lastMonth.total.profitMinor, cur)}</strong></span>}
+          </>} />
+      </div>
+    </section>
+  );
+}
+
+function ResultCard({ title, icon, range, compareLabel, cur, meta, t, prev, series, footer }: {
+  title: string; icon: ReactNode; range: string; compareLabel: string; cur: string; meta: boolean; t: Totals; prev: Totals; series: Kpis['series']; footer?: ReactNode;
+}) {
+  const profit = t.profitMinor !== null ? Number(t.profitMinor) : null;
+  const margin = profit !== null && Number(t.revenueMinor) > 0 ? profit / Number(t.revenueMinor) : null;
+  let acc = 0;
+  const cumulative = series.map((x) => (acc += minorToNumber(x.revenueMinor, cur) - (x.spendMinor ? minorToNumber(x.spendMinor, cur) : 0)));
+  return (
+    <div className="card relative flex flex-col overflow-hidden p-6">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="flex items-center gap-2.5 text-[15px] font-semibold">
+          <span className="icon-tile-primary h-8 w-8 [&>svg]:h-4 [&>svg]:w-4" aria-hidden>{icon}</span>{title}
+        </h3>
+        <span className="text-xs text-muted">{range}</span>
+      </div>
+
+      <div className="mt-5 flex items-end justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-[13px] font-medium text-muted">{meta ? 'Lucro (faturamento − ads)' : 'Faturamento aprovado'}</p>
+          <p className={clsx('num mt-1.5 font-display text-[34px] font-bold leading-none tracking-[-0.02em]', profit !== null && (profit >= 0 ? 'text-ok' : 'text-err'))}>
+            {money(meta ? t.profitMinor! : t.revenueMinor, cur)}
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted">
+            {meta ? <Delta cur={Number(t.profitMinor)} prev={Number(prev.profitMinor ?? 0)} /> : <Delta cur={Number(t.revenueMinor)} prev={Number(prev.revenueMinor)} />}
+            <span>vs. {compareLabel}</span>
+          </div>
+        </div>
+        {meta && cumulative.length > 1 && <Sparkline values={cumulative} height={56} color={profit !== null && profit < 0 ? '#f43f5e' : '#34d399'} className="w-[38%] max-w-[180px] shrink-0" />}
+      </div>
+
+      <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <ResultStat label="Faturamento" value={money(t.revenueMinor, cur)} sub={<Delta cur={Number(t.revenueMinor)} prev={Number(prev.revenueMinor)} />} />
+        <ResultStat label="Investido em ads" value={t.spendMinor !== null ? money(t.spendMinor, cur) : '—'} sub={t.spendMinor !== null ? <Delta cur={Number(t.spendMinor)} prev={Number(prev.spendMinor ?? 0)} invert /> : <span className="text-xs text-muted">Meta não conectado</span>} />
+        <ResultStat label="ROAS" value={ratio(t.roas)} sub={<span className="text-xs text-muted">{int(t.sales)} venda{t.sales === 1 ? '' : 's'}</span>} />
+        <ResultStat label="Margem" value={margin !== null ? pct(margin, 0) : '—'} sub={<span className="text-xs text-muted">do faturamento que sobrou</span>} />
+      </dl>
+
+      {footer && <p className="mt-5 flex flex-wrap items-center gap-x-1.5 gap-y-1 border-t border-border pt-4 text-[13px] text-muted">{footer}</p>}
+    </div>
+  );
+}
+
+function ResultStat({ label, value, sub }: { label: string; value: ReactNode; sub: ReactNode }) {
+  return (
+    <div className="min-w-0 rounded-xl bg-surface-2/50 px-3 py-2.5 ring-1 ring-inset ring-border">
+      <dt className="truncate text-xs text-muted">{label}</dt>
+      <dd className="num mt-1 truncate text-[15px] font-semibold">{value}</dd>
+      <div className="mt-1">{sub}</div>
+    </div>
+  );
+}
+
 function PendingCard({ c }: { c: Kpis }) {
   const n = c.pending.count;
   return (
@@ -178,9 +332,9 @@ export default function DashboardPage() {
               </Callout>
             )}
 
-            {/* Destaque: faturamento aprovado (azul) + vendas pendentes (dourado) */}
-            <div className="grid gap-6 xl:grid-cols-[1.65fr_1fr]">
-              <section className="hero-blue flex flex-col gap-6 p-6 sm:flex-row sm:items-center lg:p-8" aria-labelledby="rev-title">
+            {/* Destaque: faturamento aprovado (azul) + gastos com ads + vendas pendentes (dourado) */}
+            <div className="grid gap-6 lg:grid-cols-2 2xl:grid-cols-[1.55fr_1fr_1fr]">
+              <section className="hero-blue flex flex-col gap-6 p-6 sm:flex-row sm:items-center lg:col-span-2 lg:p-8 2xl:col-span-1" aria-labelledby="rev-title">
                 <div className="relative min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p id="rev-title" className="flex items-center gap-2 text-sm font-medium text-white/80">
@@ -202,8 +356,11 @@ export default function DashboardPage() {
                 <HeroSpark c={c} cur={cur} />
               </section>
 
+              <AdSpendCard c={c} p={p} cur={cur} periodLabel={period.label} filtered={!!(provider || pixelId)} />
               <PendingCard c={c} />
             </div>
+
+            <BusinessResult cur={cur} />
 
             {/* Indicadores com barra de progresso */}
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

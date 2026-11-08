@@ -1,4 +1,4 @@
-import { eachDay, previousWindow, reportWindow, type PeriodPreset, type ReportWindow } from '@pt/domain';
+import { addDays, diffDays, eachDay, localDate, previousWindow, reportWindow, type PeriodPreset, type ReportWindow } from '@pt/domain';
 import type { Ctx } from '../context.js';
 import type { OrgSummary } from '../auth/service.js';
 import { FxTable } from '../fx/service.js';
@@ -182,6 +182,63 @@ export async function lifetimeRevenue(ctx: Ctx, org: OrgSummary) {
   const fx = await FxTable.loadFor(ctx, [org.reporting_currency, ...(await currenciesInUse(ctx, org.id))], w.since, w.until);
   const b = await salesBuckets(ctx, org, w, {}, fx, 'approved_at', `status = 'approved'`);
   return { currency: org.reporting_currency, revenueMinor: b.total.amountMinor, sales: b.total.count, unconverted: b.total.unconverted, since: w.since };
+}
+
+interface Totals { sales: number; revenueMinor: bigint; spendMinor: bigint | null; profitMinor: bigint | null; roas: number | null }
+
+/**
+ * Resultado da empresa: semana e mês correntes (fuso da conta), cada um comparado ao MESMO trecho do período
+ * anterior (ex.: seg→qua desta semana × seg→qua da semana passada; dias 1→8 deste mês × 1→8 do mês passado),
+ * mais o mês passado fechado. Sem filtros de pixel/origem (é o número da empresa).
+ * Lucro = faturamento aprovado − gasto com anúncios (Meta, nível conta). Uma só chamada à Meta para todo o intervalo.
+ */
+export async function businessSummary(ctx: Ctx, org: OrgSummary) {
+  const today = localDate(ctx.now(), org.timezone);
+  const weekday = (new Date(`${today}T12:00:00Z`).getUTCDay() + 6) % 7; // 0 = segunda
+  const weekStart = addDays(today, -weekday);
+  const monthStart = today.slice(0, 8) + '01';
+  const lastMonthEnd = addDays(monthStart, -1);
+  const lastMonthStart = lastMonthEnd.slice(0, 8) + '01';
+  const elapsedInMonth = diffDays(monthStart, today);
+  const lastMonthSameDay = diffDays(addDays(lastMonthStart, elapsedInMonth), lastMonthEnd) < 0 ? lastMonthEnd : addDays(lastMonthStart, elapsedInMonth);
+  const prevWeekStart = addDays(weekStart, -7);
+  const since = prevWeekStart < lastMonthStart ? prevWeekStart : lastMonthStart;
+
+  const w = reportWindow('custom', org.timezone, { now: ctx.now(), since, until: today });
+  const meta = await accountDaily(ctx, org.id, since, today).catch(() => null);
+  const fx = await FxTable.loadFor(ctx, [org.reporting_currency, ...(await currenciesInUse(ctx, org.id)), meta?.currency ?? ''], since, today);
+  const sales = await salesBuckets(ctx, org, w, {}, fx, 'approved_at', `status = 'approved'`);
+  const spendByDay = new Map<string, bigint>();
+  for (const d of meta?.days ?? []) {
+    const c = fx.convert(metaMoneyToMinor(d.spend, meta!.currency), meta!.currency, org.reporting_currency, d.date);
+    if (c.converted) spendByDay.set(d.date, c.amountMinor);
+  }
+
+  const sum = (from: string, to: string): Totals => {
+    let n = 0; let revenue = 0n; let spend = 0n;
+    for (const day of eachDay(from, to)) {
+      const b = sales.byDay.get(day);
+      if (b) { n += b.count; revenue += b.amountMinor; }
+      spend += spendByDay.get(day) ?? 0n;
+    }
+    return {
+      sales: n, revenueMinor: revenue,
+      spendMinor: meta ? spend : null,
+      profitMinor: meta ? revenue - spend : null,
+      roas: meta && spend > 0n ? Number(revenue) / Number(spend) : null,
+    };
+  };
+  const series = (from: string, to: string) => eachDay(from, to).map((day) => ({
+    day, sales: sales.byDay.get(day)?.count ?? 0, revenueMinor: sales.byDay.get(day)?.amountMinor ?? 0n,
+    refundsMinor: 0n, spendMinor: meta ? spendByDay.get(day) ?? 0n : null,
+  }));
+
+  return {
+    metaConnected: !!meta,
+    week: { since: weekStart, until: today, current: sum(weekStart, today), previous: sum(prevWeekStart, addDays(today, -7)), series: series(weekStart, today) },
+    month: { since: monthStart, until: today, current: sum(monthStart, today), previous: sum(lastMonthStart, lastMonthSameDay), series: series(monthStart, today) },
+    lastMonth: { since: lastMonthStart, until: lastMonthEnd, total: sum(lastMonthStart, lastMonthEnd) },
+  };
 }
 
 export async function dashboard(ctx: Ctx, org: OrgSummary, q: { preset: PeriodPreset; since?: string; until?: string } & DashboardFilters) {

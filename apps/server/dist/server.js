@@ -97019,6 +97019,60 @@ async function lifetimeRevenue(ctx, org) {
   const b = await salesBuckets(ctx, org, w, {}, fx, "approved_at", `status = 'approved'`);
   return { currency: org.reporting_currency, revenueMinor: b.total.amountMinor, sales: b.total.count, unconverted: b.total.unconverted, since: w.since };
 }
+async function businessSummary(ctx, org) {
+  const today = localDate(ctx.now(), org.timezone);
+  const weekday = ((/* @__PURE__ */ new Date(`${today}T12:00:00Z`)).getUTCDay() + 6) % 7;
+  const weekStart = addDays(today, -weekday);
+  const monthStart = today.slice(0, 8) + "01";
+  const lastMonthEnd = addDays(monthStart, -1);
+  const lastMonthStart = lastMonthEnd.slice(0, 8) + "01";
+  const elapsedInMonth = diffDays(monthStart, today);
+  const lastMonthSameDay = diffDays(addDays(lastMonthStart, elapsedInMonth), lastMonthEnd) < 0 ? lastMonthEnd : addDays(lastMonthStart, elapsedInMonth);
+  const prevWeekStart = addDays(weekStart, -7);
+  const since = prevWeekStart < lastMonthStart ? prevWeekStart : lastMonthStart;
+  const w = reportWindow("custom", org.timezone, { now: ctx.now(), since, until: today });
+  const meta3 = await accountDaily(ctx, org.id, since, today).catch(() => null);
+  const fx = await FxTable.loadFor(ctx, [org.reporting_currency, ...await currenciesInUse(ctx, org.id), meta3?.currency ?? ""], since, today);
+  const sales = await salesBuckets(ctx, org, w, {}, fx, "approved_at", `status = 'approved'`);
+  const spendByDay = /* @__PURE__ */ new Map();
+  for (const d of meta3?.days ?? []) {
+    const c = fx.convert(metaMoneyToMinor(d.spend, meta3.currency), meta3.currency, org.reporting_currency, d.date);
+    if (c.converted) spendByDay.set(d.date, c.amountMinor);
+  }
+  const sum = (from, to) => {
+    let n = 0;
+    let revenue = 0n;
+    let spend = 0n;
+    for (const day of eachDay(from, to)) {
+      const b = sales.byDay.get(day);
+      if (b) {
+        n += b.count;
+        revenue += b.amountMinor;
+      }
+      spend += spendByDay.get(day) ?? 0n;
+    }
+    return {
+      sales: n,
+      revenueMinor: revenue,
+      spendMinor: meta3 ? spend : null,
+      profitMinor: meta3 ? revenue - spend : null,
+      roas: meta3 && spend > 0n ? Number(revenue) / Number(spend) : null
+    };
+  };
+  const series = (from, to) => eachDay(from, to).map((day) => ({
+    day,
+    sales: sales.byDay.get(day)?.count ?? 0,
+    revenueMinor: sales.byDay.get(day)?.amountMinor ?? 0n,
+    refundsMinor: 0n,
+    spendMinor: meta3 ? spendByDay.get(day) ?? 0n : null
+  }));
+  return {
+    metaConnected: !!meta3,
+    week: { since: weekStart, until: today, current: sum(weekStart, today), previous: sum(prevWeekStart, addDays(today, -7)), series: series(weekStart, today) },
+    month: { since: monthStart, until: today, current: sum(monthStart, today), previous: sum(lastMonthStart, lastMonthSameDay), series: series(monthStart, today) },
+    lastMonth: { since: lastMonthStart, until: lastMonthEnd, total: sum(lastMonthStart, lastMonthEnd) }
+  };
+}
 async function dashboard(ctx, org, q) {
   const w = reportWindow(q.preset, org.timezone, { now: ctx.now(), since: q.since, until: q.until });
   const filters = { pixelId: q.pixelId, provider: q.provider };
@@ -97143,6 +97197,10 @@ function reportRoutes(app, ctx) {
     const a = requireRole(req, "viewer");
     const q = parse5(periodQuery.extend({ pixelId: uuidOpt, provider: external_exports.string().max(20).optional() }), req.query);
     return jsonSafe(await dashboard(ctx, a.org, { ...q, preset: q.preset }));
+  });
+  app.get("/v1/reports/business", async (req) => {
+    const a = requireRole(req, "viewer");
+    return jsonSafe(await businessSummary(ctx, a.org));
   });
   app.get("/v1/reports/lifetime", async (req) => {
     const a = requireRole(req, "viewer");
