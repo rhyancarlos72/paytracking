@@ -18,6 +18,13 @@ export async function maintenance(ctx: Ctx): Promise<Record<string, number>> {
     trackingRollup: await q(`DELETE FROM tracking_rollup WHERE hour < now() - make_interval(days => $1)`, [ctx.config.TRACKING_RETENTION_DAYS]),
     capiRollup: await q(`DELETE FROM capi_rollup WHERE hour < now() - make_interval(days => $1)`, [ctx.config.TRACKING_RETENTION_DAYS]),
     webhookBodies: await q(`UPDATE webhook_receipts SET body_enc = NULL WHERE body_enc IS NOT NULL AND received_at < now() - make_interval(days => $1)`, [ctx.config.WEBHOOK_BODY_RETENTION_DAYS]),
+    // recibos sem valor de auditoria; os de token inválido (sem conta) só 7 dias — impede que alguém encha o banco
+    // mandando lixo para a URL de webhook
+    webhookReceipts: await q(
+      `DELETE FROM webhook_receipts WHERE outcome <> 'processed'
+          AND received_at < now() - make_interval(days => CASE WHEN org_id IS NULL THEN 7 ELSE $1::int END)`,
+      [ctx.config.WEBHOOK_RECEIPT_RETENTION_DAYS],
+    ),
     identities: await q(`DELETE FROM visitor_identities WHERE updated_at < now() - interval '120 days'`),
     sessions: await q(`DELETE FROM sessions WHERE expires_at < now() - interval '7 days' OR revoked_at < now() - interval '7 days'`),
     tokens: await q(`DELETE FROM auth_tokens WHERE expires_at < now() - interval '1 day'`),

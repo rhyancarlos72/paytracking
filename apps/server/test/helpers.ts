@@ -141,9 +141,13 @@ export async function newIntegration(c: Client, provider: string, over: Record<s
   return r.data as { integration: any; token: string; webhookUrl: string };
 }
 
-/** Faz a Meta CAPI responder com sucesso (events_received=1). */
+/** Faz a Meta CAPI responder com sucesso (events_received = eventos do lote, como a Meta real). */
 export function metaOk(fake: FakeFetch) {
-  fake.on(/graph\.facebook\.com\/v[\d.]+\/\d+\/events/, () => json(200, { events_received: 1, fbtrace_id: 'TRACE' }));
+  fake.on(/graph\.facebook\.com\/v[\d.]+\/\d+\/events/, (_u, init) => {
+    let n = 1;
+    try { n = JSON.parse(String(init?.body ?? '{}')).data?.length ?? 1; } catch { /* corpo não-JSON */ }
+    return json(200, { events_received: n, fbtrace_id: 'TRACE' });
+  });
 }
 
 /** Confirma o e-mail da conta pelo link enviado (como a pessoa faria). */

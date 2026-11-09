@@ -82,3 +82,26 @@ describe('limpeza de eventos: 3 dias (Purchase 6) sem mudar nenhum número', () 
     expect((await env.db.query('SELECT count(*)::int AS n FROM visitor_identities WHERE org_id = $1', [acc.orgId])).rows[0].n).toBeGreaterThanOrEqual(12);
   });
 });
+
+describe('retenção dos recibos de webhook', () => {
+  it('apaga recibos antigos sem valor de auditoria; os "processed" (idempotência) ficam para sempre', async () => {
+    const acc = await newAccount(env);
+    await newPixel(acc.client);
+    const ig = await newIntegration(acc.client, 'checkout');
+    await checkout(ig.token, { event: 'paid', transaction_id: 'RET-1', value: 10 });       // processed
+    await checkout(ig.token, { event: 'paid', transaction_id: 'RET-1', value: 10 });       // duplicate
+    await env.app.inject({ method: 'POST', url: '/v1/webhooks/checkout', payload: '{"event":"paid"}', headers: { 'content-type': 'application/json', authorization: 'Bearer token-invalido' } }); // rejected, sem conta
+    const ids = (await env.db.query(`SELECT id, outcome, org_id FROM webhook_receipts WHERE org_id = $1 OR (org_id IS NULL AND reason = 'invalid_token') ORDER BY id`, [acc.orgId])).rows;
+    expect(ids.map((r) => r.outcome)).toEqual(expect.arrayContaining(['processed', 'duplicate', 'rejected']));
+    // envelhece: tudo com 30 dias
+    await env.db.query(`UPDATE webhook_receipts SET received_at = now() - interval '30 days' WHERE id = ANY($1)`, [ids.map((r) => r.id)]);
+    await maintenance(env.ctx);
+    const left = (await env.db.query(`SELECT outcome FROM webhook_receipts WHERE id = ANY($1) ORDER BY id`, [ids.map((r) => r.id)])).rows.map((r) => r.outcome);
+    expect(left).toContain('processed');      // fica
+    expect(left).toContain('duplicate');      // da conta: só some depois de 90 dias
+    expect(left).not.toContain('rejected');   // lixo sem conta: 7 dias
+    // e o reenvio do mesmo webhook continua reconhecido como duplicado
+    const again = await checkout(ig.token, { event: 'paid', transaction_id: 'RET-1', value: 10 });
+    expect(again.json()).toMatchObject({ duplicate: true });
+  });
+});

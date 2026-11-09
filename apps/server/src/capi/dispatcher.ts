@@ -56,40 +56,31 @@ export async function dispatchBatch(ctx: Ctx, limit = 50): Promise<DispatchStats
   );
   const pixels = new Map<string, PixelCfg>(pr.rows.map((p) => [p.id, p]));
 
+  // Lotes por pixel: a Meta aceita até 1000 eventos por chamada. Antes era 1 chamada HTTP por evento;
+  // agora os eventos do mesmo pixel saem juntos (menos latência, menos rate limit, muito mais vazão).
+  const groups = new Map<string, OutboxRow[]>();
+  for (const r of claimed.rows) groups.set(r.pixel_id, [...(groups.get(r.pixel_id) ?? []), r]);
+  const batches: OutboxRow[][] = [];
+  for (const rows of groups.values()) for (let i = 0; i < rows.length; i += BATCH_SIZE) batches.push(rows.slice(i, i + BATCH_SIZE));
+
   // concorrência limitada para não estourar rate limit da Meta
-  const queue = [...claimed.rows];
-  const workers = Array.from({ length: Math.min(8, queue.length) }, async () => {
-    for (let row = queue.shift(); row; row = queue.shift()) {
-      const outcome = await deliver(ctx, row, pixels.get(row.pixel_id));
-      if (outcome === 'sent') stats.sent++;
-      else if (outcome === 'retry') stats.retried++;
-      else stats.dead++;
+  const count = (o: 'sent' | 'retry' | 'dead') => { if (o === 'sent') stats.sent++; else if (o === 'retry') stats.retried++; else stats.dead++; };
+  const workers = Array.from({ length: Math.min(8, batches.length) }, async () => {
+    for (let b = batches.shift(); b; b = batches.shift()) {
+      for (const o of await deliverBatch(ctx, b, pixels.get(b[0]!.pixel_id))) count(o);
     }
   });
   await Promise.all(workers);
   return stats;
 }
 
-async function deliver(ctx: Ctx, row: OutboxRow, pixel: PixelCfg | undefined): Promise<'sent' | 'retry' | 'dead'> {
-  if (!pixel || !pixel.active || !pixel.capi_token_enc) {
-    const reason = !pixel ? 'Pixel removido.' : !pixel.active ? 'Pixel inativo: ative o pixel e reprocesse.' : 'Pixel sem token da CAPI: edite o pixel e reprocesse.';
-    await markDead(ctx, row, reason, 'config', null, undefined);
-    if (pixel) {
-      await raiseAlert(ctx.db, row.org_id, {
-        kind: 'capi_config', severity: 'critical', dedupKey: `capi_config:${row.pixel_id}`,
-        title: `Eventos não enviados — pixel "${pixel.name}"`, detail: reason,
-      });
-    }
-    return 'dead';
-  }
+const BATCH_SIZE = 50;
+type Outcome = 'sent' | 'retry' | 'dead';
 
-  const body: Record<string, unknown> = {
-    data: [row.payload],
-    access_token: ctx.box.decrypt(pixel.capi_token_enc),
-  };
+async function post(ctx: Ctx, pixel: PixelCfg, payloads: Array<Record<string, unknown>>): Promise<{ outcome: DeliveryOutcome; http: number; duration: number }> {
+  const body: Record<string, unknown> = { data: payloads, access_token: ctx.box.decrypt(pixel.capi_token_enc!) };
   const testCode = pixel.test_event_code || ctx.config.META_TEST_EVENT_CODE;
   if (testCode) body.test_event_code = testCode;
-
   const started = Date.now();
   let http = 0;
   let outcome: DeliveryOutcome;
@@ -106,8 +97,52 @@ async function deliver(ctx: Ctx, row: OutboxRow, pixel: PixelCfg | undefined): P
   } catch (e) {
     outcome = { kind: 'retryable', message: `Falha de rede: ${(e as Error).message}`.slice(0, 300) };
   }
-  const duration = Date.now() - started;
+  return { outcome, http, duration: Date.now() - started };
+}
 
+const isTokenProblem = (o: DeliveryOutcome) => o.kind === 'permanent' && (o.code === 190 || o.code === 200 || o.code === 10);
+
+/**
+ * Envia um lote de um mesmo pixel. Lote aceito por inteiro → todos "sent". Erro temporário → todos voltam à fila.
+ * Token inválido → todos "dead". Qualquer outra recusa (ex.: um evento malformado derruba o lote inteiro) ou
+ * aceite parcial → cada evento é reenviado sozinho: um evento ruim nunca impede a entrega dos outros
+ * (reenviar é seguro: mesmo event_id, a Meta deduplica).
+ */
+async function deliverBatch(ctx: Ctx, rows: OutboxRow[], pixel: PixelCfg | undefined): Promise<Outcome[]> {
+  if (!pixel || !pixel.active || !pixel.capi_token_enc || rows.length === 1) {
+    return Promise.all(rows.map((r) => deliver(ctx, r, pixel)));
+  }
+  const { outcome, http, duration } = await post(ctx, pixel, rows.map((r) => r.payload));
+  const allAccepted = outcome.kind === 'sent' && outcome.eventsReceived >= rows.length;
+  if (allAccepted || outcome.kind === 'retryable' || outcome.kind === 'rate_limited' || isTokenProblem(outcome)) {
+    const each: DeliveryOutcome = outcome.kind === 'sent' ? { ...outcome, eventsReceived: 1 } : outcome; // por evento
+    const out: Outcome[] = [];
+    for (const r of rows) out.push(await settle(ctx, r, pixel, each, http, duration));
+    return out;
+  }
+  const out: Outcome[] = [];
+  for (const r of rows) out.push(await deliver(ctx, r, pixel));
+  return out;
+}
+
+async function deliver(ctx: Ctx, row: OutboxRow, pixel: PixelCfg | undefined): Promise<Outcome> {
+  if (!pixel || !pixel.active || !pixel.capi_token_enc) {
+    const reason = !pixel ? 'Pixel removido.' : !pixel.active ? 'Pixel inativo: ative o pixel e reprocesse.' : 'Pixel sem token da CAPI: edite o pixel e reprocesse.';
+    await markDead(ctx, row, reason, 'config', null, undefined);
+    if (pixel) {
+      await raiseAlert(ctx.db, row.org_id, {
+        kind: 'capi_config', severity: 'critical', dedupKey: `capi_config:${row.pixel_id}`,
+        title: `Eventos não enviados — pixel "${pixel.name}"`, detail: reason,
+      });
+    }
+    return 'dead';
+  }
+  const { outcome, http, duration } = await post(ctx, pixel, [row.payload]);
+  return settle(ctx, row, pixel, outcome, http, duration);
+}
+
+/** Registra a tentativa e aplica o resultado a um evento da fila. */
+async function settle(ctx: Ctx, row: OutboxRow, pixel: PixelCfg, outcome: DeliveryOutcome, http: number, duration: number): Promise<Outcome> {
   await ctx.db.query(
     `INSERT INTO capi_attempts(outbox_id, http_status, duration_ms, outcome, error_code, message, fbtrace_id) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
     [row.id, http || null, duration, outcome.kind, 'code' in outcome ? outcome.code ?? null : null,
@@ -128,7 +163,7 @@ async function deliver(ctx: Ctx, row: OutboxRow, pixel: PixelCfg | undefined): P
   const max = ctx.config.CAPI_MAX_ATTEMPTS;
   if (outcome.kind === 'permanent' || row.attempts >= max) {
     await markDead(ctx, row, outcome.message, outcome.kind, http, outcome.fbtraceId);
-    const tokenProblem = outcome.kind === 'permanent' && (outcome.code === 190 || outcome.code === 200 || outcome.code === 10);
+    const tokenProblem = isTokenProblem(outcome);
     await raiseAlert(ctx.db, row.org_id, {
       kind: tokenProblem ? 'capi_token' : 'capi_failing',
       severity: 'critical',

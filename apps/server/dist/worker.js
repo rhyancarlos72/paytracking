@@ -24620,6 +24620,9 @@ var schema = external_exports.object({
   /** WhatsApp de suporte padrão (o Admin pode trocar pelo painel) */
   SUPPORT_WHATSAPP: external_exports.string().default(""),
   WEBHOOK_BODY_RETENTION_DAYS: external_exports.coerce.number().int().min(1).default(30),
+  /** Recibos de webhook sem valor de auditoria (rejeitados, ignorados, duplicados, falhas) são apagados após N dias.
+   *  Os "processed" (base da idempotência e do histórico de cada venda) nunca são apagados. */
+  WEBHOOK_RECEIPT_RETENTION_DAYS: external_exports.coerce.number().int().min(7).default(90),
   /** resumo por hora dos eventos (sem dados pessoais) — base dos relatórios de períodos longos */
   TRACKING_RETENTION_DAYS: external_exports.coerce.number().int().min(7).default(180),
   /** eventos brutos (PageView, InitiateCheckout, …) e a fila da Meta já entregue: apagados depois de N dias */
@@ -37954,37 +37957,26 @@ async function dispatchBatch(ctx2, limit = 50) {
     [pixelIds]
   );
   const pixels = new Map(pr.rows.map((p) => [p.id, p]));
-  const queue = [...claimed.rows];
-  const workers = Array.from({ length: Math.min(8, queue.length) }, async () => {
-    for (let row = queue.shift(); row; row = queue.shift()) {
-      const outcome = await deliver(ctx2, row, pixels.get(row.pixel_id));
-      if (outcome === "sent") stats.sent++;
-      else if (outcome === "retry") stats.retried++;
-      else stats.dead++;
+  const groups = /* @__PURE__ */ new Map();
+  for (const r of claimed.rows) groups.set(r.pixel_id, [...groups.get(r.pixel_id) ?? [], r]);
+  const batches = [];
+  for (const rows of groups.values()) for (let i = 0; i < rows.length; i += BATCH_SIZE) batches.push(rows.slice(i, i + BATCH_SIZE));
+  const count = (o) => {
+    if (o === "sent") stats.sent++;
+    else if (o === "retry") stats.retried++;
+    else stats.dead++;
+  };
+  const workers = Array.from({ length: Math.min(8, batches.length) }, async () => {
+    for (let b = batches.shift(); b; b = batches.shift()) {
+      for (const o of await deliverBatch(ctx2, b, pixels.get(b[0].pixel_id))) count(o);
     }
   });
   await Promise.all(workers);
   return stats;
 }
-async function deliver(ctx2, row, pixel) {
-  if (!pixel || !pixel.active || !pixel.capi_token_enc) {
-    const reason = !pixel ? "Pixel removido." : !pixel.active ? "Pixel inativo: ative o pixel e reprocesse." : "Pixel sem token da CAPI: edite o pixel e reprocesse.";
-    await markDead(ctx2, row, reason, "config", null, void 0);
-    if (pixel) {
-      await raiseAlert(ctx2.db, row.org_id, {
-        kind: "capi_config",
-        severity: "critical",
-        dedupKey: `capi_config:${row.pixel_id}`,
-        title: `Eventos n\xE3o enviados \u2014 pixel "${pixel.name}"`,
-        detail: reason
-      });
-    }
-    return "dead";
-  }
-  const body = {
-    data: [row.payload],
-    access_token: ctx2.box.decrypt(pixel.capi_token_enc)
-  };
+var BATCH_SIZE = 50;
+async function post(ctx2, pixel, payloads) {
+  const body = { data: payloads, access_token: ctx2.box.decrypt(pixel.capi_token_enc) };
   const testCode = pixel.test_event_code || ctx2.config.META_TEST_EVENT_CODE;
   if (testCode) body.test_event_code = testCode;
   const started = Date.now();
@@ -38003,7 +37995,44 @@ async function deliver(ctx2, row, pixel) {
   } catch (e) {
     outcome = { kind: "retryable", message: `Falha de rede: ${e.message}`.slice(0, 300) };
   }
-  const duration3 = Date.now() - started;
+  return { outcome, http: http2, duration: Date.now() - started };
+}
+var isTokenProblem = (o) => o.kind === "permanent" && (o.code === 190 || o.code === 200 || o.code === 10);
+async function deliverBatch(ctx2, rows, pixel) {
+  if (!pixel || !pixel.active || !pixel.capi_token_enc || rows.length === 1) {
+    return Promise.all(rows.map((r) => deliver(ctx2, r, pixel)));
+  }
+  const { outcome, http: http2, duration: duration3 } = await post(ctx2, pixel, rows.map((r) => r.payload));
+  const allAccepted = outcome.kind === "sent" && outcome.eventsReceived >= rows.length;
+  if (allAccepted || outcome.kind === "retryable" || outcome.kind === "rate_limited" || isTokenProblem(outcome)) {
+    const each = outcome.kind === "sent" ? { ...outcome, eventsReceived: 1 } : outcome;
+    const out2 = [];
+    for (const r of rows) out2.push(await settle2(ctx2, r, pixel, each, http2, duration3));
+    return out2;
+  }
+  const out = [];
+  for (const r of rows) out.push(await deliver(ctx2, r, pixel));
+  return out;
+}
+async function deliver(ctx2, row, pixel) {
+  if (!pixel || !pixel.active || !pixel.capi_token_enc) {
+    const reason = !pixel ? "Pixel removido." : !pixel.active ? "Pixel inativo: ative o pixel e reprocesse." : "Pixel sem token da CAPI: edite o pixel e reprocesse.";
+    await markDead(ctx2, row, reason, "config", null, void 0);
+    if (pixel) {
+      await raiseAlert(ctx2.db, row.org_id, {
+        kind: "capi_config",
+        severity: "critical",
+        dedupKey: `capi_config:${row.pixel_id}`,
+        title: `Eventos n\xE3o enviados \u2014 pixel "${pixel.name}"`,
+        detail: reason
+      });
+    }
+    return "dead";
+  }
+  const { outcome, http: http2, duration: duration3 } = await post(ctx2, pixel, [row.payload]);
+  return settle2(ctx2, row, pixel, outcome, http2, duration3);
+}
+async function settle2(ctx2, row, pixel, outcome, http2, duration3) {
   await ctx2.db.query(
     `INSERT INTO capi_attempts(outbox_id, http_status, duration_ms, outcome, error_code, message, fbtrace_id) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
     [
@@ -38029,7 +38058,7 @@ async function deliver(ctx2, row, pixel) {
   const max = ctx2.config.CAPI_MAX_ATTEMPTS;
   if (outcome.kind === "permanent" || row.attempts >= max) {
     await markDead(ctx2, row, outcome.message, outcome.kind, http2, outcome.fbtraceId);
-    const tokenProblem = outcome.kind === "permanent" && (outcome.code === 190 || outcome.code === 200 || outcome.code === 10);
+    const tokenProblem = isTokenProblem(outcome);
     await raiseAlert(ctx2.db, row.org_id, {
       kind: tokenProblem ? "capi_token" : "capi_failing",
       severity: "critical",
@@ -38176,6 +38205,13 @@ async function maintenance(ctx2) {
     trackingRollup: await q(`DELETE FROM tracking_rollup WHERE hour < now() - make_interval(days => $1)`, [ctx2.config.TRACKING_RETENTION_DAYS]),
     capiRollup: await q(`DELETE FROM capi_rollup WHERE hour < now() - make_interval(days => $1)`, [ctx2.config.TRACKING_RETENTION_DAYS]),
     webhookBodies: await q(`UPDATE webhook_receipts SET body_enc = NULL WHERE body_enc IS NOT NULL AND received_at < now() - make_interval(days => $1)`, [ctx2.config.WEBHOOK_BODY_RETENTION_DAYS]),
+    // recibos sem valor de auditoria; os de token inválido (sem conta) só 7 dias — impede que alguém encha o banco
+    // mandando lixo para a URL de webhook
+    webhookReceipts: await q(
+      `DELETE FROM webhook_receipts WHERE outcome <> 'processed'
+          AND received_at < now() - make_interval(days => CASE WHEN org_id IS NULL THEN 7 ELSE $1::int END)`,
+      [ctx2.config.WEBHOOK_RECEIPT_RETENTION_DAYS]
+    ),
     identities: await q(`DELETE FROM visitor_identities WHERE updated_at < now() - interval '120 days'`),
     sessions: await q(`DELETE FROM sessions WHERE expires_at < now() - interval '7 days' OR revoked_at < now() - interval '7 days'`),
     tokens: await q(`DELETE FROM auth_tokens WHERE expires_at < now() - interval '1 day'`),

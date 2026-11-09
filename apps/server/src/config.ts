@@ -86,6 +86,9 @@ const schema = z.object({
   /** WhatsApp de suporte padrão (o Admin pode trocar pelo painel) */
   SUPPORT_WHATSAPP: z.string().default(''),
   WEBHOOK_BODY_RETENTION_DAYS: z.coerce.number().int().min(1).default(30),
+  /** Recibos de webhook sem valor de auditoria (rejeitados, ignorados, duplicados, falhas) são apagados após N dias.
+   *  Os "processed" (base da idempotência e do histórico de cada venda) nunca são apagados. */
+  WEBHOOK_RECEIPT_RETENTION_DAYS: z.coerce.number().int().min(7).default(90),
   /** resumo por hora dos eventos (sem dados pessoais) — base dos relatórios de períodos longos */
   TRACKING_RETENTION_DAYS: z.coerce.number().int().min(7).default(180),
   /** eventos brutos (PageView, InitiateCheckout, …) e a fila da Meta já entregue: apagados depois de N dias */
