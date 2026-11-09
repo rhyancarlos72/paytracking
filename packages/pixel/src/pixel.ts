@@ -108,9 +108,13 @@ import {
   };
 
   // ---- PageView
-  const pvId = genEventId();
-  trackPixel('PageView', {}, pvId);
-  log(`Pixel ${PIXEL_ID} • PageView ${pvId}`, 'ok');
+  // O snippet novo já disparou o PageView da Meta logo no início da página (connect rate) e guardou o event_id:
+  // aqui só reaproveitamos esse id na CAPI (mesmo event_id = deduplicação). Snippet antigo: dispara normalmente.
+  const early = (window as any).__ptpv?.[PIXEL_ID] as string | undefined;
+  const pvId = early || genEventId();
+  if (early) delete (window as any).__ptpv[PIXEL_ID]; // um único uso (pixel.js carregado duas vezes não reaproveita)
+  else trackPixel('PageView', {}, pvId);
+  log(`Pixel ${PIXEL_ID} • PageView ${pvId}${early ? ' (disparado pelo snippet)' : ''}`, 'ok');
   sendToServer('page_view', pvId);
 
   // ---- InitiateCheckout

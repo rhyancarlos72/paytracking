@@ -94477,7 +94477,8 @@ function snippets(api, p) {
     return Object.entries(all).map(([k, v]) => `s.setAttribute(${JSON.stringify(k)},${JSON.stringify(v)});`).join("");
   };
   const hints = `<link rel="preconnect" href=${JSON.stringify(api)} crossorigin><link rel="preconnect" href="https://connect.facebook.net">`;
-  const wrap2 = (a) => `${hints}<script>!function(){var s=document.createElement("script");s.async=true;s.crossOrigin="anonymous";s.src=${JSON.stringify(`${api}/pixel.js`)};${a}document.head.appendChild(s)}();</script>`;
+  const boot2 = `!function(w,d,P){try{if(!w.fbq){var n=w.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!w._fbq)w._fbq=n;n.push=n;n.loaded=!0;n.version="2.0";n.queue=[];var t=d.createElement("script");t.async=!0;t.src="https://connect.facebook.net/en_US/fbevents.js";var f=d.getElementsByTagName("script")[0];f&&f.parentNode?f.parentNode.insertBefore(t,f):d.head.appendChild(t)}var c=w.crypto,i=c&&c.randomUUID?c.randomUUID():"evt_"+Date.now()+"_"+Math.random().toString(36).slice(2);w.fbq("init",P);w.fbq("trackSingle",P,"PageView",{},{eventID:i});(w.__ptpv=w.__ptpv||{})[P]=i}catch(e){}}(window,document,${JSON.stringify(p.meta_pixel_id)});`;
+  const wrap2 = (a) => `${hints}<script>${boot2}!function(){var s=document.createElement("script");s.async=true;s.crossOrigin="anonymous";s.src=${JSON.stringify(`${api}/pixel.js`)};${a}document.head.appendChild(s)}();</script>`;
   const click = { "data-ic-click": "1" };
   if (p.ic_rule_type !== "none" && p.ic_rule_value) {
     click["data-ic-rule"] = p.ic_rule_type;
