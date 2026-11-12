@@ -28,7 +28,7 @@ describe('snippets de instalação (connect rate)', () => {
     new Function('window', 'document', js)(w, d);
     expect(w.__ptpv).toEqual({ '1234567890123': 'uuid-1' });
     expect(w.fbq.queue.map((a: IArguments) => Array.from(a))).toEqual([
-      ['init', '1234567890123'],
+      ['init', '1234567890123', {}], // sem localStorage (ambiente de teste): init sem dados
       ['trackSingle', '1234567890123', 'PageView', {}, { eventID: 'uuid-1' }],
     ]);
   });
