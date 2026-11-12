@@ -273,3 +273,24 @@ describe('resultado da empresa (semana e mês)', () => {
     expect(b.month.current).toMatchObject({ sales: 1, revenueMinor: '8000', spendMinor: null, profitMinor: null, roas: null });
   });
 });
+
+describe('primeiros passos do cliente novo', () => {
+  it('cada passo acende quando realmente acontece (pixel, primeira visita, primeiro webhook, Meta)', async () => {
+    const acc = await newAccount(env);
+    const ob = async () => (await acc.client.get('/v1/onboarding')).data;
+    expect(await ob()).toEqual({ pixel: false, script: false, gateway_created: false, gateway: false, meta: false, sale: false });
+    const px = await newPixel(acc.client);
+    expect(await ob()).toMatchObject({ pixel: true, script: false });
+    await env.app.inject({ method: 'POST', url: `/v1/collect?k=${px.publicKey}`, payload: JSON.stringify({ event: 'page_view', event_id: 'ob-1' }), headers: { 'content-type': 'text/plain' } });
+    expect(await ob()).toMatchObject({ script: true });
+    const ck = await newIntegration(acc.client, 'checkout');
+    expect(await ob()).toMatchObject({ gateway_created: true, gateway: false });
+    await checkout(ck.token, { event: 'paid', transaction_id: 'OB-1', value: 10 });
+    expect(await ob()).toMatchObject({ gateway: true, sale: true, meta: false });
+    await env.db.query(`INSERT INTO meta_connections(org_id, access_token_enc, selected_ad_account_id, ad_account_currency, status) VALUES ($1, $2, 'act_5', 'BRL', 'active')`, [acc.orgId, env.ctx.box.encrypt('TOK')]);
+    expect(await ob()).toMatchObject({ meta: true });
+    // outra conta não enxerga nada disso
+    const other = await newAccount(env);
+    expect((await other.client.get('/v1/onboarding')).data).toMatchObject({ pixel: false, script: false, gateway: false, meta: false });
+  });
+});

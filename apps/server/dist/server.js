@@ -97228,6 +97228,20 @@ function reportRoutes(app, ctx) {
     const q = parse5(periodQuery.extend({ pixelId: uuidOpt, provider: external_exports.string().max(20).optional() }), req.query);
     return jsonSafe(await dashboard(ctx, a.org, { ...q, preset: q.preset }));
   });
+  app.get("/v1/onboarding", async (req) => {
+    const a = requireRole(req, "viewer");
+    const r = await ctx.db.query(
+      `SELECT EXISTS (SELECT 1 FROM pixels WHERE org_id = $1) AS pixel,
+              EXISTS (SELECT 1 FROM tracking_events WHERE org_id = $1 AND source = 'browser')
+                OR EXISTS (SELECT 1 FROM tracking_rollup WHERE org_id = $1 AND source = 'browser') AS script,
+              EXISTS (SELECT 1 FROM integrations WHERE org_id = $1) AS gateway_created,
+              EXISTS (SELECT 1 FROM integrations WHERE org_id = $1 AND last_received_at IS NOT NULL) AS gateway,
+              EXISTS (SELECT 1 FROM meta_connections WHERE org_id = $1 AND status = 'active' AND selected_ad_account_id IS NOT NULL) AS meta,
+              EXISTS (SELECT 1 FROM payments WHERE org_id = $1 AND status = 'approved') AS sale`,
+      [a.org.id]
+    );
+    return r.rows[0];
+  });
   app.get("/v1/reports/business", async (req) => {
     const a = requireRole(req, "viewer");
     return jsonSafe(await businessSummary(ctx, a.org));

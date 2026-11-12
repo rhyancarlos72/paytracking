@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
 import { AlertTriangle, ArrowDownRight, ArrowRight, ArrowUpRight, BarChart3, Briefcase, CalendarDays, CalendarRange, CheckCircle2, Timer, Info, Megaphone, PieChart as PieIcon, Radio, Receipt, RotateCcw, ShoppingCart, Target, TrendingUp, Trophy, Zap } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Donut, HourlyBars, RevenueChart, Sparkline } from '../components/charts';
 import { PeriodPicker, usePeriod } from '../components/period';
@@ -93,6 +93,7 @@ function Kpi({ label, value, help, sub, meter, icon, tone = 'info' }: { label: s
 const peakHour = (h: NonNullable<Kpis['hourly']>) => h.reduce((best, x) => (x.sales > h[best]!.sales ? x.hour : best), 0);
 
 function HeroDelta({ cur, prev }: { cur: number; prev: number }) {
+  if (cur === 0 && prev === 0) return null; // sem vendas nos dois períodos: "+0,0%" só confunde
   const d = delta(cur, prev);
   if (d === null) return <span className="hero-chip">sem base anterior</span>;
   return (
@@ -111,6 +112,59 @@ function HeroSpark({ c, cur }: { c: Kpis; cur: string }) {
     : (c.hourly ?? []).map((x) => (acc += minorToNumber(x.revenueMinor, cur)));
   if (values.length < 2 || values.every((v) => v === 0)) return null;
   return <Sparkline values={values} height={88} color="#a5d8ff" className="relative w-full shrink-0 sm:w-[38%] sm:max-w-[300px]" />;
+}
+
+interface Onboarding { pixel: boolean; script: boolean; gateway_created: boolean; gateway: boolean; meta: boolean; sale: boolean }
+
+/** Primeiros passos do cliente novo: some sozinho quando os 4 passos estão feitos (ou quando a pessoa fecha). */
+function GettingStarted() {
+  const KEY = 'pt_onboarding_hidden';
+  const [hidden, setHidden] = useState(() => { try { return localStorage.getItem(KEY) === '1'; } catch { return false; } });
+  const q = useQuery<Onboarding>({ queryKey: ['onboarding'], queryFn: ({ signal }) => get('/v1/onboarding', signal), refetchInterval: 30_000, enabled: !hidden });
+  if (hidden || !q.data) return null;
+  const o = q.data;
+  const steps = [
+    { done: o.pixel, title: 'Cadastre seu pixel', text: 'O ID do Pixel da Meta e o token da Conversions API.', to: '/pixels', cta: 'Cadastrar pixel' },
+    { done: o.script, title: 'Instale o script na página de vendas', text: 'Copie o código em Pixels e cole no topo do <head> da página. Fica pronto quando chegar a primeira visita.', to: '/pixels', cta: 'Ver o script' },
+    { done: o.gateway, title: 'Conecte seu gateway', text: o.gateway_created ? 'Webhook criado — falta chegar o primeiro aviso do gateway (faça uma venda de teste ou use o "testar" do gateway).' : 'Hotmart, Kiwify, Cakto, Kirvano ou checkout próprio: cole a URL do webhook no gateway.', to: '/integracoes', cta: o.gateway_created ? 'Ver integração' : 'Conectar gateway' },
+    { done: o.meta, title: 'Conecte o Meta Ads', text: 'Para ver gasto, ROAS e lucro por campanha.', to: '/integracoes/meta', cta: 'Conectar Meta Ads' },
+  ];
+  const doneCount = steps.filter((x) => x.done).length;
+  if (doneCount === steps.length) return null;
+  const next = steps.findIndex((x) => !x.done);
+  return (
+    <section className="card relative overflow-hidden p-5 sm:p-6" aria-labelledby="gs-title">
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/[0.10] via-transparent to-transparent" aria-hidden />
+      <div className="relative">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 id="gs-title" className="text-lg font-semibold">Primeiros passos</h2>
+            <p className="text-[13px] text-muted">{doneCount} de {steps.length} concluídos — com tudo pronto, cada venda aparece aqui com a campanha que trouxe.</p>
+          </div>
+          <button type="button" className="text-xs font-medium text-muted hover:text-fg" onClick={() => { try { localStorage.setItem(KEY, '1'); } catch { /* */ } setHidden(true); }}>Ocultar</button>
+        </div>
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-3" aria-hidden><div className="h-full rounded-full bg-primary transition-all" style={{ width: `${(doneCount / steps.length) * 100}%` }} /></div>
+        <ol className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {steps.map((st, i) => (
+            <li key={st.title} className={clsx('flex flex-col rounded-xl p-4 ring-1 ring-inset', st.done ? 'bg-ok/[0.06] ring-ok/20' : i === next ? 'bg-primary/[0.07] ring-primary/30' : 'bg-surface-2/40 ring-border')}>
+              <p className="flex items-center gap-2 text-sm font-semibold">
+                {st.done
+                  ? <CheckCircle2 className="h-4 w-4 shrink-0 text-ok" aria-label="concluído" />
+                  : <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-surface-3 text-[11px] font-bold" aria-hidden>{i + 1}</span>}
+                {st.title}
+              </p>
+              <p className="mt-1.5 text-xs leading-relaxed text-muted">{st.text}</p>
+              {!st.done && (
+                <Link to={st.to} className={clsx('mt-auto inline-flex items-center gap-1 pt-3 text-[13px] font-semibold', i === next ? 'text-primary' : 'text-muted hover:text-fg')}>
+                  {st.cta} <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                </Link>
+              )}
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
+  );
 }
 
 /** Gastos com anúncios no período do filtro, ao lado do faturamento. */
@@ -321,6 +375,7 @@ export default function DashboardPage() {
         const salesTrend = c.series.map((x) => x.sales);
         return (
           <div className="space-y-6">
+            <GettingStarted />
             {d.openAlerts > 0 && (
               <Callout tone="warn" title={`${d.openAlerts} alerta(s) aberto(s) na operação`} action={<Link to="/diagnostico" className="text-sm font-semibold text-primary hover:underline">Ver diagnóstico →</Link>}>
                 Há falhas de entrega ou de configuração que podem afetar a atribuição.

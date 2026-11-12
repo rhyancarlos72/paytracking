@@ -22,6 +22,22 @@ export function reportRoutes(app: FastifyInstance, ctx: Ctx) {
     return jsonSafe(await dashboard(ctx, a.org, { ...q, preset: q.preset as PeriodPreset }));
   });
 
+  // Primeiros passos do cliente novo (cartão no Resumo): o que já está configurado e funcionando
+  app.get('/v1/onboarding', async (req) => {
+    const a = requireRole(req, 'viewer');
+    const r = await ctx.db.query(
+      `SELECT EXISTS (SELECT 1 FROM pixels WHERE org_id = $1) AS pixel,
+              EXISTS (SELECT 1 FROM tracking_events WHERE org_id = $1 AND source = 'browser')
+                OR EXISTS (SELECT 1 FROM tracking_rollup WHERE org_id = $1 AND source = 'browser') AS script,
+              EXISTS (SELECT 1 FROM integrations WHERE org_id = $1) AS gateway_created,
+              EXISTS (SELECT 1 FROM integrations WHERE org_id = $1 AND last_received_at IS NOT NULL) AS gateway,
+              EXISTS (SELECT 1 FROM meta_connections WHERE org_id = $1 AND status = 'active' AND selected_ad_account_id IS NOT NULL) AS meta,
+              EXISTS (SELECT 1 FROM payments WHERE org_id = $1 AND status = 'approved') AS sale`,
+      [a.org.id],
+    );
+    return r.rows[0];
+  });
+
   // resultado da empresa: semana e mês correntes (faturamento, gasto com anúncios e lucro)
   app.get('/v1/reports/business', async (req) => {
     const a = requireRole(req, 'viewer');
