@@ -53,6 +53,11 @@ import {
     console.warn('[paytracking] faltam data-pixel-id, data-endpoint ou data-key');
     return;
   }
+  // pixel.js carregado duas vezes para o mesmo pixel (snippet antigo colado 2x, plugin + snippet etc.):
+  // o segundo não faz nada — senão o PageView sairia em dobro e a Meta acusa "evento acionado 2 vezes"
+  const loaded = ((window as any).__ptpxrun ??= {}) as Record<string, true>;
+  if (loaded[PIXEL_ID]) return;
+  loaded[PIXEL_ID] = true;
 
   // ---- Pixel oficial + Advanced Matching com o MESMO external_id hasheado da CAPI
   loadFbq();

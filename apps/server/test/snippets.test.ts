@@ -33,3 +33,21 @@ describe('snippets de instalação (connect rate)', () => {
     ]);
   });
 });
+
+describe('snippet colado duas vezes', () => {
+  it('só o primeiro dispara o PageView e carrega o pixel.js', () => {
+    const s = snippets('https://paytracking.com.br', pixel).salesPage;
+    const js = /<script>(.*)<\/script>/.exec(s)![1]!;
+    const appended: unknown[] = [];
+    const head = { appendChild: (x: unknown) => appended.push(x) };
+    let n = 0;
+    const w: any = { crypto: { randomUUID: () => `uuid-${++n}` } };
+    const d = { createElement: () => ({ setAttribute() {} }), getElementsByTagName: () => [], head };
+    const run = new Function('window', 'document', js);
+    run(w, d);
+    run(w, d);
+    const pvs = w.fbq.queue.map((a: IArguments) => Array.from(a)).filter((a: unknown[]) => a[2] === 'PageView');
+    expect(pvs).toHaveLength(1);
+    expect(appended).toHaveLength(2); // fbevents.js + pixel.js, uma vez cada
+  });
+});
