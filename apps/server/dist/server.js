@@ -98812,24 +98812,57 @@ function listenTarget(raw) {
 var sanitize = (msg2) => msg2.replace(/(\w+:\/\/)[^@\s/]+@/g, "$1***@").slice(0, 1e3);
 var log = (level, msg2, extra = {}) => (level === "error" ? console.error : level === "warn" ? console.warn : console.log)(JSON.stringify({ level, severity: level === "warn" ? "WARNING" : level.toUpperCase(), msg: msg2, ...extra }));
 var RETRY_MS = 3e4;
+function isDbUnavailable(e) {
+  const err = e;
+  const m = String(err.message ?? "");
+  return /quota|exceeded|endpoint.*disabled|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|ETIMEDOUT|timeout|terminated|password authentication|too many|Connection|getaddrinfo|socket/i.test(m) || ["ECONNREFUSED", "ENOTFOUND", "EAI_AGAIN", "ETIMEDOUT", "ECONNRESET", "28P01", "28000", "53300", "57P01", "57P03", "08001", "08006"].includes(String(err.code ?? ""));
+}
 async function boot(target) {
   const config2 = loadConfig();
   let pool = null;
+  let degraded = null;
+  const runMigrations = async () => {
+    if (process.env.MIGRATE_ON_START !== "true") return;
+    const direct = createPool(directDatabaseUrl(config2.DATABASE_URL, config2.DATABASE_URL_UNPOOLED), 1);
+    try {
+      await migrate(direct);
+    } finally {
+      await direct.end().catch(() => void 0);
+    }
+  };
   try {
-    if (process.env.MIGRATE_ON_START === "true") {
-      const direct = createPool(directDatabaseUrl(config2.DATABASE_URL, config2.DATABASE_URL_UNPOOLED), 1);
-      try {
-        await migrate(direct);
-      } finally {
-        await direct.end();
-      }
+    try {
+      await runMigrations();
+    } catch (e) {
+      if (!isDbUnavailable(e)) throw e;
+      degraded = sanitize(e instanceof Error ? e.message : String(e));
+      log("error", "banco indispon\xEDvel ao iniciar \u2014 subindo em modo degradado (p\xE1ginas e scripts no ar)", { motivo: degraded });
     }
     pool = createPool(config2.DATABASE_URL, 10);
     const ctx = createCtx(config2, pool);
     const app = await buildApp(ctx);
     await app.listen("path" in target ? { path: target.path } : target);
-    const worker = process.env.EMBEDDED_WORKER === "true" ? startWorker(ctx) : null;
-    log("info", "PayTracking no ar", { listen: "path" in target ? "socket" : target.port, admins: config2.platformAdmins.size });
+    let worker = null;
+    const startJobs = () => {
+      if (process.env.EMBEDDED_WORKER === "true") worker = startWorker(ctx);
+    };
+    if (!degraded) startJobs();
+    else {
+      const retry = async () => {
+        try {
+          await runMigrations();
+          await pool.query("SELECT 1");
+          log("info", "banco de volta \u2014 migra\xE7\xF5es conferidas e worker iniciado");
+          degraded = null;
+          startJobs();
+        } catch (e) {
+          log("warn", "banco ainda indispon\xEDvel", { motivo: sanitize(e instanceof Error ? e.message : String(e)) });
+          setTimeout(() => void retry(), RETRY_MS);
+        }
+      };
+      setTimeout(() => void retry(), RETRY_MS);
+    }
+    log("info", degraded ? "PayTracking no ar (modo degradado: sem banco)" : "PayTracking no ar", { listen: "path" in target ? "socket" : target.port, admins: config2.platformAdmins.size });
     if (config2.isProd && config2.platformAdmins.size === 0) {
       log("warn", "PLATFORM_ADMIN_EMAILS vazio: ningu\xE9m tem acesso ao painel Admin. Defina o seu e-mail nas vari\xE1veis de ambiente.");
     }
@@ -98882,6 +98915,7 @@ async function main() {
 }
 void main();
 export {
+  isDbUnavailable,
   listenTarget
 };
 /*! Bundled license information:

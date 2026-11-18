@@ -29,28 +29,65 @@ const log = (level: 'info' | 'warn' | 'error', msg: string, extra: Record<string
 
 const RETRY_MS = 30_000;
 
+/** Erro de CONEXÃO com o banco (fora do ar, cota do Neon, DNS, senha) — diferente de erro de configuração ou de SQL. */
+export function isDbUnavailable(e: unknown): boolean {
+  const err = e as { code?: string; message?: string };
+  const m = String(err.message ?? '');
+  return /quota|exceeded|endpoint.*disabled|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|ETIMEDOUT|timeout|terminated|password authentication|too many|Connection|getaddrinfo|socket/i.test(m)
+    || ['ECONNREFUSED', 'ENOTFOUND', 'EAI_AGAIN', 'ETIMEDOUT', 'ECONNRESET', '28P01', '28000', '53300', '57P01', '57P03', '08001', '08006'].includes(String(err.code ?? ''));
+}
+
 async function boot(target: Target): Promise<void> {
   const config = loadConfig();
   let pool: Pool | null = null;
+  let degraded: string | null = null;
+  const runMigrations = async () => {
+    if (process.env.MIGRATE_ON_START !== 'true') return;
+    // conexão direta só para a migração; o app segue no pool (pooler do Neon, se houver)
+    const direct = createPool(directDatabaseUrl(config.DATABASE_URL, config.DATABASE_URL_UNPOOLED), 1);
+    try { await migrate(direct); } finally { await direct.end().catch(() => undefined); }
+  };
   try {
-    if (process.env.MIGRATE_ON_START === 'true') {
-      // conexão direta só para a migração; o app segue no pool (pooler do Neon, se houver)
-      const direct = createPool(directDatabaseUrl(config.DATABASE_URL, config.DATABASE_URL_UNPOOLED), 1);
-      try { await migrate(direct); } finally { await direct.end(); }
+    try {
+      await runMigrations();
+    } catch (e) {
+      // Banco fora do ar NÃO derruba o site: página de vendas, painel (tela), pixel.js e utms.js continuam no ar;
+      // só o que depende do banco responde erro até ele voltar. Antes, o servidor inteiro ficava em 503.
+      if (!isDbUnavailable(e)) throw e;
+      degraded = sanitize(e instanceof Error ? e.message : String(e));
+      log('error', 'banco indisponível ao iniciar — subindo em modo degradado (páginas e scripts no ar)', { motivo: degraded });
     }
     pool = createPool(config.DATABASE_URL, 10);
     const ctx = createCtx(config, pool);
     const app = await buildApp(ctx);
     await app.listen('path' in target ? { path: target.path } : target);
-    const worker = process.env.EMBEDDED_WORKER === 'true' ? startWorker(ctx) : null;
-    log('info', 'PayTracking no ar', { listen: 'path' in target ? 'socket' : target.port, admins: config.platformAdmins.size });
+    let worker: ReturnType<typeof startWorker> | null = null;
+    const startJobs = () => { if (process.env.EMBEDDED_WORKER === 'true') worker = startWorker(ctx); };
+    if (!degraded) startJobs();
+    else {
+      // tenta de novo a cada 30 s; quando o banco voltar: migrações + worker (fila da Meta, manutenção)
+      const retry = async () => {
+        try {
+          await runMigrations();
+          await pool!.query('SELECT 1');
+          log('info', 'banco de volta — migrações conferidas e worker iniciado');
+          degraded = null;
+          startJobs();
+        } catch (e) {
+          log('warn', 'banco ainda indisponível', { motivo: sanitize(e instanceof Error ? e.message : String(e)) });
+          setTimeout(() => void retry(), RETRY_MS);
+        }
+      };
+      setTimeout(() => void retry(), RETRY_MS);
+    }
+    log('info', degraded ? 'PayTracking no ar (modo degradado: sem banco)' : 'PayTracking no ar', { listen: 'path' in target ? 'socket' : target.port, admins: config.platformAdmins.size });
     if (config.isProd && config.platformAdmins.size === 0) {
       log('warn', 'PLATFORM_ADMIN_EMAILS vazio: ninguém tem acesso ao painel Admin. Defina o seu e-mail nas variáveis de ambiente.');
     }
 
     const shutdown = async () => {
       await app.close();
-      await worker?.stop();
+      await (worker as ReturnType<typeof startWorker> | null)?.stop();
       await pool?.end();
       process.exit(0);
     };
