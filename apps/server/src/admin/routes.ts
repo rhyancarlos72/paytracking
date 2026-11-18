@@ -12,7 +12,7 @@ export function adminRoutes(app: FastifyInstance, ctx: Ctx) {
   app.get('/v1/admin/meta-review', async (req) => {
     const a = requirePlatformAdmin(req);
     const conn = await ctx.db.query('SELECT scopes, updated_at FROM meta_connections WHERE org_id = $1', [a.org.id]);
-    return { result: await loadReviewResult(ctx), connected: !!conn.rows[0], scopes: conn.rows[0]?.scopes ?? [], required: REVIEW_SCOPES };
+    return { result: await loadReviewResult(ctx), connected: !!conn.rows[0], scopes: conn.rows[0]?.scopes ?? [], required: REVIEW_SCOPES, loginMode: ctx.config.META_LOGIN_CONFIG_ID ? 'business_login' : 'classic' };
   });
 
   app.post('/v1/admin/meta-review/run', async (req) => {

@@ -23,7 +23,7 @@ export async function runReviewCalls(ctx: Ctx, token: string): Promise<ReviewRes
   const calls: ReviewCall[] = [];
   const has = (p: string) => granted.includes(p);
   const missing = (permission: ReviewPermission, call: string) =>
-    calls.push({ permission, ok: false, call, detail: 'Permissão não concedida nesta conexão: reconecte o Meta Ads e marque todas as opções na janela do Facebook.' });
+    calls.push({ permission, ok: false, call, detail: 'O Facebook não concedeu esta permissão. Desconecte o Meta Ads, conecte de novo e, na janela do Facebook, clique em "Editar acesso"/"Escolher o que permitir" e deixe TUDO marcado (inclusive a sua Página). Se ela nem aparecer na janela, a permissão não está adicionada ao app no painel da Meta (Casos de uso → Personalizar).' });
 
   // ads_read: contas de anúncios do usuário
   let accountId: string | null = null;

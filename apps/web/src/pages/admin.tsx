@@ -154,7 +154,7 @@ function SupportSettings() {
 }
 
 interface ReviewCall { permission: string; ok: boolean; call: string; detail: string }
-interface MetaReview { result: { at: string; granted: string[]; calls: ReviewCall[] } | null; connected: boolean; scopes: string[]; required: string[] }
+interface MetaReview { result: { at: string; granted: string[]; calls: ReviewCall[] } | null; connected: boolean; scopes: string[]; required: string[]; loginMode?: 'business_login' | 'classic' }
 
 /** Revisão do app na Meta: chamadas de teste que liberam o "Solicitar acesso avançado". */
 function MetaReviewCard() {
@@ -199,6 +199,17 @@ function MetaReviewCard() {
               );
             })}
           </ul>
+          {d.result && (
+            <div className="rounded-xl bg-surface-2/50 px-4 py-3 text-xs ring-1 ring-inset ring-border">
+              <p className="font-semibold">O Facebook concedeu nesta conexão:</p>
+              <p className="mt-1 font-mono text-[11px] text-muted">{d.result.granted.length ? d.result.granted.join(', ') : 'nenhuma permissão'}</p>
+              {d.required.some((r) => !d.result!.granted.includes(r)) && (
+                <p className="mt-2 text-muted">Faltando: <strong className="font-mono text-err">{d.required.filter((r) => !d.result!.granted.includes(r)).join(', ')}</strong>.
+                  {' '}Desconecte e conecte o Meta Ads de novo: a janela do Facebook vai pedir essas permissões outra vez — clique em <strong>Editar acesso</strong> e deixe tudo marcado, inclusive a sua Página.
+                  {d.loginMode === 'business_login' && ' (Para a sua conta de admin, o PayTracking usa o login clássico com essas permissões, mesmo com o Login para Empresas ativo no servidor.)'}</p>
+              )}
+            </div>
+          )}
           {d.result && <p className="text-xs text-muted">Última execução: {dateTime(d.result.at)}. O contador no painel da Meta pode levar até 24 horas para atualizar; depois disso o botão "Solicitar acesso avançado" fica disponível.</p>}
         </div>
       )}

@@ -96533,10 +96533,11 @@ function metaAuthUrl(ctx, state, extraScopes = []) {
     state,
     response_type: "code"
   });
-  if (ctx.config.META_LOGIN_CONFIG_ID) {
-    p.set("config_id", ctx.config.META_LOGIN_CONFIG_ID);
-    if (extraScopes.length) p.set("scope", [...extraScopes].join(","));
-  } else p.set("scope", [.../* @__PURE__ */ new Set(["ads_read", "ads_management", ...extraScopes])].join(","));
+  if (extraScopes.length) {
+    p.set("scope", [.../* @__PURE__ */ new Set(["ads_read", "ads_management", ...extraScopes])].join(","));
+    p.set("auth_type", "rerequest");
+  } else if (ctx.config.META_LOGIN_CONFIG_ID) p.set("config_id", ctx.config.META_LOGIN_CONFIG_ID);
+  else p.set("scope", "ads_read,ads_management");
   return `https://www.facebook.com/${ctx.config.META_GRAPH_VERSION}/dialog/oauth?${p.toString()}`;
 }
 var metaRedirectUri = (ctx) => `${ctx.config.PUBLIC_API_URL}/v1/meta/callback`;
@@ -96583,7 +96584,7 @@ async function runReviewCalls(ctx, token) {
   const granted = await me.permissions().catch(() => []);
   const calls = [];
   const has = (p) => granted.includes(p);
-  const missing = (permission, call) => calls.push({ permission, ok: false, call, detail: "Permiss\xE3o n\xE3o concedida nesta conex\xE3o: reconecte o Meta Ads e marque todas as op\xE7\xF5es na janela do Facebook." });
+  const missing = (permission, call) => calls.push({ permission, ok: false, call, detail: 'O Facebook n\xE3o concedeu esta permiss\xE3o. Desconecte o Meta Ads, conecte de novo e, na janela do Facebook, clique em "Editar acesso"/"Escolher o que permitir" e deixe TUDO marcado (inclusive a sua P\xE1gina). Se ela nem aparecer na janela, a permiss\xE3o n\xE3o est\xE1 adicionada ao app no painel da Meta (Casos de uso \u2192 Personalizar).' });
   let accountId = null;
   if (!has("ads_read")) missing("ads_read", "GET /me/adaccounts");
   else {
@@ -97724,7 +97725,7 @@ function adminRoutes(app, ctx) {
   app.get("/v1/admin/meta-review", async (req) => {
     const a = requirePlatformAdmin(req);
     const conn = await ctx.db.query("SELECT scopes, updated_at FROM meta_connections WHERE org_id = $1", [a.org.id]);
-    return { result: await loadReviewResult(ctx), connected: !!conn.rows[0], scopes: conn.rows[0]?.scopes ?? [], required: REVIEW_SCOPES };
+    return { result: await loadReviewResult(ctx), connected: !!conn.rows[0], scopes: conn.rows[0]?.scopes ?? [], required: REVIEW_SCOPES, loginMode: ctx.config.META_LOGIN_CONFIG_ID ? "business_login" : "classic" };
   });
   app.post("/v1/admin/meta-review/run", async (req) => {
     const a = requirePlatformAdmin(req);

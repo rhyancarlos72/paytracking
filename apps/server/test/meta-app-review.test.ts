@@ -36,6 +36,7 @@ describe('chamadas de teste para a revisão do app na Meta', () => {
     fakeMeta();
     const url = await connect(admin);
     expect(new URL(url).searchParams.get('scope')!.split(',').sort()).toEqual([...ALL].sort());
+    expect(new URL(url).searchParams.get('auth_type')).toBe('rerequest'); // pergunta de novo o que foi negado antes
     await waitFor(async () => !!(await admin.client.get('/v1/admin/meta-review')).data.result);
     const d = (await admin.client.get('/v1/admin/meta-review')).data;
     expect(d.connected).toBe(true);
@@ -67,7 +68,7 @@ describe('chamadas de teste para a revisão do app na Meta', () => {
     await connect(admin);
     const r = (await admin.client.post('/v1/admin/meta-review/run')).data.result;
     const pages = r.calls.filter((c: { permission: string }) => c.permission.startsWith('pages_'));
-    expect(pages.every((c: { ok: boolean; detail: string }) => !c.ok && /marque todas/.test(c.detail))).toBe(true);
+    expect(pages.every((c: { ok: boolean; detail: string }) => !c.ok && /Editar acesso/.test(c.detail))).toBe(true);
   });
 
   it('cliente comum: o login pede só as permissões de anúncios, nada roda e o Admin é proibido', async () => {
@@ -75,9 +76,28 @@ describe('chamadas de teste para a revisão do app na Meta', () => {
     fakeMeta();
     const url = await connect(acc);
     expect(new URL(url).searchParams.get('scope')).toBe('ads_read,ads_management');
+    expect(new URL(url).searchParams.get('auth_type')).toBeNull();
     await new Promise((r) => setTimeout(r, 300));
     expect(env.fake.calls.some((c) => /me\/accounts|act_777\/campaigns/.test(c.url))).toBe(false);
     expect((await acc.client.get('/v1/admin/meta-review')).status).toBe(403);
     expect((await acc.client.post('/v1/admin/meta-review/run')).status).toBe(403);
+  });
+
+  it('servidor com Login para Empresas (config_id): o admin usa o login clássico com as permissões; o cliente segue com config_id', async () => {
+    const admin = await getAdmin();
+    const prev = env.ctx.config.META_LOGIN_CONFIG_ID;
+    (env.ctx.config as { META_LOGIN_CONFIG_ID: string }).META_LOGIN_CONFIG_ID = 'CFG123';
+    try {
+      const a = new URL((await admin.client.post('/v1/meta/connect')).data.url).searchParams;
+      expect(a.get('config_id')).toBeNull();
+      expect(a.get('scope')).toContain('pages_read_engagement');
+      const cli = await newAccount(env);
+      const c = new URL((await cli.client.post('/v1/meta/connect')).data.url).searchParams;
+      expect(c.get('config_id')).toBe('CFG123');
+      expect(c.get('scope')).toBeNull();
+      expect((await admin.client.get('/v1/admin/meta-review')).data.loginMode).toBe('business_login');
+    } finally {
+      (env.ctx.config as { META_LOGIN_CONFIG_ID: string }).META_LOGIN_CONFIG_ID = prev;
+    }
   });
 });
