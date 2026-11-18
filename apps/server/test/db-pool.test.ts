@@ -18,3 +18,16 @@ describe('pool do banco', () => {
     warn.mockRestore();
   });
 });
+
+describe('motivo da queda do banco no /healthz', () => {
+  it('classifica os erros comuns do Neon sem expor detalhes', async () => {
+    const { dbFailureReason } = await import('../src/app.js');
+    expect(dbFailureReason(new Error('Your account or project has exceeded the compute time quota. Upgrade your plan to increase limits.'))).toBe('neon_quota_exceeded');
+    expect(dbFailureReason(Object.assign(new Error('password authentication failed for user "x"'), { code: '28P01' }))).toBe('auth_failed');
+    expect(dbFailureReason(new Error('The endpoint has been disabled. Enable it using Neon API and retry.'))).toBe('neon_endpoint_disabled');
+    expect(dbFailureReason(Object.assign(new Error('getaddrinfo ENOTFOUND ep-x.neon.tech'), { code: 'ENOTFOUND' }))).toBe('dns');
+    expect(dbFailureReason(new Error('Connection terminated due to connection timeout'))).toBe('timeout');
+    expect(dbFailureReason(Object.assign(new Error('sorry, too many clients already'), { code: '53300' }))).toBe('too_many_connections');
+    expect(dbFailureReason(new Error('algo novo'))).toBe('unknown');
+  });
+});

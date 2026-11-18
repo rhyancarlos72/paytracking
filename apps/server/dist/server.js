@@ -98378,6 +98378,22 @@ var FLOOD_LIMITS = [
 var SEVERITY = { trace: "DEBUG", debug: "DEBUG", info: "INFO", warn: "WARNING", error: "ERROR", fatal: "CRITICAL" };
 var PUBLIC_PREFIXES = ["/v1/webhooks", "/api/", "/v1/collect", "/v1/pixel-config", "/v1/meta/callback", "/v1/public/", "/healthz", "/pixel.js", "/utms.js", "/checkout-loader"];
 var isPublic = (url2) => PUBLIC_PREFIXES.some((p) => url2.startsWith(p));
+function dbFailureReason(e) {
+  const err = e;
+  const m = String(err.message ?? "").toLowerCase();
+  const code2 = String(err.code ?? "");
+  if (/compute time quota|exceeded the compute|quota/.test(m)) return "neon_quota_exceeded";
+  if (/endpoint is disabled|endpoint has been disabled|project.*suspended|is not active/.test(m)) return "neon_endpoint_disabled";
+  if (/data transfer|storage limit|size limit|disk|project size/.test(m) || code2 === "53100") return "storage_limit";
+  if (code2 === "28P01" || code2 === "28000" || /password authentication failed|authentication/.test(m)) return "auth_failed";
+  if (code2 === "3D000" || /database .* does not exist/.test(m)) return "database_not_found";
+  if (code2 === "53300" || /too many connections|remaining connection slots/.test(m)) return "too_many_connections";
+  if (code2 === "ENOTFOUND" || code2 === "EAI_AGAIN" || /getaddrinfo/.test(m)) return "dns";
+  if (code2 === "ECONNREFUSED" || /econnrefused/.test(m)) return "connection_refused";
+  if (code2 === "ETIMEDOUT" || /timeout|timed out/.test(m)) return "timeout";
+  if (/ssl|tls|certificate/.test(m)) return "tls";
+  return code2 ? `pg_${code2}` : "unknown";
+}
 async function buildApp(ctx) {
   const app = (0, import_fastify.default)({
     logger: ctx.config.NODE_ENV === "test" ? false : {
@@ -98461,8 +98477,8 @@ async function buildApp(ctx) {
     try {
       await ctx.db.query("SELECT 1");
       return { ok: true };
-    } catch {
-      return reply.code(503).send({ ok: false, db: "unavailable" });
+    } catch (e) {
+      return reply.code(503).send({ ok: false, db: "unavailable", reason: dbFailureReason(e) });
     }
   });
   app.get("/.well-known/security.txt", async (_req, reply) => {

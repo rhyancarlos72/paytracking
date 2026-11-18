@@ -38,6 +38,24 @@ const SEVERITY: Record<string, string> = { trace: 'DEBUG', debug: 'DEBUG', info:
 const PUBLIC_PREFIXES = ['/v1/webhooks', '/api/', '/v1/collect', '/v1/pixel-config', '/v1/meta/callback', '/v1/public/', '/healthz', '/pixel.js', '/utms.js', '/checkout-loader'];
 const isPublic = (url: string) => PUBLIC_PREFIXES.some((p) => url.startsWith(p));
 
+/** Classifica a falha de conexão com o Postgres/Neon em um motivo curto e seguro de expor. */
+export function dbFailureReason(e: unknown): string {
+  const err = e as { code?: string; message?: string };
+  const m = String(err.message ?? '').toLowerCase();
+  const code = String(err.code ?? '');
+  if (/compute time quota|exceeded the compute|quota/.test(m)) return 'neon_quota_exceeded';
+  if (/endpoint is disabled|endpoint has been disabled|project.*suspended|is not active/.test(m)) return 'neon_endpoint_disabled';
+  if (/data transfer|storage limit|size limit|disk|project size/.test(m) || code === '53100') return 'storage_limit';
+  if (code === '28P01' || code === '28000' || /password authentication failed|authentication/.test(m)) return 'auth_failed';
+  if (code === '3D000' || /database .* does not exist/.test(m)) return 'database_not_found';
+  if (code === '53300' || /too many connections|remaining connection slots/.test(m)) return 'too_many_connections';
+  if (code === 'ENOTFOUND' || code === 'EAI_AGAIN' || /getaddrinfo/.test(m)) return 'dns';
+  if (code === 'ECONNREFUSED' || /econnrefused/.test(m)) return 'connection_refused';
+  if (code === 'ETIMEDOUT' || /timeout|timed out/.test(m)) return 'timeout';
+  if (/ssl|tls|certificate/.test(m)) return 'tls';
+  return code ? `pg_${code}` : 'unknown';
+}
+
 export async function buildApp(ctx: Ctx): Promise<FastifyInstance> {
   const app = Fastify({
     logger: ctx.config.NODE_ENV === 'test' ? false : {
@@ -133,8 +151,9 @@ export async function buildApp(ctx: Ctx): Promise<FastifyInstance> {
     try {
       await ctx.db.query('SELECT 1');
       return { ok: true };
-    } catch {
-      return reply.code(503).send({ ok: false, db: 'unavailable' });
+    } catch (e) {
+      // motivo genérico (sem senha, host ou mensagem crua) para diagnosticar quedas do banco sem abrir os logs
+      return reply.code(503).send({ ok: false, db: 'unavailable', reason: dbFailureReason(e) });
     }
   });
 
