@@ -3,10 +3,27 @@ import { z } from 'zod';
 import type { Ctx } from '../context.js';
 import { badRequest, notFound } from '../lib/errors.js';
 import { jsonSafe, parse, requirePlatformAdmin } from '../lib/http.js';
+import { loadReviewResult, REVIEW_SCOPES, runReviewCalls, saveReviewResult } from '../meta/app-review.js';
 import { audit } from '../orgs/routes.js';
 
 /** Administração da plataforma (antes: e-mail fixo no código; agora: PLATFORM_ADMIN_EMAILS / users.is_platform_admin). */
 export function adminRoutes(app: FastifyInstance, ctx: Ctx) {
+  /** Revisão do app na Meta: resultado das últimas chamadas de teste e botão para rodar de novo. */
+  app.get('/v1/admin/meta-review', async (req) => {
+    const a = requirePlatformAdmin(req);
+    const conn = await ctx.db.query('SELECT scopes, updated_at FROM meta_connections WHERE org_id = $1', [a.org.id]);
+    return { result: await loadReviewResult(ctx), connected: !!conn.rows[0], scopes: conn.rows[0]?.scopes ?? [], required: REVIEW_SCOPES };
+  });
+
+  app.post('/v1/admin/meta-review/run', async (req) => {
+    const a = requirePlatformAdmin(req);
+    const conn = await ctx.db.query('SELECT access_token_enc FROM meta_connections WHERE org_id = $1 AND status = \'active\'', [a.org.id]);
+    if (!conn.rows[0]) throw badRequest('Conecte o Meta Ads na sua conta (Integrações → Meta Ads) e tente de novo.');
+    const r = await runReviewCalls(ctx, ctx.box.decrypt(conn.rows[0].access_token_enc));
+    await saveReviewResult(ctx, r);
+    return { result: r };
+  });
+
   /** Canal de e-mail ativo e envio de teste para o próprio admin (confere SMTP/Resend). */
   app.post('/v1/admin/test-email', async (req) => {
     const a = requirePlatformAdmin(req);

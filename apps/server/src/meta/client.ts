@@ -121,6 +121,15 @@ export class MetaClient {
     return this.request('GET', '/me', { fields: 'id,name' });
   }
 
+  /** GET/POST genéricos (usados pelas chamadas de teste da revisão do app). */
+  get(path: string, params: Record<string, string> = {}) {
+    return this.request('GET', path, params);
+  }
+
+  post(path: string, params: Record<string, string>) {
+    return this.request('POST', path, params);
+  }
+
   async permissions(): Promise<string[]> {
     const r = await this.request('GET', '/me/permissions');
     return (r.data ?? []).filter((p: any) => p.status === 'granted').map((p: any) => String(p.permission));
@@ -223,15 +232,18 @@ export class MetaClient {
   }
 }
 
-export function metaAuthUrl(ctx: Ctx, state: string): string {
+/** extraScopes: permissões a mais pedidas só para o admin da plataforma (chamadas de teste da revisão do app). */
+export function metaAuthUrl(ctx: Ctx, state: string, extraScopes: readonly string[] = []): string {
   const p = new URLSearchParams({
     client_id: ctx.config.META_APP_ID,
     redirect_uri: metaRedirectUri(ctx),
     state,
     response_type: 'code',
   });
-  if (ctx.config.META_LOGIN_CONFIG_ID) p.set('config_id', ctx.config.META_LOGIN_CONFIG_ID);
-  else p.set('scope', 'ads_read,ads_management');
+  if (ctx.config.META_LOGIN_CONFIG_ID) {
+    p.set('config_id', ctx.config.META_LOGIN_CONFIG_ID);
+    if (extraScopes.length) p.set('scope', [...extraScopes].join(',')); // Login para Empresas: as permissões vêm da configuração; aqui é só reforço
+  } else p.set('scope', [...new Set(['ads_read', 'ads_management', ...extraScopes])].join(','));
   return `https://www.facebook.com/${ctx.config.META_GRAPH_VERSION}/dialog/oauth?${p.toString()}`;
 }
 

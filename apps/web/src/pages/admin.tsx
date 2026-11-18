@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { Building2, MessageCircle, Settings2, Users } from 'lucide-react';
+import { BadgeCheck, Building2, CheckCircle2, MessageCircle, Settings2, Users, XCircle } from 'lucide-react';
 import { useSupport, whatsappUrl, WhatsAppIcon } from '../components/support';
-import { Navigate } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { PageHeader } from '../components/shell';
 import { useToast } from '../components/toast';
 import { Badge, Button, Callout, Card, CodeBlock, ErrorState, Input, Select, Skeleton, STATUS_TONE, Tabs } from '../components/ui';
@@ -50,7 +50,7 @@ export default function AdminPage() {
         { value: 'config', label: 'Configurações', icon: <Settings2 /> },
       ]} /></div>
       {tab === 'users' && <AdminUsers />}
-      {tab === 'config' && <><SupportSettings /><GoogleSetup /></>}
+      {tab === 'config' && <><MetaReviewCard /><SupportSettings /><GoogleSetup /></>}
       {tab === 'orgs' && <Card padded={false}>
         <div className="flex flex-wrap gap-2 border-b border-border p-4">
           <Input aria-label="Buscar" placeholder="Buscar por nome ou e-mail" className="min-w-[220px] flex-1" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -149,6 +149,59 @@ function SupportSettings() {
           <span className="hint">No painel, o nome da pessoa e da loja entram logo abaixo, para você saber quem está chamando.</span>
         </label>
       </div>
+    </Card>
+  );
+}
+
+interface ReviewCall { permission: string; ok: boolean; call: string; detail: string }
+interface MetaReview { result: { at: string; granted: string[]; calls: ReviewCall[] } | null; connected: boolean; scopes: string[]; required: string[] }
+
+/** Revisão do app na Meta: chamadas de teste que liberam o "Solicitar acesso avançado". */
+function MetaReviewCard() {
+  const toast = useToast();
+  const qc = useQueryClient();
+  const q = useQuery<MetaReview>({ queryKey: ['meta-review'], queryFn: () => get('/v1/admin/meta-review'), refetchInterval: (qq) => (qq.state.data?.connected && !qq.state.data?.result ? 5000 : false) });
+  const run = useMutation({
+    mutationFn: () => post<{ result: MetaReview['result'] }>('/v1/admin/meta-review/run'),
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ['meta-review'] });
+      const bad = r.result?.calls.filter((c) => !c.ok).length ?? 0;
+      if (bad) toast.err(`${bad} chamada(s) não passaram — veja o motivo abaixo.`);
+      else toast.ok('Chamadas de teste feitas', 'A Meta atualiza o contador em até 24 horas.');
+    },
+    onError: (e) => toast.err(e),
+  });
+  const d = q.data;
+  const byPerm = new Map((d?.result?.calls ?? []).map((c) => [c.permission, c]));
+  return (
+    <Card className="mb-6" icon={<BadgeCheck />} title="Revisão do app na Meta (acesso avançado)"
+      description="A Meta exige ao menos 1 chamada bem-sucedida com cada permissão nos últimos 30 dias antes de liberar o acesso avançado. Ao conectar o Meta Ads com a sua conta de admin, elas são feitas sozinhas."
+      footer={<>
+        {!d?.connected && <Link to="/integracoes/meta" className="inline-flex h-10 items-center rounded-xl px-3 text-sm font-semibold text-primary hover:bg-surface-2">Conectar Meta Ads</Link>}
+        <Button variant="primary" loading={run.isPending} disabled={!d?.connected} onClick={() => run.mutate()}>Fazer chamadas de teste agora</Button>
+      </>}>
+      {!d ? <Skeleton className="h-32" /> : (
+        <div className="space-y-4">
+          {!d.connected && <Callout tone="info" title="Conecte o Meta Ads com o seu perfil">Vá em Integrações → Meta Ads → Conectar. Na janela do Facebook, marque <strong>todas</strong> as opções (contas de anúncios e Páginas). Ao voltar, as chamadas de teste rodam automaticamente.</Callout>}
+          <ul className="divide-y divide-border rounded-2xl border border-border">
+            {d.required.map((perm) => {
+              const c = byPerm.get(perm);
+              return (
+                <li key={perm} className="flex items-start gap-3 px-4 py-3">
+                  {c ? (c.ok ? <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-ok" aria-label="ok" /> : <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-err" aria-label="falhou" />)
+                    : <span className="mt-1 h-3.5 w-3.5 shrink-0 rounded-full border-2 border-border-strong" aria-label="pendente" />}
+                  <div className="min-w-0">
+                    <p className="font-mono text-[13px] font-semibold">{perm}</p>
+                    <p className="text-xs text-muted">{c ? c.detail : 'Ainda não testada.'}</p>
+                    {c && <p className="mt-0.5 truncate font-mono text-[11px] text-subtle">{c.call}</p>}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          {d.result && <p className="text-xs text-muted">Última execução: {dateTime(d.result.at)}. O contador no painel da Meta pode levar até 24 horas para atualizar; depois disso o botão "Solicitar acesso avançado" fica disponível.</p>}
+        </div>
+      )}
     </Card>
   );
 }

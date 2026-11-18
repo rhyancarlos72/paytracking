@@ -1,4 +1,6 @@
 import type { FastifyInstance } from 'fastify';
+import { isPlatformAdminEmail } from '../auth/service.js';
+import { REVIEW_SCOPES, runReviewCalls, saveReviewResult } from './app-review.js';
 import { z } from 'zod';
 import { matchUtmToRow, parseAmount, PERIOD_PRESETS, reportWindow, currencyExponent, type PeriodPreset } from '@pt/domain';
 import type { Ctx } from '../context.js';
@@ -56,7 +58,8 @@ export function metaRoutes(app: FastifyInstance, ctx: Ctx) {
     if (!configured()) throw badRequest('META_APP_ID e META_APP_SECRET não estão configurados no servidor.');
     const state = randomToken(24);
     await ctx.db.query(`INSERT INTO oauth_states(state, org_id, user_id, expires_at) VALUES ($1, $2, $3, now() + interval '10 minutes')`, [state, a.org.id, a.user.id]);
-    return { url: metaAuthUrl(ctx, state) };
+    // admin da plataforma: pede também as permissões de Página, para as chamadas de teste da revisão do app
+    return { url: metaAuthUrl(ctx, state, a.user.isPlatformAdmin ? REVIEW_SCOPES : []) };
   });
 
   /** Callback OAuth: o state é de uso único, expira em 10 min e é amarrado à organização (cenário 11). */
@@ -82,6 +85,13 @@ export function metaRoutes(app: FastifyInstance, ctx: Ctx) {
       await invalidateCache(ctx, row.org_id);
       await resolveAlert(ctx.db, row.org_id, 'meta_token');
       await audit(ctx, row.org_id, row.user_id, 'meta.connected', undefined, { scopes });
+      // conexão do admin da plataforma: faz sozinho as chamadas de teste que a Meta exige para o acesso avançado
+      const u = await ctx.db.query<{ email: string; email_verified_at: Date | null }>('SELECT email, email_verified_at FROM users WHERE id = $1', [row.user_id]);
+      if (u.rows[0] && isPlatformAdminEmail(ctx, u.rows[0].email, !!u.rows[0].email_verified_at)) {
+        runReviewCalls(ctx, tok.token)
+          .then((r) => saveReviewResult(ctx, r))
+          .catch((e) => ctx.log.warn({ err: String(e) }, 'chamadas de teste da revisão do app falharam'));
+      }
       return back({ connected: '1' });
     } catch (e) {
       return back({ error: `Não foi possível conectar: ${(e as Error).message}` });

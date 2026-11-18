@@ -1206,8 +1206,8 @@ var require_utils_legacy = __commonJS({
     function sha2562(text) {
       return nodeCrypto.createHash("sha256").update(text).digest();
     }
-    function hmacSha256(key, msg) {
-      return nodeCrypto.createHmac("sha256", key).update(msg).digest();
+    function hmacSha256(key, msg2) {
+      return nodeCrypto.createHmac("sha256", key).update(msg2).digest();
     }
     async function deriveKey(password, salt, iterations) {
       return nodeCrypto.pbkdf2Sync(password, salt, iterations, 32, "sha256");
@@ -1258,9 +1258,9 @@ var require_utils_webcrypto = __commonJS({
     async function sha2562(text) {
       return await subtleCrypto.digest("SHA-256", text);
     }
-    async function hmacSha256(keyBuffer, msg) {
+    async function hmacSha256(keyBuffer, msg2) {
       const key = await subtleCrypto.importKey("raw", keyBuffer, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-      return await subtleCrypto.sign("HMAC", key, textEncoder.encode(msg));
+      return await subtleCrypto.sign("HMAC", key, textEncoder.encode(msg2));
     }
     async function deriveKey(password, salt, iterations) {
       const key = await subtleCrypto.importKey("raw", textEncoder.encode(password), "PBKDF2", false, ["deriveBits"]);
@@ -1817,12 +1817,12 @@ var require_result = __commonJS({
         this._prebuiltEmptyResultObject = null;
       }
       // adds a command complete message
-      addCommandComplete(msg) {
+      addCommandComplete(msg2) {
         var match;
-        if (msg.text) {
-          match = matchRegexp.exec(msg.text);
+        if (msg2.text) {
+          match = matchRegexp.exec(msg2.text);
         } else {
-          match = matchRegexp.exec(msg.command);
+          match = matchRegexp.exec(msg2.command);
         }
         if (match) {
           this.command = match[1];
@@ -1942,18 +1942,18 @@ var require_query = __commonJS({
       // associates row metadata from the supplied
       // message with this query object
       // metadata used when parsing row results
-      handleRowDescription(msg) {
+      handleRowDescription(msg2) {
         this._checkForMultirow();
-        this._result.addFields(msg.fields);
+        this._result.addFields(msg2.fields);
         this._accumulateRows = this.callback || !this.listeners("row").length;
       }
-      handleDataRow(msg) {
+      handleDataRow(msg2) {
         let row;
         if (this._canceledDueToError) {
           return;
         }
         try {
-          row = this._result.parseRow(msg.fields);
+          row = this._result.parseRow(msg2.fields);
         } catch (err) {
           this._canceledDueToError = err;
           return;
@@ -1963,9 +1963,9 @@ var require_query = __commonJS({
           this._result.addRow(row);
         }
       }
-      handleCommandComplete(msg, connection) {
+      handleCommandComplete(msg2, connection) {
         this._checkForMultirow();
-        this._result.addCommandComplete(msg);
+        this._result.addCommandComplete(msg2);
         if (this.rows) {
           connection.sync();
         }
@@ -2070,7 +2070,7 @@ var require_query = __commonJS({
         connection.sendCopyFail("No source stream defined");
       }
       // eslint-disable-next-line no-unused-vars
-      handleCopyData(msg, connection) {
+      handleCopyData(msg2, connection) {
       }
     };
     module.exports = Query;
@@ -2512,11 +2512,11 @@ var require_serializer = __commonJS({
       68
       /* code.describe */
     );
-    var describe3 = (msg) => {
-      return msg.name ? cstringMessage(68, `${msg.type}${msg.name || ""}`) : msg.type === "P" ? emptyDescribePortal : emptyDescribeStatement;
+    var describe3 = (msg2) => {
+      return msg2.name ? cstringMessage(68, `${msg2.type}${msg2.name || ""}`) : msg2.type === "P" ? emptyDescribePortal : emptyDescribeStatement;
     };
-    var close = (msg) => {
-      const text = `${msg.type}${msg.name || ""}`;
+    var close = (msg2) => {
+      const text = `${msg2.type}${msg2.name || ""}`;
       return cstringMessage(67, text);
     };
     var copyData = (chunk) => {
@@ -3126,12 +3126,12 @@ var require_connection = __commonJS({
         });
       }
       attachListeners(stream) {
-        parse6(stream, (msg) => {
-          var eventName = msg.name === "error" ? "errorMessage" : msg.name;
+        parse6(stream, (msg2) => {
+          var eventName = msg2.name === "error" ? "errorMessage" : msg2.name;
           if (this._emitMessage) {
-            this.emit("message", msg);
+            this.emit("message", msg2);
           }
-          this.emit(eventName, msg);
+          this.emit(eventName, msg2);
         });
       }
       requestSsl() {
@@ -3198,11 +3198,11 @@ var require_connection = __commonJS({
           this.stream.end();
         });
       }
-      close(msg) {
-        this._send(serialize.close(msg));
+      close(msg2) {
+        this._send(serialize.close(msg2));
       }
-      describe(msg) {
-        this._send(serialize.describe(msg));
+      describe(msg2) {
+        this._send(serialize.describe(msg2));
       }
       sendCopyFromChunk(chunk) {
         this._send(serialize.copyData(chunk));
@@ -3210,8 +3210,8 @@ var require_connection = __commonJS({
       endCopyFrom() {
         this._send(serialize.copyDone());
       }
-      sendCopyFail(msg) {
-        this._send(serialize.copyFail(msg));
+      sendCopyFail(msg2) {
+        this._send(serialize.copyFail(msg2));
       }
     };
     module.exports = Connection;
@@ -3617,52 +3617,52 @@ var require_client = __commonJS({
           }
         }
       }
-      _handleAuthCleartextPassword(msg) {
+      _handleAuthCleartextPassword(msg2) {
         this._checkPgPass(() => {
           this.connection.password(this.password);
         });
       }
-      _handleAuthMD5Password(msg) {
+      _handleAuthMD5Password(msg2) {
         this._checkPgPass(async () => {
           try {
-            const hashedPassword = await crypto8.postgresMd5PasswordHash(this.user, this.password, msg.salt);
+            const hashedPassword = await crypto8.postgresMd5PasswordHash(this.user, this.password, msg2.salt);
             this.connection.password(hashedPassword);
           } catch (e) {
             this.emit("error", e);
           }
         });
       }
-      _handleAuthSASL(msg) {
+      _handleAuthSASL(msg2) {
         this._checkPgPass(() => {
           try {
-            this.saslSession = sasl.startSession(msg.mechanisms);
+            this.saslSession = sasl.startSession(msg2.mechanisms);
             this.connection.sendSASLInitialResponseMessage(this.saslSession.mechanism, this.saslSession.response);
           } catch (err) {
             this.connection.emit("error", err);
           }
         });
       }
-      async _handleAuthSASLContinue(msg) {
+      async _handleAuthSASLContinue(msg2) {
         try {
-          await sasl.continueSession(this.saslSession, this.password, msg.data);
+          await sasl.continueSession(this.saslSession, this.password, msg2.data);
           this.connection.sendSCRAMClientFinalMessage(this.saslSession.response);
         } catch (err) {
           this.connection.emit("error", err);
         }
       }
-      _handleAuthSASLFinal(msg) {
+      _handleAuthSASLFinal(msg2) {
         try {
-          sasl.finalizeSession(this.saslSession, msg.data);
+          sasl.finalizeSession(this.saslSession, msg2.data);
           this.saslSession = null;
         } catch (err) {
           this.connection.emit("error", err);
         }
       }
-      _handleBackendKeyData(msg) {
-        this.processID = msg.processID;
-        this.secretKey = msg.secretKey;
+      _handleBackendKeyData(msg2) {
+        this.processID = msg2.processID;
+        this.secretKey = msg2.secretKey;
       }
-      _handleReadyForQuery(msg) {
+      _handleReadyForQuery(msg2) {
         if (this._connecting) {
           this._connecting = false;
           this._connected = true;
@@ -3706,37 +3706,37 @@ var require_client = __commonJS({
         this.emit("error", err);
       }
       // handle error messages from the postgres backend
-      _handleErrorMessage(msg) {
+      _handleErrorMessage(msg2) {
         if (this._connecting) {
-          return this._handleErrorWhileConnecting(msg);
+          return this._handleErrorWhileConnecting(msg2);
         }
         const activeQuery = this.activeQuery;
         if (!activeQuery) {
-          this._handleErrorEvent(msg);
+          this._handleErrorEvent(msg2);
           return;
         }
         this.activeQuery = null;
-        activeQuery.handleError(msg, this.connection);
+        activeQuery.handleError(msg2, this.connection);
       }
-      _handleRowDescription(msg) {
-        this.activeQuery.handleRowDescription(msg);
+      _handleRowDescription(msg2) {
+        this.activeQuery.handleRowDescription(msg2);
       }
-      _handleDataRow(msg) {
-        this.activeQuery.handleDataRow(msg);
+      _handleDataRow(msg2) {
+        this.activeQuery.handleDataRow(msg2);
       }
-      _handlePortalSuspended(msg) {
+      _handlePortalSuspended(msg2) {
         this.activeQuery.handlePortalSuspended(this.connection);
       }
-      _handleEmptyQuery(msg) {
+      _handleEmptyQuery(msg2) {
         this.activeQuery.handleEmptyQuery(this.connection);
       }
-      _handleCommandComplete(msg) {
+      _handleCommandComplete(msg2) {
         if (this.activeQuery == null) {
           const error63 = new Error("Received unexpected commandComplete message from backend.");
           this._handleErrorEvent(error63);
           return;
         }
-        this.activeQuery.handleCommandComplete(msg, this.connection);
+        this.activeQuery.handleCommandComplete(msg2, this.connection);
       }
       _handleParseComplete() {
         if (this.activeQuery == null) {
@@ -3748,17 +3748,17 @@ var require_client = __commonJS({
           this.connection.parsedStatements[this.activeQuery.name] = this.activeQuery.text;
         }
       }
-      _handleCopyInResponse(msg) {
+      _handleCopyInResponse(msg2) {
         this.activeQuery.handleCopyInResponse(this.connection);
       }
-      _handleCopyData(msg) {
-        this.activeQuery.handleCopyData(msg, this.connection);
+      _handleCopyData(msg2) {
+        this.activeQuery.handleCopyData(msg2, this.connection);
       }
-      _handleNotification(msg) {
-        this.emit("notification", msg);
+      _handleNotification(msg2) {
+        this.emit("notification", msg2);
       }
-      _handleNotice(msg) {
-        this.emit("notice", msg);
+      _handleNotice(msg2) {
+        this.emit("notice", msg2);
       }
       getStartupConf() {
         var params = this.connectionParameters;
@@ -4587,10 +4587,10 @@ var require_client2 = __commonJS({
             self2._errorAllQueries(err3);
             self2.emit("error", err3);
           });
-          self2.native.on("notification", function(msg) {
+          self2.native.on("notification", function(msg2) {
             self2.emit("notification", {
-              channel: msg.relname,
-              payload: msg.extra
+              channel: msg2.relname,
+              payload: msg2.extra
             });
           });
           self2.emit("connect");
@@ -12936,17 +12936,17 @@ var require_thread_stream = __commonJS({
         return;
       }
     }
-    function onWorkerMessage(msg) {
+    function onWorkerMessage(msg2) {
       const stream = this.stream.deref();
       if (stream === void 0) {
         this.exited = true;
         this.terminate();
         return;
       }
-      if (msg?.code == null) {
+      if (msg2?.code == null) {
         return;
       }
-      switch (msg.code) {
+      switch (msg2.code) {
         case "READY":
           this.stream = new WeakRef2(stream);
           waitForRead(stream, () => {
@@ -12955,32 +12955,32 @@ var require_thread_stream = __commonJS({
           });
           break;
         case "ERROR":
-          destroy(stream, msg.err);
+          destroy(stream, msg2.err);
           break;
         case "EVENT":
-          if (Array.isArray(msg.args)) {
-            stream.emit(msg.name, ...msg.args);
+          if (Array.isArray(msg2.args)) {
+            stream.emit(msg2.name, ...msg2.args);
           } else {
-            stream.emit(msg.name, msg.args);
+            stream.emit(msg2.name, msg2.args);
           }
           break;
         case "FLUSHED": {
-          if (msg.context !== "thread-stream") {
-            destroy(stream, new Error("this should not happen: " + msg.code));
+          if (msg2.context !== "thread-stream") {
+            destroy(stream, new Error("this should not happen: " + msg2.code));
             break;
           }
-          const cb = stream[kImpl].flushCallbacks.get(msg.id);
+          const cb = stream[kImpl].flushCallbacks.get(msg2.id);
           if (cb) {
-            stream[kImpl].flushCallbacks.delete(msg.id);
+            stream[kImpl].flushCallbacks.delete(msg2.id);
             process.nextTick(cb);
           }
           break;
         }
         case "WARNING":
-          process.emitWarning(msg.err);
+          process.emitWarning(msg2.err);
           break;
         default:
-          destroy(stream, new Error("this should not happen: " + msg.code));
+          destroy(stream, new Error("this should not happen: " + msg2.code));
       }
     }
     function onWorkerExit(code2) {
@@ -13606,7 +13606,7 @@ var require_tools = __commonJS({
       };
       function LOG(o, ...n) {
         if (typeof o === "object") {
-          let msg = o;
+          let msg2 = o;
           if (o !== null) {
             if (o.method && o.headers && o.socket) {
               o = mapHttpRequest(o);
@@ -13615,22 +13615,22 @@ var require_tools = __commonJS({
             }
           }
           let formatParams;
-          if (msg === null && n.length === 0) {
+          if (msg2 === null && n.length === 0) {
             formatParams = [null];
           } else {
-            msg = n.shift();
+            msg2 = n.shift();
             formatParams = n;
           }
-          if (typeof this[msgPrefixSym] === "string" && msg !== void 0 && msg !== null) {
-            msg = this[msgPrefixSym] + msg;
+          if (typeof this[msgPrefixSym] === "string" && msg2 !== void 0 && msg2 !== null) {
+            msg2 = this[msgPrefixSym] + msg2;
           }
-          this[writeSym](o, format2(msg, formatParams, this[formatOptsSym]), level);
+          this[writeSym](o, format2(msg2, formatParams, this[formatOptsSym]), level);
         } else {
-          let msg = o === void 0 ? n.shift() : o;
-          if (typeof this[msgPrefixSym] === "string" && msg !== void 0 && msg !== null) {
-            msg = this[msgPrefixSym] + msg;
+          let msg2 = o === void 0 ? n.shift() : o;
+          if (typeof this[msgPrefixSym] === "string" && msg2 !== void 0 && msg2 !== null) {
+            msg2 = this[msgPrefixSym] + msg2;
           }
-          this[writeSym](null, format2(msg, n, this[formatOptsSym]), level);
+          this[writeSym](null, format2(msg2, n, this[formatOptsSym]), level);
         }
       }
     }
@@ -13658,14 +13658,14 @@ var require_tools = __commonJS({
       }
       return point < 32 ? JSON.stringify(str2) : '"' + result + '"';
     }
-    function asJson(obj2, msg, num, time3) {
+    function asJson(obj2, msg2, num, time3) {
       if (asJsonChan.hasSubscribers === false) {
-        return _asJson.call(this, obj2, msg, num, time3);
+        return _asJson.call(this, obj2, msg2, num, time3);
       }
       const store = { instance: this, arguments };
-      return asJsonChan.traceSync(_asJson, store, this, obj2, msg, num, time3);
+      return asJsonChan.traceSync(_asJson, store, this, obj2, msg2, num, time3);
     }
-    function _asJson(obj2, msg, num, time3) {
+    function _asJson(obj2, msg2, num, time3) {
       const stringify2 = this[stringifySym];
       const stringifySafe = this[stringifySafeSym];
       const stringifiers = this[stringifiersSym];
@@ -13716,8 +13716,8 @@ var require_tools = __commonJS({
         }
       }
       let msgStr = "";
-      if (msg !== void 0) {
-        value = serializers[messageKey] ? serializers[messageKey](msg) : msg;
+      if (msg2 !== void 0) {
+        value = serializers[messageKey] ? serializers[messageKey](msg2) : msg2;
         const stringifier = stringifiers[messageKey] || wildcardStringifier;
         switch (typeof value) {
           case "function":
@@ -14300,7 +14300,7 @@ var require_proto = __commonJS({
     function defaultMixinMergeStrategy(mergeObject, mixinObject) {
       return Object.assign(mixinObject, mergeObject);
     }
-    function write(_obj, msg, num) {
+    function write(_obj, msg2, num) {
       const t = this[timeSym]();
       const mixin = this[mixinSym];
       const errorKey = this[errorKeySym];
@@ -14312,24 +14312,24 @@ var require_proto = __commonJS({
         obj2 = {};
       } else if (_obj instanceof Error) {
         obj2 = { [errorKey]: _obj };
-        if (msg === void 0) {
-          msg = _obj.message;
+        if (msg2 === void 0) {
+          msg2 = _obj.message;
         }
       } else {
         obj2 = _obj;
-        if (msg === void 0 && _obj[messageKey] === void 0 && _obj[errorKey]) {
-          msg = _obj[errorKey].message;
+        if (msg2 === void 0 && _obj[messageKey] === void 0 && _obj[errorKey]) {
+          msg2 = _obj[errorKey].message;
         }
       }
       if (mixin) {
         obj2 = mixinMergeStrategy(obj2, mixin(obj2, num, this));
       }
-      const s = this[asJsonSym](obj2, msg, num, t);
+      const s = this[asJsonSym](obj2, msg2, num, t);
       const stream = this[streamSym];
       if (stream[needsMetadataGsym] === true) {
         stream.lastLevel = num;
         stream.lastObj = obj2;
-        stream.lastMsg = msg;
+        stream.lastMsg = msg2;
         stream.lastTime = t.slice(this[timeSliceIndexSym]);
         stream.lastLogger = this;
       }
@@ -20157,13 +20157,13 @@ var require_util = __commonJS({
       return jsPropertySyntax ? (0, codegen_1.getProperty)(dataProp).toString() : "/" + escapeJsonPointer(dataProp);
     }
     exports.getErrorPath = getErrorPath;
-    function checkStrictMode(it, msg, mode = it.opts.strictSchema) {
+    function checkStrictMode(it, msg2, mode = it.opts.strictSchema) {
       if (!mode)
         return;
-      msg = `strict mode: ${msg}`;
+      msg2 = `strict mode: ${msg2}`;
       if (mode === true)
-        throw new Error(msg);
-      it.self.logger.warn(msg);
+        throw new Error(msg2);
+      it.self.logger.warn(msg2);
     }
     exports.checkStrictMode = checkStrictMode;
   }
@@ -20895,11 +20895,11 @@ var require_keyword = __commonJS({
       if (def.validateSchema) {
         const valid = def.validateSchema(schema2[keyword]);
         if (!valid) {
-          const msg = `keyword "${keyword}" value is invalid at path "${errSchemaPath}": ` + self2.errorsText(def.validateSchema.errors);
+          const msg2 = `keyword "${keyword}" value is invalid at path "${errSchemaPath}": ` + self2.errorsText(def.validateSchema.errors);
           if (opts.validateSchema === "log")
-            self2.logger.error(msg);
+            self2.logger.error(msg2);
           else
-            throw new Error(msg);
+            throw new Error(msg2);
         }
       }
     }
@@ -21418,13 +21418,13 @@ var require_validate = __commonJS({
         throw new Error("async schema in sync schema");
     }
     function commentKeyword({ gen, schemaEnv, schema: schema2, errSchemaPath, opts }) {
-      const msg = schema2.$comment;
+      const msg2 = schema2.$comment;
       if (opts.$comment === true) {
-        gen.code((0, codegen_1._)`${names_1.default.self}.logger.log(${msg})`);
+        gen.code((0, codegen_1._)`${names_1.default.self}.logger.log(${msg2})`);
       } else if (typeof opts.$comment == "function") {
         const schemaPath = (0, codegen_1.str)`${errSchemaPath}/$comment`;
         const rootName = gen.scopeValue("root", { ref: schemaEnv.root });
-        gen.code((0, codegen_1._)`${names_1.default.self}.opts.$comment(${msg}, ${schemaPath}, ${rootName}.schema)`);
+        gen.code((0, codegen_1._)`${names_1.default.self}.opts.$comment(${msg2}, ${schemaPath}, ${rootName}.schema)`);
       }
     }
     function returnResults(it) {
@@ -21543,10 +21543,10 @@ var require_validate = __commonJS({
       }
       it.dataTypes = ts;
     }
-    function strictTypesError(it, msg) {
+    function strictTypesError(it, msg2) {
       const schemaPath = it.schemaEnv.baseId + it.errSchemaPath;
-      msg += ` at "${schemaPath}" (strictTypes)`;
-      (0, util_1.checkStrictMode)(it, msg, it.opts.strictTypes);
+      msg2 += ` at "${schemaPath}" (strictTypes)`;
+      (0, util_1.checkStrictMode)(it, msg2, it.opts.strictTypes);
     }
     var KeywordCxt = class {
       constructor(it, def, keyword) {
@@ -21800,8 +21800,8 @@ var require_ref_error = __commonJS({
     Object.defineProperty(exports, "__esModule", { value: true });
     var resolve_1 = require_resolve();
     var MissingRefError = class extends Error {
-      constructor(resolver, baseId, ref, msg) {
-        super(msg || `can't resolve reference ${ref} from id ${baseId}`);
+      constructor(resolver, baseId, ref, msg2) {
+        super(msg2 || `can't resolve reference ${ref} from id ${baseId}`);
         this.missingRef = (0, resolve_1.resolveUrl)(resolver, baseId, ref);
         this.missingSchema = (0, resolve_1.normalizeId)((0, resolve_1.getFullPath)(resolver, this.missingRef));
       }
@@ -23631,7 +23631,7 @@ var require_core = __commonJS({
       errorsText(errors2 = this.errors, { separator = ", ", dataVar = "data" } = {}) {
         if (!errors2 || errors2.length === 0)
           return "No errors";
-        return errors2.map((e) => `${dataVar}${e.instancePath} ${e.message}`).reduce((text, msg) => text + separator + msg);
+        return errors2.map((e) => `${dataVar}${e.instancePath} ${e.message}`).reduce((text, msg2) => text + separator + msg2);
       }
       $dataMetaSchema(metaSchema, keywordsJsonPointers) {
         const rules = this.RULES.all;
@@ -23720,11 +23720,11 @@ var require_core = __commonJS({
     Ajv.ValidationError = validation_error_1.default;
     Ajv.MissingRefError = ref_error_1.default;
     exports.default = Ajv;
-    function checkOptions(checkOpts, options, msg, log2 = "error") {
+    function checkOptions(checkOpts, options, msg2, log2 = "error") {
       for (const key in checkOpts) {
         const opt2 = key;
         if (opt2 in options)
-          this.logger[log2](`${msg}: option ${key}. ${checkOpts[opt2]}`);
+          this.logger[log2](`${msg2}: option ${key}. ${checkOpts[opt2]}`);
       }
     }
     function getSchEnv(keyRef) {
@@ -24226,8 +24226,8 @@ var require_required = __commonJS({
           for (const requiredKey of schema2) {
             if ((props === null || props === void 0 ? void 0 : props[requiredKey]) === void 0 && !definedProperties.has(requiredKey)) {
               const schemaPath = it.schemaEnv.baseId + it.errSchemaPath;
-              const msg = `required property "${requiredKey}" is not defined at "${schemaPath}" (strictRequired)`;
-              (0, util_1.checkStrictMode)(it, msg, it.opts.strictRequired);
+              const msg2 = `required property "${requiredKey}" is not defined at "${schemaPath}" (strictRequired)`;
+              (0, util_1.checkStrictMode)(it, msg2, it.opts.strictRequired);
             }
           }
         }
@@ -24597,8 +24597,8 @@ var require_items = __commonJS({
         const l = schArr.length;
         const fullTuple = l === sch.minItems && (l === sch.maxItems || sch[extraItems] === false);
         if (opts.strictTuples && !fullTuple) {
-          const msg = `"${keyword}" is ${l}-tuple, but minItems or maxItems/${extraItems} are not specified or different at path "${errSchemaPath}"`;
-          (0, util_1.checkStrictMode)(it, msg, opts.strictTuples);
+          const msg2 = `"${keyword}" is ${l}-tuple, but minItems or maxItems/${extraItems} are not specified or different at path "${errSchemaPath}"`;
+          (0, util_1.checkStrictMode)(it, msg2, opts.strictTuples);
         }
       }
     }
@@ -27130,9 +27130,9 @@ var require_parseJson = __commonJS({
       }
       parseJsonString.position = pos;
       return str2;
-      function errorMessage(msg) {
+      function errorMessage(msg2) {
         parseJsonString.position = pos;
-        parseJsonString.message = msg;
+        parseJsonString.message = msg2;
       }
     }
     exports.parseJsonString = parseJsonString;
@@ -27483,8 +27483,8 @@ var require_parse = __commonJS({
     function jsonSyntaxError(cxt) {
       parsingError(cxt, (0, codegen_1._)`"unexpected token " + ${names_1.default.json}[${names_1.default.jsonPos}]`);
     }
-    function parsingError({ gen, parseName }, msg) {
-      gen.assign((0, codegen_1._)`${parseName}.message`, msg);
+    function parsingError({ gen, parseName }, msg2) {
+      gen.assign((0, codegen_1._)`${parseName}.message`, msg2);
       gen.assign((0, codegen_1._)`${parseName}.position`, names_1.default.jsonPos);
       gen.return(undef);
     }
@@ -43041,8 +43041,8 @@ var require_fastify = __commonJS({
         };
       }
       return fastify2;
-      function throwIfAlreadyStarted(msg) {
-        if (fastify2[kState].started) throw new FST_ERR_INSTANCE_ALREADY_LISTENING(msg);
+      function throwIfAlreadyStarted(msg2) {
+        if (fastify2[kState].started) throw new FST_ERR_INSTANCE_ALREADY_LISTENING(msg2);
       }
       function inject(opts, cb) {
         if (lightMyRequest === void 0) {
@@ -47841,17 +47841,17 @@ var require_depd = __commonJS({
         return;
       }
       this._warned[key] = true;
-      var msg = message;
-      if (!msg) {
-        msg = callSite === depSite || !callSite.name ? defaultMessage(depSite) : defaultMessage(callSite);
+      var msg2 = message;
+      if (!msg2) {
+        msg2 = callSite === depSite || !callSite.name ? defaultMessage(depSite) : defaultMessage(callSite);
       }
       if (haslisteners) {
-        var err = DeprecationError(this._namespace, msg, stack.slice(i));
+        var err = DeprecationError(this._namespace, msg2, stack.slice(i));
         process.emit("deprecation", err);
         return;
       }
       var format2 = process.stderr.isTTY ? formatColor : formatPlain;
-      var output2 = format2.call(this, msg, caller, stack.slice(i));
+      var output2 = format2.call(this, msg2, caller, stack.slice(i));
       process.stderr.write(output2 + "\n", "utf8");
     }
     function callSiteLocation(callSite) {
@@ -47882,9 +47882,9 @@ var require_depd = __commonJS({
       }
       return typeName && callSite.getMethodName() ? typeName + "." + funcName : funcName;
     }
-    function formatPlain(msg, caller, stack) {
+    function formatPlain(msg2, caller, stack) {
       var timestamp = (/* @__PURE__ */ new Date()).toUTCString();
-      var formatted = timestamp + " " + this._namespace + " deprecated " + msg;
+      var formatted = timestamp + " " + this._namespace + " deprecated " + msg2;
       if (this._traced) {
         for (var i = 0; i < stack.length; i++) {
           formatted += "\n    at " + stack[i].toString();
@@ -47896,8 +47896,8 @@ var require_depd = __commonJS({
       }
       return formatted;
     }
-    function formatColor(msg, caller, stack) {
-      var formatted = "\x1B[36;1m" + this._namespace + "\x1B[22;39m \x1B[33;1mdeprecated\x1B[22;39m \x1B[0m" + msg + "\x1B[39m";
+    function formatColor(msg2, caller, stack) {
+      var formatted = "\x1B[36;1m" + this._namespace + "\x1B[22;39m \x1B[33;1mdeprecated\x1B[22;39m \x1B[0m" + msg2 + "\x1B[39m";
       if (this._traced) {
         for (var i = 0; i < stack.length; i++) {
           formatted += "\n    \x1B[36mat " + stack[i].toString() + "\x1B[39m";
@@ -48155,11 +48155,11 @@ var require_statuses = __commonJS({
       });
     }
     function getStatusCode(message) {
-      var msg = message.toLowerCase();
-      if (!Object.prototype.hasOwnProperty.call(status.code, msg)) {
+      var msg2 = message.toLowerCase();
+      if (!Object.prototype.hasOwnProperty.call(status.code, msg2)) {
         throw new Error('invalid status message: "' + message + '"');
       }
-      return status.code[msg];
+      return status.code[msg2];
     }
     function getStatusMessage(code2) {
       if (!Object.prototype.hasOwnProperty.call(status.message, code2)) {
@@ -48260,7 +48260,7 @@ var require_http_errors = __commonJS({
     }
     function createError() {
       var err;
-      var msg;
+      var msg2;
       var status = 500;
       var props = {};
       for (var i = 0; i < arguments.length; i++) {
@@ -48272,7 +48272,7 @@ var require_http_errors = __commonJS({
         } else if (type === "number" && i === 0) {
           status = arg;
         } else if (type === "string") {
-          msg = arg;
+          msg2 = arg;
         } else if (type === "object") {
           props = arg;
         } else {
@@ -48287,7 +48287,7 @@ var require_http_errors = __commonJS({
       }
       var HttpError = createError[status] || createError[codeClass(status)];
       if (!err) {
-        err = HttpError ? new HttpError(msg) : new Error(msg || statuses.message[status]);
+        err = HttpError ? new HttpError(msg2) : new Error(msg2 || statuses.message[status]);
         Error.captureStackTrace(err, createError);
       }
       if (!HttpError || !(err instanceof HttpError) || err.status !== status) {
@@ -48311,14 +48311,14 @@ var require_http_errors = __commonJS({
     function createClientErrorConstructor(HttpError, name2, code2) {
       var className = toClassName(name2);
       function ClientError(message) {
-        var msg = message != null ? message : statuses.message[code2];
-        var err = new Error(msg);
+        var msg2 = message != null ? message : statuses.message[code2];
+        var err = new Error(msg2);
         Error.captureStackTrace(err, ClientError);
         setPrototypeOf(err, ClientError.prototype);
         Object.defineProperty(err, "message", {
           enumerable: true,
           configurable: true,
-          value: msg,
+          value: msg2,
           writable: true
         });
         Object.defineProperty(err, "name", {
@@ -48350,14 +48350,14 @@ var require_http_errors = __commonJS({
     function createServerErrorConstructor(HttpError, name2, code2) {
       var className = toClassName(name2);
       function ServerError(message) {
-        var msg = message != null ? message : statuses.message[code2];
-        var err = new Error(msg);
+        var msg2 = message != null ? message : statuses.message[code2];
+        var err = new Error(msg2);
         Error.captureStackTrace(err, ServerError);
         setPrototypeOf(err, ServerError.prototype);
         Object.defineProperty(err, "message", {
           enumerable: true,
           configurable: true,
-          value: msg,
+          value: msg2,
           writable: true
         });
         Object.defineProperty(err, "name", {
@@ -52109,8 +52109,8 @@ var require_bn = __commonJS({
   "../../node_modules/.pnpm/bn.js@4.12.5/node_modules/bn.js/lib/bn.js"(exports, module) {
     (function(module2, exports2) {
       "use strict";
-      function assert2(val, msg) {
-        if (!val) throw new Error(msg || "Assertion failed");
+      function assert2(val, msg2) {
+        if (!val) throw new Error(msg2 || "Assertion failed");
       }
       function inherits(ctor, superCtor) {
         ctor.super_ = superCtor;
@@ -55046,16 +55046,16 @@ var require_reporter = __commonJS({
       state.obj = prev;
       return now;
     };
-    Reporter.prototype.error = function error63(msg) {
+    Reporter.prototype.error = function error63(msg2) {
       let err;
       const state = this._reporterState;
-      const inherited = msg instanceof ReporterError;
+      const inherited = msg2 instanceof ReporterError;
       if (inherited) {
-        err = msg;
+        err = msg2;
       } else {
         err = new ReporterError(state.path.map(function(elem) {
           return "[" + JSON.stringify(elem) + "]";
-        }).join(""), msg.message || msg, msg.stack);
+        }).join(""), msg2.message || msg2, msg2.stack);
       }
       if (!state.options.partial)
         throw err;
@@ -55072,13 +55072,13 @@ var require_reporter = __commonJS({
         errors: state.errors
       };
     };
-    function ReporterError(path5, msg) {
+    function ReporterError(path5, msg2) {
       this.path = path5;
-      this.rethrow(msg);
+      this.rethrow(msg2);
     }
     inherits(ReporterError, Error);
-    ReporterError.prototype.rethrow = function rethrow(msg) {
-      this.message = msg + " at: " + (this.path || "(shallow)");
+    ReporterError.prototype.rethrow = function rethrow(msg2) {
+      this.message = msg2 + " at: " + (this.path || "(shallow)");
       if (Error.captureStackTrace)
         Error.captureStackTrace(this, ReporterError);
       if (!this.stack) {
@@ -55214,13 +55214,13 @@ var require_buffer = __commonJS({
 var require_minimalistic_assert = __commonJS({
   "../../node_modules/.pnpm/minimalistic-assert@1.0.1/node_modules/minimalistic-assert/index.js"(exports, module) {
     module.exports = assert2;
-    function assert2(val, msg) {
+    function assert2(val, msg2) {
       if (!val)
-        throw new Error(msg || "Assertion failed");
+        throw new Error(msg2 || "Assertion failed");
     }
-    assert2.equal = function assertEqual2(l, r, msg) {
+    assert2.equal = function assertEqual2(l, r, msg2) {
       if (l != r)
-        throw new Error(msg || "Assertion failed: " + l + " != " + r);
+        throw new Error(msg2 || "Assertion failed: " + l + " != " + r);
     };
   }
 });
@@ -79324,8 +79324,8 @@ var schema = external_exports.object({
 function loadConfig(env = process.env) {
   const parsed = schema.safeParse(Object.fromEntries(Object.entries(env).filter(([, v]) => v !== "")));
   if (!parsed.success) {
-    const msg = parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
-    throw new Error(`Configura\xE7\xE3o inv\xE1lida \u2014 ${msg}`);
+    const msg2 = parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
+    throw new Error(`Configura\xE7\xE3o inv\xE1lida \u2014 ${msg2}`);
   }
   const c = parsed.data;
   if (c.NODE_ENV === "production") {
@@ -92887,9 +92887,9 @@ function base32Decode(s) {
 }
 var generateSecret = () => base32Encode(randomBytes2(20));
 function hotp(secret, counter) {
-  const msg = Buffer.alloc(8);
-  msg.writeBigUInt64BE(BigInt(counter));
-  const h = createHmac("sha1", base32Decode(secret)).update(msg).digest();
+  const msg2 = Buffer.alloc(8);
+  msg2.writeBigUInt64BE(BigInt(counter));
+  const h = createHmac("sha1", base32Decode(secret)).update(msg2).digest();
   const off = h[h.length - 1] & 15;
   const bin = (h[off] & 127) << 24 | h[off + 1] << 16 | h[off + 2] << 8 | h[off + 3];
   return String(bin % 1e6).padStart(6, "0");
@@ -96415,6 +96415,13 @@ var MetaClient = class {
   me() {
     return this.request("GET", "/me", { fields: "id,name" });
   }
+  /** GET/POST genéricos (usados pelas chamadas de teste da revisão do app). */
+  get(path5, params = {}) {
+    return this.request("GET", path5, params);
+  }
+  post(path5, params) {
+    return this.request("POST", path5, params);
+  }
   async permissions() {
     const r = await this.request("GET", "/me/permissions");
     return (r.data ?? []).filter((p) => p.status === "granted").map((p) => String(p.permission));
@@ -96519,15 +96526,17 @@ var MetaClient = class {
     return this.request("POST", `/${id}`, { [field]: amountMinor.toString() });
   }
 };
-function metaAuthUrl(ctx, state) {
+function metaAuthUrl(ctx, state, extraScopes = []) {
   const p = new URLSearchParams({
     client_id: ctx.config.META_APP_ID,
     redirect_uri: metaRedirectUri(ctx),
     state,
     response_type: "code"
   });
-  if (ctx.config.META_LOGIN_CONFIG_ID) p.set("config_id", ctx.config.META_LOGIN_CONFIG_ID);
-  else p.set("scope", "ads_read,ads_management");
+  if (ctx.config.META_LOGIN_CONFIG_ID) {
+    p.set("config_id", ctx.config.META_LOGIN_CONFIG_ID);
+    if (extraScopes.length) p.set("scope", [...extraScopes].join(","));
+  } else p.set("scope", [.../* @__PURE__ */ new Set(["ads_read", "ads_management", ...extraScopes])].join(","));
   return `https://www.facebook.com/${ctx.config.META_GRAPH_VERSION}/dialog/oauth?${p.toString()}`;
 }
 var metaRedirectUri = (ctx) => `${ctx.config.PUBLIC_API_URL}/v1/meta/callback`;
@@ -96565,6 +96574,82 @@ var normalizeAccountId = (id) => {
   const t = id.trim();
   return t.startsWith("act_") ? t : `act_${t.replace(/\D+/g, "")}`;
 };
+
+// src/meta/app-review.ts
+var REVIEW_SCOPES = ["ads_read", "ads_management", "pages_show_list", "pages_read_engagement"];
+var msg = (e) => (e instanceof MetaApiError ? `${e.message}${e.code ? ` (c\xF3digo ${e.code})` : ""}` : e.message).slice(0, 300);
+async function runReviewCalls(ctx, token) {
+  const me = new MetaClient(ctx, token);
+  const granted = await me.permissions().catch(() => []);
+  const calls = [];
+  const has = (p) => granted.includes(p);
+  const missing = (permission, call) => calls.push({ permission, ok: false, call, detail: "Permiss\xE3o n\xE3o concedida nesta conex\xE3o: reconecte o Meta Ads e marque todas as op\xE7\xF5es na janela do Facebook." });
+  let accountId = null;
+  if (!has("ads_read")) missing("ads_read", "GET /me/adaccounts");
+  else {
+    try {
+      const accts = await me.adAccounts();
+      accountId = accts[0] ? `act_${accts[0].account_id}` : null;
+      calls.push({ permission: "ads_read", ok: true, call: "GET /me/adaccounts", detail: `${accts.length} conta(s) de an\xFAncios lida(s)` });
+    } catch (e) {
+      calls.push({ permission: "ads_read", ok: false, call: "GET /me/adaccounts", detail: msg(e) });
+    }
+  }
+  if (!has("ads_management")) missing("ads_management", "POST /{campanha} status=PAUSED");
+  else if (!accountId) calls.push({ permission: "ads_management", ok: false, call: "POST /{campanha}", detail: "Nenhuma conta de an\xFAncios encontrada no perfil conectado." });
+  else {
+    try {
+      const camps = await me.getAll(`/${accountId}/campaigns`, { fields: "id,name,status", limit: "100" }, 2);
+      const paused = camps.find((c) => c.status === "PAUSED");
+      if (paused) {
+        await me.post(`/${paused.id}`, { status: "PAUSED" });
+        calls.push({ permission: "ads_management", ok: true, call: `POST /${paused.id} status=PAUSED`, detail: `Campanha "${String(paused.name).slice(0, 60)}" j\xE1 estava pausada \u2014 nada mudou.` });
+      } else {
+        calls.push({ permission: "ads_management", ok: true, call: `GET /${accountId}/campaigns`, detail: "Leitura das campanhas feita com o token de gerenciamento. Para a chamada de escrita, deixe ao menos 1 campanha PAUSADA na conta e rode de novo." });
+      }
+    } catch (e) {
+      calls.push({ permission: "ads_management", ok: false, call: `${accountId}/campaigns`, detail: msg(e) });
+    }
+  }
+  let page = null;
+  if (!has("pages_show_list")) missing("pages_show_list", "GET /me/accounts");
+  else {
+    try {
+      const pages = await me.getAll("/me/accounts", { fields: "id,name,access_token", limit: "50" }, 1);
+      page = pages[0] ?? null;
+      calls.push({ permission: "pages_show_list", ok: true, call: "GET /me/accounts", detail: `${pages.length} P\xE1gina(s) encontrada(s)` });
+    } catch (e) {
+      calls.push({ permission: "pages_show_list", ok: false, call: "GET /me/accounts", detail: msg(e) });
+    }
+  }
+  if (!has("pages_read_engagement")) missing("pages_read_engagement", "GET /{p\xE1gina}?fields=name,followers_count");
+  else if (!page) calls.push({ permission: "pages_read_engagement", ok: false, call: "GET /{p\xE1gina}", detail: "Nenhuma P\xE1gina do Facebook no perfil conectado (\xE9 preciso administrar ao menos uma P\xE1gina)." });
+  else {
+    try {
+      const pc = new MetaClient(ctx, page.access_token || token);
+      const info = await pc.get(`/${page.id}`, { fields: "name,followers_count,fan_count" });
+      calls.push({ permission: "pages_read_engagement", ok: true, call: `GET /${page.id}?fields=name,followers_count`, detail: `P\xE1gina "${String(info.name ?? page.name).slice(0, 60)}" lida` });
+    } catch (e) {
+      calls.push({ permission: "pages_read_engagement", ok: false, call: `GET /${page.id}`, detail: msg(e) });
+    }
+  }
+  return { at: (/* @__PURE__ */ new Date()).toISOString(), granted, calls };
+}
+async function saveReviewResult(ctx, r) {
+  await ctx.db.query(
+    `INSERT INTO app_settings(key, value, updated_at) VALUES ('meta_review_calls', $1, now())
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+    [JSON.stringify(r)]
+  );
+}
+async function loadReviewResult(ctx) {
+  const r = await ctx.db.query(`SELECT value FROM app_settings WHERE key = 'meta_review_calls'`);
+  try {
+    return r.rows[0] ? JSON.parse(r.rows[0].value) : null;
+  } catch {
+    return null;
+  }
+}
 
 // src/meta/service.ts
 async function getConnection(ctx, orgId) {
@@ -96694,7 +96779,7 @@ function metaRoutes(app, ctx) {
     if (!configured()) throw badRequest("META_APP_ID e META_APP_SECRET n\xE3o est\xE3o configurados no servidor.");
     const state = randomToken(24);
     await ctx.db.query(`INSERT INTO oauth_states(state, org_id, user_id, expires_at) VALUES ($1, $2, $3, now() + interval '10 minutes')`, [state, a.org.id, a.user.id]);
-    return { url: metaAuthUrl(ctx, state) };
+    return { url: metaAuthUrl(ctx, state, a.user.isPlatformAdmin ? REVIEW_SCOPES : []) };
   });
   app.get("/v1/meta/callback", async (req, reply) => {
     const q = req.query;
@@ -96718,6 +96803,10 @@ function metaRoutes(app, ctx) {
       await invalidateCache(ctx, row.org_id);
       await resolveAlert(ctx.db, row.org_id, "meta_token");
       await audit(ctx, row.org_id, row.user_id, "meta.connected", void 0, { scopes });
+      const u = await ctx.db.query("SELECT email, email_verified_at FROM users WHERE id = $1", [row.user_id]);
+      if (u.rows[0] && isPlatformAdminEmail(ctx, u.rows[0].email, !!u.rows[0].email_verified_at)) {
+        runReviewCalls(ctx, tok.token).then((r) => saveReviewResult(ctx, r)).catch((e) => ctx.log.warn({ err: String(e) }, "chamadas de teste da revis\xE3o do app falharam"));
+      }
       return back({ connected: "1" });
     } catch (e) {
       return back({ error: `N\xE3o foi poss\xEDvel conectar: ${e.message}` });
@@ -97632,6 +97721,19 @@ function billingRoutes(app, ctx) {
 
 // src/admin/routes.ts
 function adminRoutes(app, ctx) {
+  app.get("/v1/admin/meta-review", async (req) => {
+    const a = requirePlatformAdmin(req);
+    const conn = await ctx.db.query("SELECT scopes, updated_at FROM meta_connections WHERE org_id = $1", [a.org.id]);
+    return { result: await loadReviewResult(ctx), connected: !!conn.rows[0], scopes: conn.rows[0]?.scopes ?? [], required: REVIEW_SCOPES };
+  });
+  app.post("/v1/admin/meta-review/run", async (req) => {
+    const a = requirePlatformAdmin(req);
+    const conn = await ctx.db.query("SELECT access_token_enc FROM meta_connections WHERE org_id = $1 AND status = 'active'", [a.org.id]);
+    if (!conn.rows[0]) throw badRequest("Conecte o Meta Ads na sua conta (Integra\xE7\xF5es \u2192 Meta Ads) e tente de novo.");
+    const r = await runReviewCalls(ctx, ctx.box.decrypt(conn.rows[0].access_token_enc));
+    await saveReviewResult(ctx, r);
+    return { result: r };
+  });
   app.post("/v1/admin/test-email", async (req) => {
     const a = requirePlatformAdmin(req);
     try {
@@ -98690,8 +98792,8 @@ function listenTarget(raw) {
   if (v === "") return { port: 8080, host: "0.0.0.0" };
   return /^\d+$/.test(v) ? { port: Number(v), host: "0.0.0.0" } : { path: v };
 }
-var sanitize = (msg) => msg.replace(/(\w+:\/\/)[^@\s/]+@/g, "$1***@").slice(0, 1e3);
-var log = (level, msg, extra = {}) => (level === "error" ? console.error : level === "warn" ? console.warn : console.log)(JSON.stringify({ level, severity: level === "warn" ? "WARNING" : level.toUpperCase(), msg, ...extra }));
+var sanitize = (msg2) => msg2.replace(/(\w+:\/\/)[^@\s/]+@/g, "$1***@").slice(0, 1e3);
+var log = (level, msg2, extra = {}) => (level === "error" ? console.error : level === "warn" ? console.warn : console.log)(JSON.stringify({ level, severity: level === "warn" ? "WARNING" : level.toUpperCase(), msg: msg2, ...extra }));
 var RETRY_MS = 3e4;
 async function boot(target) {
   const config2 = loadConfig();
