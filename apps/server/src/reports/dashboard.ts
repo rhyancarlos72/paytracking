@@ -21,17 +21,22 @@ export interface DashboardFilters {
   provider?: string;
 }
 
-interface Bucket { count: number; amountMinor: bigint; unconverted: number }
-const empty = (): Bucket => ({ count: 0, amountMinor: 0n, unconverted: 0 });
+/**
+ * netMinor: valor LÍQUIDO (o que fica com a conta). Vem do gateway quando ele informa (payments.net_minor);
+ * senão é o bruto menos a taxa estimada da organização (fee_estimate_bp). netReported = vendas com líquido real.
+ */
+interface Bucket { count: number; amountMinor: bigint; unconverted: number; netMinor: bigint; netReported: number }
+const empty = (): Bucket => ({ count: 0, amountMinor: 0n, unconverted: 0, netMinor: 0n, netReported: 0 });
 
 async function salesBuckets(ctx: Ctx, org: OrgSummary, w: ReportWindow, f: DashboardFilters, fx: FxTable, column: 'approved_at' | 'reversed_at', statusFilter: string) {
   const r = await ctx.db.query(
-    `SELECT to_char((${column} AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day, currency, count(*)::int AS n, COALESCE(sum(amount_minor), 0)::bigint AS amount
+    `SELECT to_char((${column} AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day, currency, count(*)::int AS n, COALESCE(sum(amount_minor), 0)::bigint AS amount,
+            COALESCE(sum(COALESCE(net_minor, amount_minor * (10000 - $7::int) / 10000)), 0)::bigint AS net, count(net_minor)::int AS net_reported
        FROM payments
       WHERE org_id = $1 AND ${column} >= $2 AND ${column} < $3 AND ${statusFilter}
         AND ($5::uuid IS NULL OR pixel_id = $5) AND ($6::text IS NULL OR provider = $6)
       GROUP BY 1, 2`,
-    [org.id, w.startUtc, w.endUtc, org.timezone, f.pixelId ?? null, f.provider ?? null],
+    [org.id, w.startUtc, w.endUtc, org.timezone, f.pixelId ?? null, f.provider ?? null, org.fee_estimate_bp ?? 0],
   );
   const total = empty();
   const byDay = new Map<string, Bucket>();
@@ -40,10 +45,15 @@ async function salesBuckets(ctx: Ctx, org: OrgSummary, w: ReportWindow, f: Dashb
     const b = byDay.get(day) ?? empty();
     b.count += row.n;
     total.count += row.n;
+    b.netReported += row.net_reported;
+    total.netReported += row.net_reported;
     if (row.currency) {
-      const c = fx.convert(BigInt(row.amount), String(row.currency).trim(), org.reporting_currency, day);
+      const cur = String(row.currency).trim();
+      const c = fx.convert(BigInt(row.amount), cur, org.reporting_currency, day);
+      const cn = fx.convert(BigInt(row.net), cur, org.reporting_currency, day);
       if (c.converted) { b.amountMinor += c.amountMinor; total.amountMinor += c.amountMinor; }
       else { b.unconverted += row.n; total.unconverted += row.n; }
+      if (cn.converted) { b.netMinor += cn.amountMinor; total.netMinor += cn.amountMinor; }
     }
     byDay.set(day, b);
   }
@@ -146,7 +156,9 @@ async function windowKpis(ctx: Ctx, org: OrgSummary, w: ReportWindow, f: Dashboa
       : { connected: false },
     cpaMinor: meta && sales ? spendMinor / BigInt(sales) : null,
     roas: meta && spendMinor > 0n ? Number(revenue) / Number(spendMinor) : null,
-    profitMinor: meta ? revenue - spendMinor : null,
+    netRevenueMinor: confirmed.total.netMinor,
+    netReportedSales: confirmed.total.netReported,
+    profitMinor: meta ? confirmed.total.netMinor - spendMinor : null,
     funnel: { linkClicks: meta ? linkClicks : null, landingPageViews: meta ? lpv : null, pageViews: ev.PageView ?? 0, initiateCheckouts: ev.InitiateCheckout ?? 0, sales },
     conversionRate: (ev.PageView ?? 0) > 0 ? sales / (ev.PageView ?? 1) : null,
     series: eachDay(w.since, w.until).map((day) => ({
@@ -184,7 +196,7 @@ export async function lifetimeRevenue(ctx: Ctx, org: OrgSummary) {
   return { currency: org.reporting_currency, revenueMinor: b.total.amountMinor, sales: b.total.count, unconverted: b.total.unconverted, since: w.since };
 }
 
-interface Totals { sales: number; revenueMinor: bigint; spendMinor: bigint | null; profitMinor: bigint | null; roas: number | null }
+interface Totals { sales: number; revenueMinor: bigint; netRevenueMinor: bigint; netReportedSales: number; spendMinor: bigint | null; profitMinor: bigint | null; roas: number | null }
 
 /**
  * Resultado da empresa: semana e mês correntes (fuso da conta), cada um comparado ao MESMO trecho do período
@@ -215,26 +227,29 @@ export async function businessSummary(ctx: Ctx, org: OrgSummary) {
   }
 
   const sum = (from: string, to: string): Totals => {
-    let n = 0; let revenue = 0n; let spend = 0n;
+    let n = 0; let revenue = 0n; let net = 0n; let netReported = 0; let spend = 0n;
     for (const day of eachDay(from, to)) {
       const b = sales.byDay.get(day);
-      if (b) { n += b.count; revenue += b.amountMinor; }
+      if (b) { n += b.count; revenue += b.amountMinor; net += b.netMinor; netReported += b.netReported; }
       spend += spendByDay.get(day) ?? 0n;
     }
     return {
-      sales: n, revenueMinor: revenue,
+      sales: n, revenueMinor: revenue, netRevenueMinor: net, netReportedSales: netReported,
       spendMinor: meta ? spend : null,
-      profitMinor: meta ? revenue - spend : null,
+      // lucro = o que fica com você (líquido do gateway, ou bruto − taxa estimada) − gasto com anúncios
+      profitMinor: meta ? net - spend : null,
       roas: meta && spend > 0n ? Number(revenue) / Number(spend) : null,
     };
   };
   const series = (from: string, to: string) => eachDay(from, to).map((day) => ({
-    day, sales: sales.byDay.get(day)?.count ?? 0, revenueMinor: sales.byDay.get(day)?.amountMinor ?? 0n,
+    day, sales: sales.byDay.get(day)?.count ?? 0, revenueMinor: sales.byDay.get(day)?.amountMinor ?? 0n, netMinor: sales.byDay.get(day)?.netMinor ?? 0n,
     refundsMinor: 0n, spendMinor: meta ? spendByDay.get(day) ?? 0n : null,
   }));
 
   return {
     metaConnected: !!meta,
+    feeEstimatePct: (org.fee_estimate_bp ?? 0) / 100,
+    day: { since: today, until: today, current: sum(today, today), previous: sum(addDays(today, -1), addDays(today, -1)), series: series(today, today) },
     week: { since: weekStart, until: today, current: sum(weekStart, today), previous: sum(prevWeekStart, addDays(today, -7)), series: series(weekStart, today) },
     month: { since: monthStart, until: today, current: sum(monthStart, today), previous: sum(lastMonthStart, lastMonthSameDay), series: series(monthStart, today) },
     lastMonth: { since: lastMonthStart, until: lastMonthEnd, total: sum(lastMonthStart, lastMonthEnd) },

@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { isPlatformAdminEmail } from '../auth/service.js';
 import { REVIEW_SCOPES, runReviewCalls, saveReviewResult } from './app-review.js';
 import { z } from 'zod';
-import { matchUtmToRow, parseAmount, PERIOD_PRESETS, reportWindow, currencyExponent, type PeriodPreset } from '@pt/domain';
+import { localDate, matchUtmToRow, parseAmount, PERIOD_PRESETS, reportWindow, currencyExponent, type PeriodPreset } from '@pt/domain';
 import type { Ctx } from '../context.js';
 import { randomToken } from '../lib/crypto.js';
 import { AppError, badRequest } from '../lib/errors.js';
@@ -179,6 +179,7 @@ export function metaRoutes(app: FastifyInstance, ctx: Ctx) {
     );
     const fx = await FxTable.loadFor(ctx, [rep, data.currency, ...pays.rows.map((p) => String(p.currency ?? '').trim())], w.since, w.until);
     const acc = data.rows.map(() => ({ sales: 0, revenue: 0n, unconverted: 0 }));
+    const unattributed = { sales: 0, revenueMinor: 0n, noUtm: 0, unknownCampaign: 0 };
     const rows = data.rows.map((r) => ({ id: r.id, name: r.name, rank: rankOf(r) }));
     for (const p of pays.rows) {
       // campo do próprio nível primeiro: conjunto = utm_medium ({{adset.name}}|{{adset.id}}), campanha = utm_campaign
@@ -193,12 +194,21 @@ export function metaRoutes(app: FastifyInstance, ctx: Ctx) {
           ?? parts.map((v) => adsetMap.get(`name:${v.toLowerCase()}`)).find(Boolean);
         if (parent) values.push(parent);
       }
+      // cotação do dia LOCAL da venda (mesmo critério do Resumo; antes usava o dia em UTC)
+      const day = localDate(p.approved_at, a.org.timezone);
+      const value = p.amount_minor != null && p.currency ? fx.convert(BigInt(p.amount_minor), String(p.currency).trim(), rep, day) : null;
       const i = matchUtmToRow(values, rows);
-      if (i < 0) continue;
+      if (i < 0) {
+        // venda que não casou com nenhuma campanha/conjunto da conta: entra na linha "Sem campanha identificada",
+        // para o total das Campanhas bater com o faturamento do Resumo
+        unattributed.sales++;
+        if (values.length === 0) unattributed.noUtm++; else unattributed.unknownCampaign++;
+        if (value?.converted) unattributed.revenueMinor += value.amountMinor;
+        continue;
+      }
       acc[i]!.sales++;
-      if (p.amount_minor != null && p.currency) {
-        const conv = fx.convert(BigInt(p.amount_minor), String(p.currency).trim(), rep, p.approved_at.toISOString().slice(0, 10));
-        if (conv.converted) acc[i]!.revenue += conv.amountMinor; else acc[i]!.unconverted++;
+      if (value) {
+        if (value.converted) acc[i]!.revenue += value.amountMinor; else acc[i]!.unconverted++;
       }
     }
 
@@ -211,6 +221,7 @@ export function metaRoutes(app: FastifyInstance, ctx: Ctx) {
       accountCurrency: data.currency,
       reportingCurrency: rep,
       fx: { date: fxDate, converted: metaConvertible, rate: fx.quote(data.currency, rep, fxDate)?.rate ?? null },
+      unattributed,
       rows: data.rows.map((r, i) => ({
         id: r.id, name: r.name, status: r.status, effectiveStatus: r.effectiveStatus, objective: r.objective,
         campaignId: r.campaignId, campaignName: r.campaignName,

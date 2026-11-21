@@ -25,17 +25,25 @@ export function orgRoutes(app: FastifyInstance, ctx: Ctx) {
       timezone: z.string().refine((t) => TIMEZONES.has(t), 'Fuso horário inválido').optional(),
       goalDaily: z.string().max(30).optional(),
       goalMonthly: z.string().max(30).optional(),
+      /** taxa estimada em % (ex.: "9,9") para vendas sem valor líquido do gateway */
+      feeEstimatePct: z.union([z.string().max(10), z.number()]).optional(),
     }), req.body);
     const cur = body.reportingCurrency ?? a.org.reporting_currency;
     const goal = (v?: string) => (v === undefined ? null : (parseAmount(v === '' ? '0' : v, cur, 'major') ?? null));
     const gd = goal(body.goalDaily);
     const gm = goal(body.goalMonthly);
     if ((body.goalDaily !== undefined && gd === null) || (body.goalMonthly !== undefined && gm === null)) throw badRequest('Meta inválida.');
+    let feeBp: number | null = null;
+    if (body.feeEstimatePct !== undefined) {
+      const pct = Number(String(body.feeEstimatePct).replace('%', '').replace(',', '.').trim() || '0');
+      if (!Number.isFinite(pct) || pct < 0 || pct > 90) throw badRequest('Taxa estimada inválida (use de 0 a 90%).');
+      feeBp = Math.round(pct * 100);
+    }
     await ctx.db.query(
       `UPDATE organizations SET name = COALESCE($2, name), reporting_currency = COALESCE($3, reporting_currency),
               timezone = COALESCE($4, timezone), goal_daily_minor = COALESCE($5, goal_daily_minor),
-              goal_monthly_minor = COALESCE($6, goal_monthly_minor), updated_at = now() WHERE id = $1`,
-      [a.org.id, body.name ?? null, body.reportingCurrency ?? null, body.timezone ?? null, gd, gm],
+              goal_monthly_minor = COALESCE($6, goal_monthly_minor), fee_estimate_bp = COALESCE($7, fee_estimate_bp), updated_at = now() WHERE id = $1`,
+      [a.org.id, body.name ?? null, body.reportingCurrency ?? null, body.timezone ?? null, gd, gm, feeBp],
     );
     await audit(ctx, a.org.id, a.user.id, 'org.updated', a.org.id, { fields: Object.keys(body) });
     return { ok: true };

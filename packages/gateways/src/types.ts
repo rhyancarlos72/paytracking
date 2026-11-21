@@ -54,6 +54,11 @@ export interface NormalizedPayment {
   gatewayEvent: string;
   amountMinor: bigint | null;
   currency: string | null;
+  /**
+   * Valor LÍQUIDO que fica com o dono da conta (depois da taxa do gateway e das comissões de afiliado/coprodutor),
+   * na MESMA moeda de `currency`. null = o gateway não informou (o relatório usa a taxa estimada da conta).
+   */
+  netMinor?: bigint | null;
   occurredAt: Date | null;
   customer: CustomerInput;
   products: NormalizedProduct[];

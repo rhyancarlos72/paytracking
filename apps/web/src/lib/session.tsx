@@ -5,7 +5,7 @@ export type Role = 'owner' | 'admin' | 'analyst' | 'viewer';
 export interface Me {
   user: { id: string; email: string; name: string | null; isPlatformAdmin: boolean; emailVerified: boolean; hideEmail: boolean; hideNames: boolean; twoFactorEnabled: boolean };
   role: Role;
-  org: { id: string; name: string; reportingCurrency: string; timezone: string; goalDailyMinor: string; goalMonthlyMinor: string };
+  org: { id: string; name: string; reportingCurrency: string; timezone: string; goalDailyMinor: string; goalMonthlyMinor: string; feeEstimatePct?: number };
   plan: { status: 'trial' | 'active' | 'expired' | 'exempt'; daysLeft: number | null; blocked: boolean; expiresAt: string | null; priceMinor: number };
   orgs: Array<{ id: string; name: string; role: Role }>;
 }

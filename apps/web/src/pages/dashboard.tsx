@@ -28,9 +28,11 @@ interface Dashboard {
   goals: { daily: { goalMinor: string; achievedMinor: string }; monthly: { goalMinor: string; achievedMinor: string } };
   events: { received: number; capi: Record<string, number> }; openAlerts: number;
 }
-interface Totals { sales: number; revenueMinor: string; spendMinor: string | null; profitMinor: string | null; roas: number | null }
+interface Totals { sales: number; revenueMinor: string; netRevenueMinor: string; netReportedSales: number; spendMinor: string | null; profitMinor: string | null; roas: number | null }
 interface Business {
   metaConnected: boolean;
+  feeEstimatePct: number;
+  day: { since: string; until: string; current: Totals; previous: Totals; series: Kpis['series'] };
   week: { since: string; until: string; current: Totals; previous: Totals; series: Kpis['series'] };
   month: { since: string; until: string; current: Totals; previous: Totals; series: Kpis['series'] };
   lastMonth: { since: string; until: string; total: Totals };
@@ -214,7 +216,7 @@ function AdSpendCard({ c, p, cur, periodLabel, filtered }: { c: Kpis; p: Kpis; c
         {profit !== null && (
           <div className="mt-auto pt-5">
             <div className={clsx('flex items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 text-sm ring-1 ring-inset', profit >= 0 ? 'bg-ok/10 ring-ok/20' : 'bg-err/10 ring-err/20')}>
-              <span className="text-muted">Lucro (faturamento − ads)</span>
+              <span className="text-muted">Lucro (líquido − ads)</span>
               <span className={clsx('num font-bold', profit >= 0 ? 'text-ok' : 'text-err')}>{money(c.profitMinor!, cur)}</span>
             </div>
           </div>
@@ -236,24 +238,28 @@ function BusinessResult({ cur }: { cur: string }) {
     refetchInterval: 120_000,
   });
   if (q.isError) return null;
-  if (!q.data) return <div className="grid gap-6 lg:grid-cols-2"><Skeleton className="h-[260px]" /><Skeleton className="h-[260px]" /></div>;
+  if (!q.data) return <div className="grid gap-6 xl:grid-cols-3"><Skeleton className="h-[260px]" /><Skeleton className="h-[260px]" /><Skeleton className="h-[260px]" /></div>;
   const b = q.data;
   return (
     <section aria-labelledby="biz-title">
       <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
         <div>
           <h2 id="biz-title" className="flex items-center gap-2 text-lg font-semibold"><Briefcase className="h-5 w-5 text-primary" aria-hidden />Resultado da empresa</h2>
-          <p className="text-[13px] text-muted">Quanto entrou, quanto foi investido em anúncios e quanto sobrou — todas as origens e pixels, comparado ao mesmo trecho do período anterior.</p>
+          <p className="text-[13px] text-muted">Quanto entrou, quanto ficou com você depois das taxas e comissões, quanto foi para anúncios e o lucro — todas as origens e pixels.</p>
         </div>
+        <Link to="/configuracoes" className="text-xs font-medium text-muted hover:text-fg">Taxa estimada: {String(b.feeEstimatePct).replace('.', ',')}% · ajustar</Link>
       </div>
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 xl:grid-cols-3">
+        <ResultCard title="Hoje" icon={<CalendarDays />} range={ddmm(b.day.since)} compareLabel="ontem (dia inteiro)"
+          cur={cur} meta={b.metaConnected} t={b.day.current} prev={b.day.previous} series={b.day.series} feePct={b.feeEstimatePct} />
         <ResultCard title="Esta semana" icon={<CalendarDays />} range={`${ddmm(b.week.since)} a ${ddmm(b.week.until)}`} compareLabel="mesmos dias da semana passada"
-          cur={cur} meta={b.metaConnected} t={b.week.current} prev={b.week.previous} series={b.week.series} />
+          cur={cur} meta={b.metaConnected} t={b.week.current} prev={b.week.previous} series={b.week.series} feePct={b.feeEstimatePct} />
         <ResultCard title={`Mês de ${monthName(b.month.since)}`} icon={<CalendarRange />} range={`${ddmm(b.month.since)} a ${ddmm(b.month.until)}`} compareLabel={`dias 1 a ${Number(b.month.until.slice(8))} de ${monthName(b.lastMonth.since)}`}
-          cur={cur} meta={b.metaConnected} t={b.month.current} prev={b.month.previous} series={b.month.series}
+          cur={cur} meta={b.metaConnected} t={b.month.current} prev={b.month.previous} series={b.month.series} feePct={b.feeEstimatePct}
           footer={<>
             <span className="text-muted">{monthName(b.lastMonth.since).replace(/^./, (x) => x.toUpperCase())} fechado:</span>
             <span>faturou <strong className="num text-fg">{money(b.lastMonth.total.revenueMinor, cur)}</strong></span>
+            <span>· líquido <strong className="num text-fg">{money(b.lastMonth.total.netRevenueMinor, cur)}</strong></span>
             {b.lastMonth.total.spendMinor !== null && <span>· ads <strong className="num text-fg">{money(b.lastMonth.total.spendMinor, cur)}</strong></span>}
             {b.lastMonth.total.profitMinor !== null && <span>· lucro <strong className={clsx('num', Number(b.lastMonth.total.profitMinor) >= 0 ? 'text-ok' : 'text-err')}>{money(b.lastMonth.total.profitMinor, cur)}</strong></span>}
           </>} />
@@ -262,13 +268,18 @@ function BusinessResult({ cur }: { cur: string }) {
   );
 }
 
-function ResultCard({ title, icon, range, compareLabel, cur, meta, t, prev, series, footer }: {
-  title: string; icon: ReactNode; range: string; compareLabel: string; cur: string; meta: boolean; t: Totals; prev: Totals; series: Kpis['series']; footer?: ReactNode;
+function ResultCard({ title, icon, range, compareLabel, cur, meta, t, prev, series, footer, feePct }: {
+  title: string; icon: ReactNode; range: string; compareLabel: string; cur: string; meta: boolean; t: Totals; prev: Totals; series: Kpis['series']; footer?: ReactNode; feePct: number;
 }) {
   const profit = t.profitMinor !== null ? Number(t.profitMinor) : null;
   const margin = profit !== null && Number(t.revenueMinor) > 0 ? profit / Number(t.revenueMinor) : null;
   let acc = 0;
-  const cumulative = series.map((x) => (acc += minorToNumber(x.revenueMinor, cur) - (x.spendMinor ? minorToNumber(x.spendMinor, cur) : 0)));
+  const cumulative = series.map((x) => (acc += minorToNumber((x as { netMinor?: string }).netMinor ?? x.revenueMinor, cur) - (x.spendMinor ? minorToNumber(x.spendMinor, cur) : 0)));
+  const fees = Number(t.revenueMinor) - Number(t.netRevenueMinor);
+  const netSub = t.sales === 0 ? 'sem vendas'
+    : t.netReportedSales === t.sales ? 'informado pelo gateway'
+    : t.netReportedSales > 0 ? `${int(t.netReportedSales)} de ${int(t.sales)} do gateway; resto com ${String(feePct).replace('.', ',')}%`
+    : feePct > 0 ? `estimado com taxa de ${String(feePct).replace('.', ',')}%` : 'gateway não informou (sem taxa estimada)';
   return (
     <div className="card relative flex flex-col overflow-hidden p-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -280,23 +291,24 @@ function ResultCard({ title, icon, range, compareLabel, cur, meta, t, prev, seri
 
       <div className="mt-5 flex items-end justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-[13px] font-medium text-muted">{meta ? 'Lucro (faturamento − ads)' : 'Faturamento aprovado'}</p>
-          <p className={clsx('num mt-1.5 font-display text-[34px] font-bold leading-none tracking-[-0.02em]', profit !== null && (profit >= 0 ? 'text-ok' : 'text-err'))}>
-            {money(meta ? t.profitMinor! : t.revenueMinor, cur)}
+          <p className="text-[13px] font-medium text-muted">{meta ? 'Lucro (líquido − ads)' : 'Líquido (depois de taxas e comissões)'}</p>
+          <p className={clsx('num mt-1.5 font-display text-[32px] font-bold leading-none tracking-[-0.02em]', profit !== null && (profit >= 0 ? 'text-ok' : 'text-err'))}>
+            {money(meta ? t.profitMinor! : t.netRevenueMinor, cur)}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted">
-            {meta ? <Delta cur={Number(t.profitMinor)} prev={Number(prev.profitMinor ?? 0)} /> : <Delta cur={Number(t.revenueMinor)} prev={Number(prev.revenueMinor)} />}
+            {meta ? <Delta cur={Number(t.profitMinor)} prev={Number(prev.profitMinor ?? 0)} /> : <Delta cur={Number(t.netRevenueMinor)} prev={Number(prev.netRevenueMinor)} />}
             <span>vs. {compareLabel}</span>
+            {margin !== null && Math.abs(margin) >= 0.005 && <span>· margem {pct(margin, 0)}</span>}
           </div>
         </div>
-        {meta && cumulative.length > 1 && <Sparkline values={cumulative} height={56} color={profit !== null && profit < 0 ? '#f43f5e' : '#34d399'} className="w-[38%] max-w-[180px] shrink-0" />}
+        {meta && cumulative.length > 1 && <Sparkline values={cumulative} height={56} color={profit !== null && profit < 0 ? '#f43f5e' : '#34d399'} className="w-[34%] max-w-[160px] shrink-0" />}
       </div>
 
-      <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <ResultStat label="Faturamento" value={money(t.revenueMinor, cur)} sub={<Delta cur={Number(t.revenueMinor)} prev={Number(prev.revenueMinor)} />} />
+      <dl className="mt-5 grid grid-cols-2 gap-3">
+        <ResultStat label="Faturamento bruto" value={money(t.revenueMinor, cur)} sub={<span className="text-xs text-muted">{int(t.sales)} venda{t.sales === 1 ? '' : 's'}</span>} />
+        <ResultStat label="Líquido" value={money(t.netRevenueMinor, cur)} sub={<span className="block text-xs leading-snug text-muted" title={fees > 0 ? `${money(fees, cur)} ficaram com gateway, afiliados e coprodutores` : undefined}>{netSub}</span>} />
         <ResultStat label="Investido em ads" value={t.spendMinor !== null ? money(t.spendMinor, cur) : '—'} sub={t.spendMinor !== null ? <Delta cur={Number(t.spendMinor)} prev={Number(prev.spendMinor ?? 0)} invert /> : <span className="text-xs text-muted">Meta não conectado</span>} />
-        <ResultStat label="ROAS" value={ratio(t.roas)} sub={<span className="text-xs text-muted">{int(t.sales)} venda{t.sales === 1 ? '' : 's'}</span>} />
-        <ResultStat label="Margem" value={margin !== null ? pct(margin, 0) : '—'} sub={<span className="text-xs text-muted">do faturamento que sobrou</span>} />
+        <ResultStat label="ROAS (bruto ÷ ads)" value={ratio(t.roas)} sub={<Delta cur={Number(t.revenueMinor)} prev={Number(prev.revenueMinor)} />} />
       </dl>
 
       {footer && <p className="mt-5 flex flex-wrap items-center gap-x-1.5 gap-y-1 border-t border-border pt-4 text-[13px] text-muted">{footer}</p>}
@@ -518,7 +530,7 @@ function ReturnCard({ c, p, cur }: { c: Kpis; p: Kpis; cur: string }) {
       </div>
       {profit !== null && (
         <div className={clsx('mt-5 flex items-center justify-between rounded-2xl px-4 py-3 text-sm ring-1 ring-inset', profit >= 0 ? 'bg-ok/10 ring-ok/20' : 'bg-err/10 ring-err/20')}>
-          <span className="text-muted">Resultado (receita − investimento)</span>
+          <span className="text-muted">Lucro (líquido − investimento)</span>
           <span className={clsx('num font-semibold', profit >= 0 ? 'text-ok' : 'text-err')}>{money(c.profitMinor!, cur)}</span>
         </div>
       )}

@@ -92582,7 +92582,7 @@ async function resolveSession(ctx, token) {
   if (!s) return null;
   const m = await ctx.db.query(
     `SELECT m.role, o.id, o.name, o.reporting_currency, o.timezone, o.plan_status, o.plan_expires_at,
-            o.goal_daily_minor, o.goal_monthly_minor
+            o.goal_daily_minor, o.goal_monthly_minor, o.fee_estimate_bp
        FROM memberships m JOIN organizations o ON o.id = m.org_id
       WHERE m.user_id = $1
       ORDER BY (o.id = $2) DESC, m.created_at ASC LIMIT 1`,
@@ -92617,7 +92617,8 @@ async function resolveSession(ctx, token) {
       plan_status: org.plan_status,
       plan_expires_at: org.plan_expires_at,
       goal_daily_minor: org.goal_daily_minor,
-      goal_monthly_minor: org.goal_monthly_minor
+      goal_monthly_minor: org.goal_monthly_minor,
+      fee_estimate_bp: Number(org.fee_estimate_bp ?? 0)
     }
   };
 }
@@ -94066,7 +94067,8 @@ O link expira em 3 dias. Com o e-mail confirmado, voc\xEA consegue recuperar o a
         reportingCurrency: a.org.reporting_currency,
         timezone: a.org.timezone,
         goalDailyMinor: a.org.goal_daily_minor.toString(),
-        goalMonthlyMinor: a.org.goal_monthly_minor.toString()
+        goalMonthlyMinor: a.org.goal_monthly_minor.toString(),
+        feeEstimatePct: a.org.fee_estimate_bp / 100
       },
       plan: { ...plan, expiresAt: a.org.plan_expires_at, priceMinor: ctx.config.PLAN_PRICE_MINOR },
       orgs: orgs.rows
@@ -94316,18 +94318,26 @@ function orgRoutes(app, ctx) {
       reportingCurrency: external_exports.string().regex(/^[A-Z]{3}$/).optional(),
       timezone: external_exports.string().refine((t) => TIMEZONES.has(t), "Fuso hor\xE1rio inv\xE1lido").optional(),
       goalDaily: external_exports.string().max(30).optional(),
-      goalMonthly: external_exports.string().max(30).optional()
+      goalMonthly: external_exports.string().max(30).optional(),
+      /** taxa estimada em % (ex.: "9,9") para vendas sem valor líquido do gateway */
+      feeEstimatePct: external_exports.union([external_exports.string().max(10), external_exports.number()]).optional()
     }), req.body);
     const cur = body.reportingCurrency ?? a.org.reporting_currency;
     const goal = (v) => v === void 0 ? null : parseAmount(v === "" ? "0" : v, cur, "major") ?? null;
     const gd = goal(body.goalDaily);
     const gm = goal(body.goalMonthly);
     if (body.goalDaily !== void 0 && gd === null || body.goalMonthly !== void 0 && gm === null) throw badRequest("Meta inv\xE1lida.");
+    let feeBp = null;
+    if (body.feeEstimatePct !== void 0) {
+      const pct = Number(String(body.feeEstimatePct).replace("%", "").replace(",", ".").trim() || "0");
+      if (!Number.isFinite(pct) || pct < 0 || pct > 90) throw badRequest("Taxa estimada inv\xE1lida (use de 0 a 90%).");
+      feeBp = Math.round(pct * 100);
+    }
     await ctx.db.query(
       `UPDATE organizations SET name = COALESCE($2, name), reporting_currency = COALESCE($3, reporting_currency),
               timezone = COALESCE($4, timezone), goal_daily_minor = COALESCE($5, goal_daily_minor),
-              goal_monthly_minor = COALESCE($6, goal_monthly_minor), updated_at = now() WHERE id = $1`,
-      [a.org.id, body.name ?? null, body.reportingCurrency ?? null, body.timezone ?? null, gd, gm]
+              goal_monthly_minor = COALESCE($6, goal_monthly_minor), fee_estimate_bp = COALESCE($7, fee_estimate_bp), updated_at = now() WHERE id = $1`,
+      [a.org.id, body.name ?? null, body.reportingCurrency ?? null, body.timezone ?? null, gd, gm, feeBp]
     );
     await audit(ctx, a.org.id, a.user.id, "org.updated", a.org.id, { fields: Object.keys(body) });
     return { ok: true };
@@ -94912,6 +94922,7 @@ var checkout = {
     const transactionId = pick2(b, ["transaction_id", "transactionId", "order_id", "orderId", "payment_id", "paymentId", "charge_id", "chargeId", "txid", "id"]);
     const currency = currencyOr(b.currency, opts.defaultCurrency);
     const value = amount(pickRaw(b, ["value", "amount", "total", "valor", "product_price", "valor_total"]), currency, "major");
+    const net8 = amount(pickRaw(b, ["net_value", "net_amount", "valor_liquido", "liquid_value"]), currency, "major");
     const payer = obj(b.payer);
     const customerObj = { ...payer, ...obj(b.customer) };
     for (const k of ["email", "customer_email", "payer_email"]) if (!customerObj.email && b[k]) customerObj.email = b[k];
@@ -94984,6 +94995,7 @@ var checkout = {
       gatewayEvent: webhookEvent,
       amountMinor: value,
       currency,
+      netMinor: net8,
       occurredAt: toDate(b.paid_at ?? b.approved_at),
       customer,
       products,
@@ -95097,6 +95109,15 @@ var hotmart = {
     const full = obj(purchase.full_price);
     const currency = currencyOr(price.currency_value ?? price.currency_code ?? full.currency_value, opts.defaultCurrency);
     const value = amount(price.value ?? full.value ?? obj(purchase.original_offer_price).value, currency, "major");
+    let net8 = null;
+    const comms = Array.isArray(data.commissions) ? data.commissions.map(obj) : [];
+    const producer = comms.find((c) => String(c.source ?? "").toUpperCase() === "PRODUCER");
+    if (producer) {
+      const conv = obj(producer.currency_conversion);
+      const pCur = String(producer.currency_value ?? "").toUpperCase() || currency;
+      if (pCur === currency) net8 = amount(producer.value, currency, "major");
+      else if (String(conv.converted_to_currency ?? "").toUpperCase() === currency) net8 = amount(conv.converted_value, currency, "major");
+    }
     const prod = obj(data.product);
     const origin = obj(purchase.origin);
     const xcod = pick2(origin, ["xcod"]) ?? pick2(purchase, ["xcod"]) ?? pick2(data, ["xcod"]);
@@ -95114,6 +95135,7 @@ var hotmart = {
       gatewayEvent,
       amountMinor: value,
       currency,
+      netMinor: net8,
       occurredAt: mapped === "approved" ? toDate(approvedMs) : toDate(p.creation_date),
       customer: customerFrom(obj(data.buyer)),
       products: Object.keys(prod).length ? [{ id: pick2(prod, ["id", "ucode"]), name: pick2(prod, ["name"]), quantity: 1, priceMinor: value }] : [],
@@ -95221,6 +95243,7 @@ var kiwify = {
     const comm = obj(p.Commissions);
     const currency = currencyOr(comm.currency ?? p.currency, opts.defaultCurrency);
     const value = amount(comm.charge_amount ?? p.charge_amount ?? comm.product_base_price, currency, "minor");
+    const net8 = comm.my_commission !== void 0 && comm.my_commission !== null && comm.my_commission !== "" ? amount(comm.my_commission, currency, "minor") : null;
     const prod = obj(p.Product);
     const tp = obj(p.TrackingParameters);
     return {
@@ -95232,6 +95255,7 @@ var kiwify = {
       gatewayEvent,
       amountMinor: value,
       currency,
+      netMinor: net8,
       occurredAt: toDate(p.approved_date ?? p.updated_at ?? p.created_at),
       customer: customerFrom(obj(p.Customer ?? p.customer)),
       products: Object.keys(prod).length ? [product(prod, currency, "minor", value)] : [],
@@ -95684,8 +95708,9 @@ async function applyPayment(ctx, c, integration, n, productIds, rb, ms) {
   if (historical) await c.query("UPDATE payments SET late_import = true, created_at = LEAST(created_at, $2) WHERE id = $1", [payment.id, at]);
   const amountMinor = n.amountMinor ?? payment.amount_minor ?? null;
   const currency = n.amountMinor !== null ? n.currency : payment.currency?.trim() ?? n.currency;
+  const netMinor = n.netMinor !== void 0 && n.netMinor !== null && (amountMinor === null || n.netMinor <= amountMinor) ? n.netMinor : null;
   await c.query(
-    `UPDATE payments SET status = $2, amount_minor = $3, currency = $4, pixel_id = COALESCE(pixel_id, $5),
+    `UPDATE payments SET status = $2, amount_minor = $3, currency = $4, pixel_id = COALESCE(pixel_id, $5), net_minor = COALESCE($15, net_minor),
             customer_email_hash = COALESCE($6, customer_email_hash), products = CASE WHEN $7::jsonb = '[]'::jsonb THEN products ELSE $7::jsonb END,
             utm_source = COALESCE($8, utm_source), utm_medium = COALESCE($9, utm_medium), utm_campaign = COALESCE($10, utm_campaign),
             utm_content = COALESCE($11, utm_content), utm_term = COALESCE($12, utm_term), utm_id = COALESCE($13, utm_id),
@@ -95709,7 +95734,8 @@ async function applyPayment(ctx, c, integration, n, productIds, rb, ms) {
       utm("utm_content"),
       utm("utm_term"),
       utm("utm_id"),
-      at
+      at,
+      netMinor
     ]
   );
   const receiptId = await receipt(c, { ...rb, idemKey, outcome: "processed", gatewayEvent: n.gatewayEvent, transactionId: n.transactionId, paymentId: payment.id, ms: ms() });
@@ -96881,6 +96907,7 @@ function metaRoutes(app, ctx) {
     );
     const fx = await FxTable.loadFor(ctx, [rep, data.currency, ...pays.rows.map((p) => String(p.currency ?? "").trim())], w.since, w.until);
     const acc = data.rows.map(() => ({ sales: 0, revenue: 0n, unconverted: 0 }));
+    const unattributed = { sales: 0, revenueMinor: 0n, noUtm: 0, unknownCampaign: 0 };
     const rows = data.rows.map((r) => ({ id: r.id, name: r.name, rank: rankOf(r) }));
     for (const p of pays.rows) {
       const values = (q.level === "adset" ? [p.utm_medium, p.utm_content, p.utm_campaign, p.utm_term, p.utm_id] : [p.utm_campaign, p.utm_id, p.utm_medium, p.utm_content, p.utm_term]).filter(Boolean);
@@ -96889,12 +96916,19 @@ function metaRoutes(app, ctx) {
         const parent = parts.map((v) => adsetMap.get(`id:${v}`)).find(Boolean) ?? parts.map((v) => adsetMap.get(`name:${v.toLowerCase()}`)).find(Boolean);
         if (parent) values.push(parent);
       }
+      const day = localDate(p.approved_at, a.org.timezone);
+      const value = p.amount_minor != null && p.currency ? fx.convert(BigInt(p.amount_minor), String(p.currency).trim(), rep, day) : null;
       const i = matchUtmToRow(values, rows);
-      if (i < 0) continue;
+      if (i < 0) {
+        unattributed.sales++;
+        if (values.length === 0) unattributed.noUtm++;
+        else unattributed.unknownCampaign++;
+        if (value?.converted) unattributed.revenueMinor += value.amountMinor;
+        continue;
+      }
       acc[i].sales++;
-      if (p.amount_minor != null && p.currency) {
-        const conv2 = fx.convert(BigInt(p.amount_minor), String(p.currency).trim(), rep, p.approved_at.toISOString().slice(0, 10));
-        if (conv2.converted) acc[i].revenue += conv2.amountMinor;
+      if (value) {
+        if (value.converted) acc[i].revenue += value.amountMinor;
         else acc[i].unconverted++;
       }
     }
@@ -96907,6 +96941,7 @@ function metaRoutes(app, ctx) {
       accountCurrency: data.currency,
       reportingCurrency: rep,
       fx: { date: fxDate, converted: metaConvertible, rate: fx.quote(data.currency, rep, fxDate)?.rate ?? null },
+      unattributed,
       rows: data.rows.map((r, i) => ({
         id: r.id,
         name: r.name,
@@ -96985,15 +97020,16 @@ function metaRoutes(app, ctx) {
 }
 
 // src/reports/dashboard.ts
-var empty = () => ({ count: 0, amountMinor: 0n, unconverted: 0 });
+var empty = () => ({ count: 0, amountMinor: 0n, unconverted: 0, netMinor: 0n, netReported: 0 });
 async function salesBuckets(ctx, org, w, f, fx, column, statusFilter) {
   const r = await ctx.db.query(
-    `SELECT to_char((${column} AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day, currency, count(*)::int AS n, COALESCE(sum(amount_minor), 0)::bigint AS amount
+    `SELECT to_char((${column} AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day, currency, count(*)::int AS n, COALESCE(sum(amount_minor), 0)::bigint AS amount,
+            COALESCE(sum(COALESCE(net_minor, amount_minor * (10000 - $7::int) / 10000)), 0)::bigint AS net, count(net_minor)::int AS net_reported
        FROM payments
       WHERE org_id = $1 AND ${column} >= $2 AND ${column} < $3 AND ${statusFilter}
         AND ($5::uuid IS NULL OR pixel_id = $5) AND ($6::text IS NULL OR provider = $6)
       GROUP BY 1, 2`,
-    [org.id, w.startUtc, w.endUtc, org.timezone, f.pixelId ?? null, f.provider ?? null]
+    [org.id, w.startUtc, w.endUtc, org.timezone, f.pixelId ?? null, f.provider ?? null, org.fee_estimate_bp ?? 0]
   );
   const total = empty();
   const byDay = /* @__PURE__ */ new Map();
@@ -97002,14 +97038,22 @@ async function salesBuckets(ctx, org, w, f, fx, column, statusFilter) {
     const b = byDay.get(day) ?? empty();
     b.count += row.n;
     total.count += row.n;
+    b.netReported += row.net_reported;
+    total.netReported += row.net_reported;
     if (row.currency) {
-      const c = fx.convert(BigInt(row.amount), String(row.currency).trim(), org.reporting_currency, day);
+      const cur = String(row.currency).trim();
+      const c = fx.convert(BigInt(row.amount), cur, org.reporting_currency, day);
+      const cn = fx.convert(BigInt(row.net), cur, org.reporting_currency, day);
       if (c.converted) {
         b.amountMinor += c.amountMinor;
         total.amountMinor += c.amountMinor;
       } else {
         b.unconverted += row.n;
         total.unconverted += row.n;
+      }
+      if (cn.converted) {
+        b.netMinor += cn.amountMinor;
+        total.netMinor += cn.amountMinor;
       }
     }
     byDay.set(day, b);
@@ -97109,7 +97153,9 @@ async function windowKpis(ctx, org, w, f, withMeta, breakdown = false) {
     meta: meta3 ? { connected: true, accountCurrency: meta3.currency, spendMinor, purchases: metaPurchases, revenueMinor: metaRevenueMinor, linkClicks, landingPageViews: lpv, unconvertedDays: spendUnconvertedDays } : { connected: false },
     cpaMinor: meta3 && sales ? spendMinor / BigInt(sales) : null,
     roas: meta3 && spendMinor > 0n ? Number(revenue) / Number(spendMinor) : null,
-    profitMinor: meta3 ? revenue - spendMinor : null,
+    netRevenueMinor: confirmed.total.netMinor,
+    netReportedSales: confirmed.total.netReported,
+    profitMinor: meta3 ? confirmed.total.netMinor - spendMinor : null,
     funnel: { linkClicks: meta3 ? linkClicks : null, landingPageViews: meta3 ? lpv : null, pageViews: ev.PageView ?? 0, initiateCheckouts: ev.InitiateCheckout ?? 0, sales },
     conversionRate: (ev.PageView ?? 0) > 0 ? sales / (ev.PageView ?? 1) : null,
     series: eachDay(w.since, w.until).map((day) => ({
@@ -97162,20 +97208,27 @@ async function businessSummary(ctx, org) {
   const sum = (from, to) => {
     let n = 0;
     let revenue = 0n;
+    let net8 = 0n;
+    let netReported = 0;
     let spend = 0n;
     for (const day of eachDay(from, to)) {
       const b = sales.byDay.get(day);
       if (b) {
         n += b.count;
         revenue += b.amountMinor;
+        net8 += b.netMinor;
+        netReported += b.netReported;
       }
       spend += spendByDay.get(day) ?? 0n;
     }
     return {
       sales: n,
       revenueMinor: revenue,
+      netRevenueMinor: net8,
+      netReportedSales: netReported,
       spendMinor: meta3 ? spend : null,
-      profitMinor: meta3 ? revenue - spend : null,
+      // lucro = o que fica com você (líquido do gateway, ou bruto − taxa estimada) − gasto com anúncios
+      profitMinor: meta3 ? net8 - spend : null,
       roas: meta3 && spend > 0n ? Number(revenue) / Number(spend) : null
     };
   };
@@ -97183,11 +97236,14 @@ async function businessSummary(ctx, org) {
     day,
     sales: sales.byDay.get(day)?.count ?? 0,
     revenueMinor: sales.byDay.get(day)?.amountMinor ?? 0n,
+    netMinor: sales.byDay.get(day)?.netMinor ?? 0n,
     refundsMinor: 0n,
     spendMinor: meta3 ? spendByDay.get(day) ?? 0n : null
   }));
   return {
     metaConnected: !!meta3,
+    feeEstimatePct: (org.fee_estimate_bp ?? 0) / 100,
+    day: { since: today, until: today, current: sum(today, today), previous: sum(addDays(today, -1), addDays(today, -1)), series: series(today, today) },
     week: { since: weekStart, until: today, current: sum(weekStart, today), previous: sum(prevWeekStart, addDays(today, -7)), series: series(weekStart, today) },
     month: { since: monthStart, until: today, current: sum(monthStart, today), previous: sum(lastMonthStart, lastMonthSameDay), series: series(monthStart, today) },
     lastMonth: { since: lastMonthStart, until: lastMonthEnd, total: sum(lastMonthStart, lastMonthEnd) }

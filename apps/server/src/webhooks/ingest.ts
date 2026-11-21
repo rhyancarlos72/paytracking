@@ -276,8 +276,10 @@ async function applyPayment(
   if (historical) await c.query('UPDATE payments SET late_import = true, created_at = LEAST(created_at, $2) WHERE id = $1', [payment.id, at]);
   const amountMinor = n.amountMinor ?? payment.amount_minor ?? null;
   const currency = n.amountMinor !== null ? n.currency : (payment.currency?.trim() ?? n.currency);
+  // líquido só vale se não passar do bruto (dado inconsistente do gateway é descartado)
+  const netMinor = n.netMinor !== undefined && n.netMinor !== null && (amountMinor === null || n.netMinor <= amountMinor) ? n.netMinor : null;
   await c.query(
-    `UPDATE payments SET status = $2, amount_minor = $3, currency = $4, pixel_id = COALESCE(pixel_id, $5),
+    `UPDATE payments SET status = $2, amount_minor = $3, currency = $4, pixel_id = COALESCE(pixel_id, $5), net_minor = COALESCE($15, net_minor),
             customer_email_hash = COALESCE($6, customer_email_hash), products = CASE WHEN $7::jsonb = '[]'::jsonb THEN products ELSE $7::jsonb END,
             utm_source = COALESCE($8, utm_source), utm_medium = COALESCE($9, utm_medium), utm_campaign = COALESCE($10, utm_campaign),
             utm_content = COALESCE($11, utm_content), utm_term = COALESCE($12, utm_term), utm_id = COALESCE($13, utm_id),
@@ -289,7 +291,7 @@ async function applyPayment(
       WHERE id = $1`,
     [payment.id, to, amountMinor, currency, pixel?.id ?? null, emailLookupHash(n.customer.email),
       JSON.stringify(n.products.map((p) => ({ ...p, priceMinor: p.priceMinor?.toString() ?? null }))),
-      utm('utm_source'), utm('utm_medium'), utm('utm_campaign'), utm('utm_content'), utm('utm_term'), utm('utm_id'), at],
+      utm('utm_source'), utm('utm_medium'), utm('utm_campaign'), utm('utm_content'), utm('utm_term'), utm('utm_id'), at, netMinor],
   );
 
   const receiptId = await receipt(c, { ...rb, idemKey, outcome: 'processed', gatewayEvent: n.gatewayEvent, transactionId: n.transactionId, paymentId: payment.id, ms: ms() });

@@ -108,6 +108,8 @@ export const checkout: GatewayAdapter = {
     const transactionId = pick(b, ['transaction_id', 'transactionId', 'order_id', 'orderId', 'payment_id', 'paymentId', 'charge_id', 'chargeId', 'txid', 'id']);
     const currency = currencyOr(b.currency, opts.defaultCurrency);
     const value = amount(pickRaw(b, ['value', 'amount', 'total', 'valor', 'product_price', 'valor_total']), currency, 'major');
+    // opcional: valor líquido já descontadas as taxas (o checkout próprio pode mandar)
+    const net = amount(pickRaw(b, ['net_value', 'net_amount', 'valor_liquido', 'liquid_value']), currency, 'major');
 
     const payer = obj(b.payer);
     const customerObj = { ...payer, ...obj(b.customer) };
@@ -172,7 +174,7 @@ export const checkout: GatewayAdapter = {
     if (purchaseEventId) tracking.purchaseEventId = purchaseEventId;
     return {
       kind: 'payment', provider: 'checkout', sourceEventId: null, transactionId, status, gatewayEvent: webhookEvent,
-      amountMinor: value, currency, occurredAt: toDate(b.paid_at ?? b.approved_at), customer, products, tracking,
+      amountMinor: value, currency, netMinor: net, occurredAt: toDate(b.paid_at ?? b.approved_at), customer, products, tracking,
     };
   },
 };

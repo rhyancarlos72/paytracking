@@ -294,3 +294,56 @@ describe('primeiros passos do cliente novo', () => {
     expect((await other.client.get('/v1/onboarding')).data).toMatchObject({ pixel: false, script: false, gateway: false, meta: false });
   });
 });
+
+describe('auditoria: faturamento, líquido e lucro batem em todas as telas', () => {
+  it('lucro = líquido (do gateway ou estimado) − ads, no dia, semana e mês; Resumo e Resultado iguais', async () => {
+    await seedRates();
+    const acc = await newAccount(env);
+    await env.db.query(`INSERT INTO meta_connections(org_id, access_token_enc, selected_ad_account_id, ad_account_currency, status) VALUES ($1, $2, 'act_8', 'BRL', 'active')`, [acc.orgId, env.ctx.box.encrypt('TOK')]);
+    await newPixel(acc.client, { productIds: ['99'] });
+    expect((await acc.client.patch('/v1/org', { feeEstimatePct: '10' })).status).toBe(200);
+    expect((await acc.client.get('/v1/auth/me')).data.org.feeEstimatePct).toBe(10);
+    // Hotmart: bruto R$ 97, líquido do produtor R$ 52,10 (afiliado e taxa ficam de fora)
+    const hm = await newIntegration(acc.client, 'hotmart', { secret: 'HOTTOK-AUD' });
+    const r = await env.app.inject({ method: 'POST', url: hm.webhookUrl, headers: { 'content-type': 'application/json', 'x-hotmart-hottok': 'HOTTOK-AUD' }, payload: JSON.stringify({
+      id: 'evt-aud', event: 'PURCHASE_APPROVED', creation_date: env.ctx.now().getTime() - 2000,
+      data: { buyer: { email: 'a@b.com', name: 'Ana Lima' }, product: { id: 99, name: 'Curso' },
+        commissions: [{ value: 14.9, source: 'MARKETPLACE', currency_value: 'BRL' }, { value: 30, source: 'AFFILIATE', currency_value: 'BRL' }, { value: 52.1, source: 'PRODUCER', currency_value: 'BRL' }],
+        purchase: { transaction: 'HP-AUD', status: 'APPROVED', approved_date: env.ctx.now().getTime() - 1000, price: { value: 97, currency_value: 'BRL' } } },
+    }) });
+    expect(r.json()).toMatchObject({ status: 'approved' });
+    // checkout próprio sem líquido: R$ 200 − 10% estimado = R$ 180
+    const ck = await newIntegration(acc.client, 'checkout');
+    await checkout(ck.token, { event: 'paid', transaction_id: 'CK-AUD', value: 200 });
+    env.fake.on(/act_8\/insights/, () => json(200, { data: [{ date_start: today(), spend: '50.00', impressions: '1', clicks: '1', inline_link_clicks: '1' }] }));
+
+    const b = (await acc.client.get('/v1/reports/business')).data;
+    for (const k of ['day', 'week', 'month'] as const) {
+      expect(b[k].current).toMatchObject({ sales: 2, revenueMinor: '29700', netRevenueMinor: '23210', netReportedSales: 1, spendMinor: '5000', profitMinor: '18210' });
+    }
+    expect(b.feeEstimatePct).toBe(10);
+    // Resumo (hoje) mostra o mesmo bruto, líquido e lucro
+    const c = (await acc.client.get('/v1/reports/dashboard?preset=today')).data.current;
+    expect(c).toMatchObject({ revenueMinor: '29700', netRevenueMinor: '23210', profitMinor: '18210' });
+    // taxa estimada inválida é recusada
+    expect((await acc.client.patch('/v1/org', { feeEstimatePct: '95' })).status).toBe(400);
+  });
+
+  it('Campanhas: vendas sem campanha aparecem separadas e o total geral bate com o Resumo', async () => {
+    await seedRates();
+    const acc = await newAccount(env);
+    await env.db.query(`INSERT INTO meta_connections(org_id, access_token_enc, selected_ad_account_id, ad_account_currency, status) VALUES ($1, $2, 'act_9', 'BRL', 'active')`, [acc.orgId, env.ctx.box.encrypt('TOK')]);
+    await newPixel(acc.client);
+    const ck = await newIntegration(acc.client, 'checkout');
+    await checkout(ck.token, { event: 'paid', transaction_id: 'U-1', value: 100, tracking: { utm_campaign: 'Black|120000000000001' } });
+    await checkout(ck.token, { event: 'paid', transaction_id: 'U-2', value: 40 });                                                 // sem UTM
+    await checkout(ck.token, { event: 'paid', transaction_id: 'U-3', value: 60, tracking: { utm_campaign: 'Antiga|120000000000999' } }); // campanha de outra conta
+    env.fake.on(/act_9\/campaigns/, () => json(200, { data: [{ id: '120000000000001', name: 'Black', status: 'ACTIVE', insights: { data: [{ spend: '30.00', impressions: '1', clicks: '1' }] } }] }));
+    env.fake.on(/act_9\/adsets/, () => json(200, { data: [] }));
+    const r = (await acc.client.get('/v1/meta/campaigns?preset=today')).data;
+    expect(r.rows[0].tracked).toMatchObject({ sales: 1, revenueMinor: '10000' });
+    expect(r.unattributed).toEqual({ sales: 2, revenueMinor: '10000', noUtm: 1, unknownCampaign: 1 });
+    const c = (await acc.client.get('/v1/reports/dashboard?preset=today')).data.current;
+    expect(BigInt(r.rows[0].tracked.revenueMinor) + BigInt(r.unattributed.revenueMinor)).toBe(BigInt(c.revenueMinor));
+  });
+});

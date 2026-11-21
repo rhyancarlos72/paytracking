@@ -38,11 +38,13 @@ export const kiwify: GatewayAdapter = {
     const comm = obj(p.Commissions);
     const currency = currencyOr(comm.currency ?? p.currency, opts.defaultCurrency);
     const value = amount(comm.charge_amount ?? p.charge_amount ?? comm.product_base_price, currency, 'minor');
+    // líquido: Commissions.my_commission (centavos) = o que fica com a conta depois da taxa da Kiwify e das comissões
+    const net = comm.my_commission !== undefined && comm.my_commission !== null && comm.my_commission !== '' ? amount(comm.my_commission, currency, 'minor') : null;
     const prod = obj(p.Product);
     const tp = obj(p.TrackingParameters);
     return {
       kind: 'payment', provider: 'kiwify', sourceEventId: null, transactionId, status, gatewayEvent,
-      amountMinor: value, currency,
+      amountMinor: value, currency, netMinor: net,
       occurredAt: toDate(p.approved_date ?? p.updated_at ?? p.created_at),
       customer: customerFrom(obj(p.Customer ?? p.customer)),
       products: Object.keys(prod).length ? [product(prod, currency, 'minor', value)] : [],

@@ -63,6 +63,17 @@ export const hotmart: GatewayAdapter = {
     const full = obj(purchase.full_price);
     const currency = currencyOr(price.currency_value ?? price.currency_code ?? full.currency_value, opts.defaultCurrency);
     const value = amount(price.value ?? full.value ?? obj(purchase.original_offer_price).value, currency, 'major');
+    // líquido do produtor: comissão "PRODUCER" (doc 2.0.0: data.commissions[].source/value/currency_value),
+    // convertida para a moeda da venda quando a Hotmart manda a conversão; moeda diferente sem conversão = null
+    let net: bigint | null = null;
+    const comms = Array.isArray(data.commissions) ? (data.commissions as unknown[]).map(obj) : [];
+    const producer = comms.find((c) => String(c.source ?? '').toUpperCase() === 'PRODUCER');
+    if (producer) {
+      const conv = obj(producer.currency_conversion);
+      const pCur = String(producer.currency_value ?? '').toUpperCase() || currency;
+      if (pCur === currency) net = amount(producer.value, currency, 'major');
+      else if (String(conv.converted_to_currency ?? '').toUpperCase() === currency) net = amount(conv.converted_value, currency, 'major');
+    }
     const prod = obj(data.product);
     const origin = obj(purchase.origin);
     const xcod = pick(origin, ['xcod']) ?? pick(purchase, ['xcod']) ?? pick(data, ['xcod']);
@@ -76,7 +87,7 @@ export const hotmart: GatewayAdapter = {
       kind: 'payment', provider: 'hotmart',
       sourceEventId: pick(p, ['id', 'event_id', 'webhook_id']),
       transactionId, status: mapped, gatewayEvent,
-      amountMinor: value, currency,
+      amountMinor: value, currency, netMinor: net,
       occurredAt: mapped === 'approved' ? toDate(approvedMs) : toDate(p.creation_date),
       customer: customerFrom(obj(data.buyer)),
       products: Object.keys(prod).length

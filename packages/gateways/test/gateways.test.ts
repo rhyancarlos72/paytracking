@@ -168,3 +168,37 @@ describe('Checkout próprio — formato legado', () => {
     expect(ADAPTERS.checkout.verify({ ...r, headers: { 'x-paytrack-signature': signCheckoutBody(r.rawBody, 'sec', old), 'x-paytrack-timestamp': old } }, 'sec').reason).toBe('timestamp_out_of_window');
   });
 });
+
+describe('valor líquido (o que fica com o dono da conta)', () => {
+  it('Hotmart: comissão do PRODUTOR na moeda da venda (ignora afiliado e coprodutor)', () => {
+    const body = {
+      id: 'evt-n1', event: 'PURCHASE_APPROVED', creation_date: 1761700000000,
+      data: {
+        buyer: { email: 'e@f.com', name: 'Eva Melo' }, product: { id: 99, name: 'Curso' },
+        commissions: [
+          { value: 14.9, source: 'MARKETPLACE', currency_value: 'BRL' },
+          { value: 30, source: 'AFFILIATE', currency_value: 'BRL' },
+          { value: 52.1, source: 'PRODUCER', currency_value: 'BRL' },
+        ],
+        purchase: { transaction: 'HPN1', status: 'APPROVED', approved_date: 1761739200000, price: { value: 97, currency_value: 'BRL' } },
+      },
+    };
+    const n = asPayment(ADAPTERS.hotmart.normalize(body, opts));
+    expect([n.amountMinor, n.netMinor]).toEqual([9700n, 5210n]);
+  });
+  it('Hotmart: comissão em outra moeda usa a conversão para a moeda da venda; sem conversão fica sem líquido', () => {
+    const base = (comm: Record<string, unknown>) => ({
+      id: 'evt-n2', event: 'PURCHASE_APPROVED', creation_date: 1761700000000,
+      data: { buyer: { email: 'e@f.com', name: 'Eva Melo' }, product: { id: 99 }, commissions: [comm],
+        purchase: { transaction: 'HPN2', status: 'APPROVED', approved_date: 1761739200000, price: { value: 100, currency_value: 'BRL' } } },
+    });
+    expect(asPayment(ADAPTERS.hotmart.normalize(base({ source: 'PRODUCER', value: 15, currency_value: 'USD', currency_conversion: { converted_value: 82.5, converted_to_currency: 'BRL' } }), opts)).netMinor).toBe(8250n);
+    expect(asPayment(ADAPTERS.hotmart.normalize(base({ source: 'PRODUCER', value: 15, currency_value: 'USD' }), opts)).netMinor).toBeNull();
+    expect(asPayment(ADAPTERS.hotmart.normalize(base({ source: 'AFFILIATE', value: 40, currency_value: 'BRL' }), opts)).netMinor).toBeNull();
+  });
+  it('Kiwify: Commissions.my_commission em centavos', () => {
+    const n = asPayment(ADAPTERS.kiwify.normalize({ order_id: 'K-N', order_status: 'paid', Commissions: { charge_amount: 9700, my_commission: 8510, kiwify_fee: 1190, currency: 'BRL' } }, opts));
+    expect([n.amountMinor, n.netMinor]).toEqual([9700n, 8510n]);
+    expect(asPayment(ADAPTERS.kiwify.normalize({ order_id: 'K-N2', order_status: 'paid', Commissions: { charge_amount: 9700 } }, opts)).netMinor).toBeNull();
+  });
+});

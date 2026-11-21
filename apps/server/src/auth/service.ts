@@ -16,6 +16,8 @@ export interface OrgSummary {
   plan_expires_at: Date | null;
   goal_daily_minor: bigint;
   goal_monthly_minor: bigint;
+  /** taxa estimada (pontos-base) para vendas sem valor líquido informado pelo gateway */
+  fee_estimate_bp: number;
 }
 
 export interface AuthContext {
@@ -162,7 +164,7 @@ export async function resolveSession(ctx: Ctx, token: string): Promise<AuthConte
   if (!s) return null;
   const m = await ctx.db.query(
     `SELECT m.role, o.id, o.name, o.reporting_currency, o.timezone, o.plan_status, o.plan_expires_at,
-            o.goal_daily_minor, o.goal_monthly_minor
+            o.goal_daily_minor, o.goal_monthly_minor, o.fee_estimate_bp
        FROM memberships m JOIN organizations o ON o.id = m.org_id
       WHERE m.user_id = $1
       ORDER BY (o.id = $2) DESC, m.created_at ASC LIMIT 1`,
@@ -186,7 +188,7 @@ export async function resolveSession(ctx: Ctx, token: string): Promise<AuthConte
     org: {
       id: org.id, name: org.name, reporting_currency: org.reporting_currency.trim(), timezone: org.timezone,
       plan_status: org.plan_status, plan_expires_at: org.plan_expires_at,
-      goal_daily_minor: org.goal_daily_minor, goal_monthly_minor: org.goal_monthly_minor,
+      goal_daily_minor: org.goal_daily_minor, goal_monthly_minor: org.goal_monthly_minor, fee_estimate_bp: Number(org.fee_estimate_bp ?? 0),
     },
   };
 }

@@ -78,7 +78,7 @@ export function authRoutes(app: FastifyInstance, ctx: Ctx) {
       role: a.role,
       org: {
         id: a.org.id, name: a.org.name, reportingCurrency: a.org.reporting_currency, timezone: a.org.timezone,
-        goalDailyMinor: a.org.goal_daily_minor.toString(), goalMonthlyMinor: a.org.goal_monthly_minor.toString(),
+        goalDailyMinor: a.org.goal_daily_minor.toString(), goalMonthlyMinor: a.org.goal_monthly_minor.toString(), feeEstimatePct: a.org.fee_estimate_bp / 100,
       },
       plan: { ...plan, expiresAt: a.org.plan_expires_at, priceMinor: ctx.config.PLAN_PRICE_MINOR },
       orgs: orgs.rows,

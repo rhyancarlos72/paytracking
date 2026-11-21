@@ -18,7 +18,7 @@ interface Row {
   spendMinor: string; cpcMinor: string; impressions: number; clicks: number; linkClicks: number; uniqueLinkClicks?: number; landingPageViews: number; ctr: number;
   meta: { purchases: number; revenueMinor: string }; tracked: { sales: number; revenueMinor: string; unconverted: number };
 }
-interface Resp { connected: boolean; accountCurrency: string; reportingCurrency: string; fx: { date: string; converted: boolean; rate: string | null }; rows: Row[] }
+interface Resp { connected: boolean; accountCurrency: string; reportingCurrency: string; fx: { date: string; converted: boolean; rate: string | null }; rows: Row[]; unattributed?: { sales: number; revenueMinor: string; noUtm: number; unknownCampaign: number } }
 
 type Source = 'tracked' | 'meta';
 type SortKey = 'name' | 'spend' | 'sales' | 'revenue' | 'roas' | 'cpa' | 'ctr' | 'cpc' | 'uclicks';
@@ -382,6 +382,19 @@ export default function CampaignsPage() {
                   </>
                 )}
             </div>
+            {source === 'tracked' && q.data?.unattributed && q.data.unattributed.sales > 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed border-border-strong bg-surface-2/40 px-4 py-3 text-sm">
+                <div className="min-w-0">
+                  <p className="font-semibold">Sem campanha identificada: {int(q.data.unattributed.sales)} venda{q.data.unattributed.sales === 1 ? '' : 's'} · <span className="num">{money(Number(q.data.unattributed.revenueMinor), cur)}</span></p>
+                  <p className="text-xs text-muted">
+                    {q.data.unattributed.noUtm > 0 && <>{int(q.data.unattributed.noUtm)} sem UTM (orgânico, link direto ou UTM perdida no caminho). </>}
+                    {q.data.unattributed.unknownCampaign > 0 && <>{int(q.data.unattributed.unknownCampaign)} com UTM de {level === 'campaign' ? 'campanha' : 'conjunto'} que não está nesta conta (outra conta de anúncios, nome trocado ou excluída). </>}
+                    Somadas às campanhas, dão o faturamento total do Resumo.
+                  </p>
+                </div>
+                <p className="num shrink-0 text-right text-sm">Total geral: <strong>{money(tot.revenue + Number(q.data.unattributed.revenueMinor), cur)}</strong></p>
+              </div>
+            )}
             <p className="text-xs text-muted">Faixa vermelha: gasto sem vendas {source === 'tracked' ? 'rastreadas' : 'atribuídas'}. Vendas rastreadas são casadas quando utm_campaign/content/term/medium/id contém o nome ou o ID da {level === 'campaign' ? 'campanha' : 'conjunto'}. ROAS: <span className="text-err">abaixo de 1 = prejuízo</span>, 1–2 no limite, 2 ou mais lucrativo.</p>
           </div>
         )}

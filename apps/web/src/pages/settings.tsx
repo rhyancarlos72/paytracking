@@ -70,7 +70,7 @@ function Org() {
   const toast = useToast();
   const cur = s.org.reportingCurrency;
   const fmt = (m: string) => minorToNumber(m, cur).toFixed(exponent(cur)).replace('.', ',');
-  const [v, setV] = useState({ name: s.org.name, reportingCurrency: cur, timezone: s.org.timezone, goalDaily: fmt(s.org.goalDailyMinor), goalMonthly: fmt(s.org.goalMonthlyMinor) });
+  const [v, setV] = useState({ name: s.org.name, reportingCurrency: cur, timezone: s.org.timezone, goalDaily: fmt(s.org.goalDailyMinor), goalMonthly: fmt(s.org.goalMonthlyMinor), feeEstimatePct: String(s.org.feeEstimatePct ?? 0).replace('.', ',') });
   const save = useMutation({ mutationFn: () => patch('/v1/org', v), onSuccess: () => { toast.ok('Organização atualizada'); void qc.invalidateQueries(); }, onError: (e) => toast.err(e) });
   const disabled = !s.can('admin');
   return (
@@ -86,6 +86,12 @@ function Org() {
         </Field>
         <Field label={`Meta diária (${v.reportingCurrency})`} htmlFor="gd"><Input id="gd" inputMode="decimal" disabled={disabled} value={v.goalDaily} onChange={(e) => setV({ ...v, goalDaily: e.target.value })} /></Field>
         <Field label={`Meta mensal (${v.reportingCurrency})`} htmlFor="gm"><Input id="gm" inputMode="decimal" disabled={disabled} value={v.goalMonthly} onChange={(e) => setV({ ...v, goalMonthly: e.target.value })} /></Field>
+        <div className="sm:col-span-2">
+          <Field label="Taxa estimada por venda (%)" htmlFor="fee"
+            hint="Usada no lucro quando o gateway não informa o valor líquido (taxa do gateway + comissões de afiliado/coprodutor). Hotmart e Kiwify já mandam o líquido de cada venda; ex.: 9,9 para Cakto/Kirvano.">
+            <Input id="fee" inputMode="decimal" className="max-w-[160px]" disabled={disabled} value={v.feeEstimatePct} onChange={(e) => setV({ ...v, feeEstimatePct: e.target.value })} />
+          </Field>
+        </div>
       </div>
     </Card>
   );
