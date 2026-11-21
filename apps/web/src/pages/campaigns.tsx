@@ -62,7 +62,7 @@ export default function CampaignsPage() {
   const q = useQuery<Resp>({
     queryKey: key,
     queryFn: ({ signal }) => get(`/v1/meta/campaigns${qs({ ...period.query, level, campaignIds })}`, signal),
-    refetchInterval: 60_000,
+    refetchInterval: 180_000, // os dados da Meta mudam pouco minuto a minuto; menos pedidos ao servidor
   });
 
   const act = useMutation({

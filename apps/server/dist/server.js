@@ -79299,6 +79299,8 @@ var schema = external_exports.object({
   PLATFORM_PIXEL_BROWSER: external_exports.enum(["auto", "on", "off"]).default("auto"),
   /** WhatsApp de suporte padrão (o Admin pode trocar pelo painel) */
   SUPPORT_WHATSAPP: external_exports.string().default(""),
+  /** Tempo máximo de um pedido (ms) antes de responder 503 — evita pedidos presos consumindo processos. */
+  REQUEST_TIMEOUT_MS: external_exports.coerce.number().int().min(100).max(12e4).default(25e3),
   WEBHOOK_BODY_RETENTION_DAYS: external_exports.coerce.number().int().min(1).default(30),
   /** Recibos de webhook sem valor de auditoria (rejeitados, ignorados, duplicados, falhas) são apagados após N dias.
    *  Os "processed" (base da idempotência e do histórico de cada venda) nunca são apagados. */
@@ -92391,7 +92393,8 @@ function createMailer(config2, log2) {
         const r = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: { Authorization: `Bearer ${config2.RESEND_API_KEY}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ from: config2.MAIL_FROM, to: [mail.to], subject: mail.subject, text: mail.text, html: renderHtml(mail) })
+          body: JSON.stringify({ from: config2.MAIL_FROM, to: [mail.to], subject: mail.subject, text: mail.text, html: renderHtml(mail) }),
+          signal: AbortSignal.timeout(15e3)
         });
         if (!r.ok) throw new Error(`Falha ao enviar e-mail (HTTP ${r.status})`);
       }
@@ -96415,7 +96418,7 @@ var MetaClient = class {
         method,
         headers: { Authorization: `Bearer ${this.token}`, Accept: "application/json", ...method === "POST" ? { "Content-Type": "application/x-www-form-urlencoded" } : {} },
         body: method === "POST" ? body : void 0,
-        signal: AbortSignal.timeout(3e4)
+        signal: AbortSignal.timeout(2e4)
       });
     } catch (e) {
       throw new MetaApiError(`Falha de conex\xE3o com a Meta: ${e.message}`, null, 0);
@@ -96710,19 +96713,37 @@ async function handleMetaError(ctx, orgId, e) {
   }
   throw e;
 }
+var inflight = /* @__PURE__ */ new Map();
+var STALE_MAX_SEC = 24 * 3600;
 async function cached3(ctx, orgId, key, ttlSec, load) {
   const r = await ctx.db.query(
-    "SELECT data FROM meta_insights_cache WHERE org_id = $1 AND cache_key = $2 AND fetched_at > now() - make_interval(secs => $3)",
-    [orgId, key, ttlSec]
+    "SELECT data, EXTRACT(EPOCH FROM (now() - fetched_at))::int AS age FROM meta_insights_cache WHERE org_id = $1 AND cache_key = $2",
+    [orgId, key]
   );
-  if (r.rows[0]) return r.rows[0].data;
-  const data = await load();
-  await ctx.db.query(
-    `INSERT INTO meta_insights_cache(org_id, cache_key, data) VALUES ($1, $2, $3)
-     ON CONFLICT (org_id, cache_key) DO UPDATE SET data = EXCLUDED.data, fetched_at = now()`,
-    [orgId, key, JSON.stringify(data)]
-  );
-  return data;
+  const row = r.rows[0];
+  const refresh = () => {
+    const k = `${orgId}|${key}`;
+    let p = inflight.get(k);
+    if (!p) {
+      p = (async () => {
+        const data = await load();
+        await ctx.db.query(
+          `INSERT INTO meta_insights_cache(org_id, cache_key, data) VALUES ($1, $2, $3)
+           ON CONFLICT (org_id, cache_key) DO UPDATE SET data = EXCLUDED.data, fetched_at = now()`,
+          [orgId, key, JSON.stringify(data)]
+        );
+        return data;
+      })().finally(() => inflight.delete(k));
+      inflight.set(k, p);
+    }
+    return p;
+  };
+  if (row && row.age <= ttlSec) return row.data;
+  if (row && row.age <= STALE_MAX_SEC) {
+    refresh().catch((e) => handleMetaError(ctx, orgId, e).catch(() => ctx.log.warn({ err: String(e), key }, "atualiza\xE7\xE3o da Meta em segundo plano falhou")));
+    return row.data;
+  }
+  return refresh();
 }
 var ttlFor = (until) => until >= localDate(/* @__PURE__ */ new Date(), "UTC") ? 300 : 6 * 3600;
 async function accountDaily(ctx, orgId, since, until) {
@@ -98464,6 +98485,9 @@ async function buildApp(ctx) {
     // número = confia só nos N últimos saltos (o que o proxy acrescentou), igual ao proxy-addr
     trustProxy: typeof ctx.config.TRUST_PROXY === "number" ? /* @__PURE__ */ ((hops) => (_addr, i) => i < hops)(ctx.config.TRUST_PROXY) : ctx.config.TRUST_PROXY,
     bodyLimit: 1048576,
+    // conexões ociosas/lentas não ficam presas (cada conexão aberta pesa no limite de processos da hospedagem)
+    connectionTimeout: 6e4,
+    keepAliveTimeout: 5e3,
     genReqId: () => randomUUID3()
   });
   await app.register(import_cookie.default);
@@ -98490,6 +98514,17 @@ async function buildApp(ctx) {
   const flood = new FloodGuard();
   const appOrigin = new URL(ctx.config.APP_URL).origin;
   const apiOrigin = new URL(ctx.config.PUBLIC_API_URL).origin;
+  app.addHook("onRequest", async (req, reply) => {
+    const ms = /\/duplicate$|\/v1\/meta\/callback|\/v1\/admin\/meta-review\/run/.test(req.url.split("?")[0]) ? 9e4 : ctx.config.REQUEST_TIMEOUT_MS;
+    const timer = setTimeout(() => {
+      if (reply.sent || reply.raw.headersSent) return;
+      req.log.warn({ url: req.url.split("?")[0], ms }, "pedido excedeu o tempo m\xE1ximo");
+      reply.code(503).header("Retry-After", "30").send({ error: { code: "timeout", message: "A opera\xE7\xE3o demorou demais. Tente de novo em instantes." } });
+    }, ms);
+    timer.unref();
+    reply.raw.once("close", () => clearTimeout(timer));
+    reply.raw.once("finish", () => clearTimeout(timer));
+  });
   app.addHook("onResponse", async (req) => {
     if (req.method !== "GET" && req.method !== "HEAD") wakeDispatcher();
   });
@@ -98860,6 +98895,7 @@ function startWorker(ctx, opts = {}) {
 }
 
 // src/server.ts
+process.env.UV_THREADPOOL_SIZE ??= "2";
 function listenTarget(raw) {
   const v = (raw ?? "").trim();
   if (v === "") return { port: 8080, host: "0.0.0.0" };

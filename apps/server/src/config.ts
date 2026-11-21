@@ -85,6 +85,8 @@ const schema = z.object({
 
   /** WhatsApp de suporte padrão (o Admin pode trocar pelo painel) */
   SUPPORT_WHATSAPP: z.string().default(''),
+  /** Tempo máximo de um pedido (ms) antes de responder 503 — evita pedidos presos consumindo processos. */
+  REQUEST_TIMEOUT_MS: z.coerce.number().int().min(100).max(120_000).default(25_000),
   WEBHOOK_BODY_RETENTION_DAYS: z.coerce.number().int().min(1).default(30),
   /** Recibos de webhook sem valor de auditoria (rejeitados, ignorados, duplicados, falhas) são apagados após N dias.
    *  Os "processed" (base da idempotência e do histórico de cada venda) nunca são apagados. */

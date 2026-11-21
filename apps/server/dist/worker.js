@@ -24619,6 +24619,8 @@ var schema = external_exports.object({
   PLATFORM_PIXEL_BROWSER: external_exports.enum(["auto", "on", "off"]).default("auto"),
   /** WhatsApp de suporte padrão (o Admin pode trocar pelo painel) */
   SUPPORT_WHATSAPP: external_exports.string().default(""),
+  /** Tempo máximo de um pedido (ms) antes de responder 503 — evita pedidos presos consumindo processos. */
+  REQUEST_TIMEOUT_MS: external_exports.coerce.number().int().min(100).max(12e4).default(25e3),
   WEBHOOK_BODY_RETENTION_DAYS: external_exports.coerce.number().int().min(1).default(30),
   /** Recibos de webhook sem valor de auditoria (rejeitados, ignorados, duplicados, falhas) são apagados após N dias.
    *  Os "processed" (base da idempotência e do histórico de cada venda) nunca são apagados. */
@@ -37706,7 +37708,8 @@ function createMailer(config3, log) {
         const r = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: { Authorization: `Bearer ${config3.RESEND_API_KEY}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ from: config3.MAIL_FROM, to: [mail.to], subject: mail.subject, text: mail.text, html: renderHtml(mail) })
+          body: JSON.stringify({ from: config3.MAIL_FROM, to: [mail.to], subject: mail.subject, text: mail.text, html: renderHtml(mail) }),
+          signal: AbortSignal.timeout(15e3)
         });
         if (!r.ok) throw new Error(`Falha ao enviar e-mail (HTTP ${r.status})`);
       }

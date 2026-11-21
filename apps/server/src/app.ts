@@ -72,6 +72,9 @@ export async function buildApp(ctx: Ctx): Promise<FastifyInstance> {
       ? ((hops: number) => (_addr: string, i: number) => i < hops)(ctx.config.TRUST_PROXY)
       : ctx.config.TRUST_PROXY,
     bodyLimit: 1_048_576,
+    // conexões ociosas/lentas não ficam presas (cada conexão aberta pesa no limite de processos da hospedagem)
+    connectionTimeout: 60_000,
+    keepAliveTimeout: 5_000,
     genReqId: () => randomUUID(),
   });
 
@@ -104,6 +107,21 @@ export async function buildApp(ctx: Ctx): Promise<FastifyInstance> {
   const flood = new FloodGuard();
   const appOrigin = new URL(ctx.config.APP_URL).origin;
   const apiOrigin = new URL(ctx.config.PUBLIC_API_URL).origin;
+
+  // Prazo máximo por pedido: nenhum pedido fica aberto esperando indefinidamente (ex.: a Meta lenta). Na hospedagem,
+  // pedidos presos fazem o servidor abrir mais processos até estourar o limite da conta — e aí a Hostinger liga o
+  // captcha "não sou robô" para TODOS, bloqueando webhooks e o pixel. Duplicar campanhas pode levar mais tempo.
+  app.addHook('onRequest', async (req, reply) => {
+    const ms = /\/duplicate$|\/v1\/meta\/callback|\/v1\/admin\/meta-review\/run/.test(req.url.split('?')[0]!) ? 90_000 : ctx.config.REQUEST_TIMEOUT_MS;
+    const timer = setTimeout(() => {
+      if (reply.sent || reply.raw.headersSent) return;
+      req.log.warn({ url: req.url.split('?')[0], ms }, 'pedido excedeu o tempo máximo');
+      reply.code(503).header('Retry-After', '30').send({ error: { code: 'timeout', message: 'A operação demorou demais. Tente de novo em instantes.' } });
+    }, ms);
+    timer.unref();
+    reply.raw.once('close', () => clearTimeout(timer));
+    reply.raw.once('finish', () => clearTimeout(timer));
+  });
 
   // escrita terminada (transação já confirmada): acorda o worker para enviar eventos novos na hora
   app.addHook('onResponse', async (req) => { if (req.method !== 'GET' && req.method !== 'HEAD') wakeDispatcher(); });

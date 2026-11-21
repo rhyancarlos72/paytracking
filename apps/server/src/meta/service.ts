@@ -43,19 +43,49 @@ export async function handleMetaError(ctx: Ctx, orgId: string, e: unknown): Prom
   throw e;
 }
 
+/** Buscas à Meta em andamento (por organização + chave): pedidos iguais simultâneos esperam a MESMA chamada. */
+const inflight = new Map<string, Promise<unknown>>();
+/** Até quanto tempo um resultado vencido ainda é mostrado enquanto a atualização roda em segundo plano. */
+const STALE_MAX_SEC = 24 * 3600;
+
+/**
+ * Cache dos dados da Meta com "stale-while-revalidate":
+ *  - dentro do prazo (ttl): devolve o guardado;
+ *  - vencido (até 24 h): devolve o guardado NA HORA e atualiza em segundo plano;
+ *  - sem nada guardado: busca na Meta (uma única chamada para pedidos simultâneos iguais).
+ * Antes, toda tela esperava a Meta (às vezes 30 s+) e cada usuário com o painel aberto disparava a própria
+ * chamada — os pedidos ficavam abertos e a hospedagem estourava o limite de processos (bloqueio com captcha).
+ */
 async function cached<T>(ctx: Ctx, orgId: string, key: string, ttlSec: number, load: () => Promise<T>): Promise<T> {
   const r = await ctx.db.query(
-    'SELECT data FROM meta_insights_cache WHERE org_id = $1 AND cache_key = $2 AND fetched_at > now() - make_interval(secs => $3)',
-    [orgId, key, ttlSec],
+    'SELECT data, EXTRACT(EPOCH FROM (now() - fetched_at))::int AS age FROM meta_insights_cache WHERE org_id = $1 AND cache_key = $2',
+    [orgId, key],
   );
-  if (r.rows[0]) return r.rows[0].data as T;
-  const data = await load();
-  await ctx.db.query(
-    `INSERT INTO meta_insights_cache(org_id, cache_key, data) VALUES ($1, $2, $3)
-     ON CONFLICT (org_id, cache_key) DO UPDATE SET data = EXCLUDED.data, fetched_at = now()`,
-    [orgId, key, JSON.stringify(data)],
-  );
-  return data;
+  const row = r.rows[0] as { data: T; age: number } | undefined;
+  const refresh = () => {
+    const k = `${orgId}|${key}`;
+    let p = inflight.get(k) as Promise<T> | undefined;
+    if (!p) {
+      p = (async () => {
+        const data = await load();
+        await ctx.db.query(
+          `INSERT INTO meta_insights_cache(org_id, cache_key, data) VALUES ($1, $2, $3)
+           ON CONFLICT (org_id, cache_key) DO UPDATE SET data = EXCLUDED.data, fetched_at = now()`,
+          [orgId, key, JSON.stringify(data)],
+        );
+        return data;
+      })().finally(() => inflight.delete(k));
+      inflight.set(k, p);
+    }
+    return p;
+  };
+  if (row && row.age <= ttlSec) return row.data;
+  if (row && row.age <= STALE_MAX_SEC) {
+    // falha em segundo plano: registra (token vencido vira alerta e marca a conexão, como no caminho normal)
+    refresh().catch((e) => handleMetaError(ctx, orgId, e).catch(() => ctx.log.warn({ err: String(e), key }, 'atualização da Meta em segundo plano falhou')));
+    return row.data;
+  }
+  return refresh();
 }
 
 const ttlFor = (until: string) => (until >= localDate(new Date(), 'UTC') ? 300 : 6 * 3600);

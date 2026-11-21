@@ -110,6 +110,7 @@ export function createMailer(config: Config, log: Logger): Mailer {
           method: 'POST',
           headers: { Authorization: `Bearer ${config.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ from: config.MAIL_FROM, to: [mail.to], subject: mail.subject, text: mail.text, html: renderHtml(mail) }),
+          signal: AbortSignal.timeout(15_000),
         });
         if (!r.ok) throw new Error(`Falha ao enviar e-mail (HTTP ${r.status})`);
       },

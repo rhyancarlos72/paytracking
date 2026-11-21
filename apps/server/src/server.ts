@@ -1,3 +1,6 @@
+// Menos threads por processo: a hospedagem conta threads no limite de "processos" da conta (120). O padrão do
+// Node é 4 threads extras (libuv); o PayTracking só usa para DNS e compressão — 2 bastam.
+process.env.UV_THREADPOOL_SIZE ??= '2';
 import { createServer, type Server } from 'node:http';
 import { createPool, directDatabaseUrl, migrate, type Pool } from '@pt/db';
 import { loadConfig } from './config.js';

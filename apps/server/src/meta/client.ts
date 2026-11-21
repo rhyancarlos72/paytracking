@@ -92,7 +92,7 @@ export class MetaClient {
         method,
         headers: { Authorization: `Bearer ${this.token}`, Accept: 'application/json', ...(method === 'POST' ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}) },
         body: method === 'POST' ? body : undefined,
-        signal: AbortSignal.timeout(30_000),
+        signal: AbortSignal.timeout(20_000),
       });
     } catch (e) {
       throw new MetaApiError(`Falha de conexão com a Meta: ${(e as Error).message}`, null, 0);
