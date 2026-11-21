@@ -11,11 +11,20 @@ var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require
   if (typeof require !== "undefined") return require.apply(this, arguments);
   throw Error('Dynamic require of "' + x + '" is not supported');
 });
-var __esm = (fn, res) => function __init() {
-  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+var __esm = (fn, res, err) => function __init() {
+  if (err) throw err[0];
+  try {
+    return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+  } catch (e) {
+    throw err = [e], e;
+  }
 };
 var __commonJS = (cb, mod) => function __require2() {
-  return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+  try {
+    return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+  } catch (e) {
+    throw mod = 0, e;
+  }
 };
 var __export = (target, all) => {
   for (var name2 in all)
@@ -5135,7 +5144,7 @@ var require_error = __commonJS({
     function toString() {
       return `${this.name} [${this.code}]: ${this.message}`;
     }
-    var FastifyGenericErrorSymbol = Symbol.for("fastify-error-generic");
+    var FastifyGenericErrorSymbol = /* @__PURE__ */ Symbol.for("fastify-error-generic");
     function createError(code2, message, statusCode = 500, Base = Error, captureStackTrace2 = createError.captureStackTrace) {
       const shouldCreateFastifyGenericError = code2 === FastifyGenericErrorSymbol;
       if (shouldCreateFastifyGenericError) {
@@ -5145,7 +5154,7 @@ var require_error = __commonJS({
       if (!message) throw new Error("Fastify error message must not be empty");
       code2 = code2.toUpperCase();
       !statusCode && (statusCode = void 0);
-      const FastifySpecificErrorSymbol = Symbol.for(`fastify-error ${code2}`);
+      const FastifySpecificErrorSymbol = /* @__PURE__ */ Symbol.for(`fastify-error ${code2}`);
       function FastifyError(...args) {
         if (!new.target) {
           return new FastifyError(...args);
@@ -5258,15 +5267,15 @@ var require_errors = __commonJS({
 var require_symbols = __commonJS({
   "../../node_modules/.pnpm/avvio@9.3.1/node_modules/avvio/lib/symbols.js"(exports, module) {
     "use strict";
-    var kAvvio = Symbol("avvio.Boot");
-    var kIsOnCloseHandler = Symbol("isOnCloseHandler");
-    var kThenifyDoNotWrap = Symbol("avvio.ThenifyDoNotWrap");
-    var kUntrackNode = Symbol("avvio.TimeTree.untrackNode");
-    var kTrackNode = Symbol("avvio.TimeTree.trackNode");
-    var kGetParent = Symbol("avvio.TimeTree.getParent");
-    var kGetNode = Symbol("avvio.TimeTree.getNode");
-    var kAddNode = Symbol("avvio.TimeTree.addNode");
-    var kPluginMeta = Symbol.for("plugin-meta");
+    var kAvvio = /* @__PURE__ */ Symbol("avvio.Boot");
+    var kIsOnCloseHandler = /* @__PURE__ */ Symbol("isOnCloseHandler");
+    var kThenifyDoNotWrap = /* @__PURE__ */ Symbol("avvio.ThenifyDoNotWrap");
+    var kUntrackNode = /* @__PURE__ */ Symbol("avvio.TimeTree.untrackNode");
+    var kTrackNode = /* @__PURE__ */ Symbol("avvio.TimeTree.trackNode");
+    var kGetParent = /* @__PURE__ */ Symbol("avvio.TimeTree.getParent");
+    var kGetNode = /* @__PURE__ */ Symbol("avvio.TimeTree.getNode");
+    var kAddNode = /* @__PURE__ */ Symbol("avvio.TimeTree.addNode");
+    var kPluginMeta = /* @__PURE__ */ Symbol.for("plugin-meta");
     module.exports = {
       kAvvio,
       kIsOnCloseHandler,
@@ -6277,73 +6286,73 @@ var require_symbols2 = __commonJS({
   "../../node_modules/.pnpm/fastify@5.12.7/node_modules/fastify/lib/symbols.js"(exports, module) {
     "use strict";
     var keys = {
-      kAvvioBoot: Symbol("fastify.avvioBoot"),
-      kChildren: Symbol("fastify.children"),
-      kServerBindings: Symbol("fastify.serverBindings"),
-      kBodyLimit: Symbol("fastify.bodyLimit"),
-      kSupportedHTTPMethods: Symbol("fastify.acceptedHTTPMethods"),
-      kRoutePrefix: Symbol("fastify.routePrefix"),
-      kLogLevel: Symbol("fastify.logLevel"),
-      kLogSerializers: Symbol("fastify.logSerializers"),
-      kHooks: Symbol("fastify.hooks"),
-      kContentTypeParser: Symbol("fastify.contentTypeParser"),
-      kState: Symbol("fastify.state"),
-      kOptions: Symbol("fastify.options"),
-      kPluginNameChain: Symbol("fastify.pluginNameChain"),
-      kRouteContext: Symbol("fastify.context"),
-      kGenReqId: Symbol("fastify.genReqId"),
-      kHttp2ServerSessions: Symbol("fastify.http2ServerSessions"),
+      kAvvioBoot: /* @__PURE__ */ Symbol("fastify.avvioBoot"),
+      kChildren: /* @__PURE__ */ Symbol("fastify.children"),
+      kServerBindings: /* @__PURE__ */ Symbol("fastify.serverBindings"),
+      kBodyLimit: /* @__PURE__ */ Symbol("fastify.bodyLimit"),
+      kSupportedHTTPMethods: /* @__PURE__ */ Symbol("fastify.acceptedHTTPMethods"),
+      kRoutePrefix: /* @__PURE__ */ Symbol("fastify.routePrefix"),
+      kLogLevel: /* @__PURE__ */ Symbol("fastify.logLevel"),
+      kLogSerializers: /* @__PURE__ */ Symbol("fastify.logSerializers"),
+      kHooks: /* @__PURE__ */ Symbol("fastify.hooks"),
+      kContentTypeParser: /* @__PURE__ */ Symbol("fastify.contentTypeParser"),
+      kState: /* @__PURE__ */ Symbol("fastify.state"),
+      kOptions: /* @__PURE__ */ Symbol("fastify.options"),
+      kPluginNameChain: /* @__PURE__ */ Symbol("fastify.pluginNameChain"),
+      kRouteContext: /* @__PURE__ */ Symbol("fastify.context"),
+      kGenReqId: /* @__PURE__ */ Symbol("fastify.genReqId"),
+      kHttp2ServerSessions: /* @__PURE__ */ Symbol("fastify.http2ServerSessions"),
       // Schema
-      kSchemaController: Symbol("fastify.schemaController"),
-      kSchemaHeaders: Symbol("headers-schema"),
-      kSchemaParams: Symbol("params-schema"),
-      kSchemaQuerystring: Symbol("querystring-schema"),
-      kSchemaBody: Symbol("body-schema"),
-      kSchemaResponse: Symbol("response-schema"),
-      kSchemaErrorFormatter: Symbol("fastify.schemaErrorFormatter"),
-      kSchemaVisited: Symbol("fastify.schemas.visited"),
+      kSchemaController: /* @__PURE__ */ Symbol("fastify.schemaController"),
+      kSchemaHeaders: /* @__PURE__ */ Symbol("headers-schema"),
+      kSchemaParams: /* @__PURE__ */ Symbol("params-schema"),
+      kSchemaQuerystring: /* @__PURE__ */ Symbol("querystring-schema"),
+      kSchemaBody: /* @__PURE__ */ Symbol("body-schema"),
+      kSchemaResponse: /* @__PURE__ */ Symbol("response-schema"),
+      kSchemaErrorFormatter: /* @__PURE__ */ Symbol("fastify.schemaErrorFormatter"),
+      kSchemaVisited: /* @__PURE__ */ Symbol("fastify.schemas.visited"),
       // Request
-      kRequest: Symbol("fastify.Request"),
-      kRequestPayloadStream: Symbol("fastify.RequestPayloadStream"),
-      kRequestAcceptVersion: Symbol("fastify.RequestAcceptVersion"),
-      kRequestCacheValidateFns: Symbol("fastify.request.cache.validateFns"),
-      kRequestContentType: Symbol("fastify.request.contentType"),
-      kRequestOriginalUrl: Symbol("fastify.request.originalUrl"),
-      kRequestSignal: Symbol("fastify.request.signal"),
-      kHandlerTimeout: Symbol("fastify.handlerTimeout"),
-      kTimeoutTimer: Symbol("fastify.request.timeoutTimer"),
-      kOnAbort: Symbol("fastify.request.onAbort"),
+      kRequest: /* @__PURE__ */ Symbol("fastify.Request"),
+      kRequestPayloadStream: /* @__PURE__ */ Symbol("fastify.RequestPayloadStream"),
+      kRequestAcceptVersion: /* @__PURE__ */ Symbol("fastify.RequestAcceptVersion"),
+      kRequestCacheValidateFns: /* @__PURE__ */ Symbol("fastify.request.cache.validateFns"),
+      kRequestContentType: /* @__PURE__ */ Symbol("fastify.request.contentType"),
+      kRequestOriginalUrl: /* @__PURE__ */ Symbol("fastify.request.originalUrl"),
+      kRequestSignal: /* @__PURE__ */ Symbol("fastify.request.signal"),
+      kHandlerTimeout: /* @__PURE__ */ Symbol("fastify.handlerTimeout"),
+      kTimeoutTimer: /* @__PURE__ */ Symbol("fastify.request.timeoutTimer"),
+      kOnAbort: /* @__PURE__ */ Symbol("fastify.request.onAbort"),
       // 404
-      kFourOhFour: Symbol("fastify.404"),
-      kCanSetNotFoundHandler: Symbol("fastify.canSetNotFoundHandler"),
-      kFourOhFourLevelInstance: Symbol("fastify.404LogLevelInstance"),
-      kFourOhFourContext: Symbol("fastify.404ContextKey"),
-      kDefaultJsonParse: Symbol("fastify.defaultJSONParse"),
+      kFourOhFour: /* @__PURE__ */ Symbol("fastify.404"),
+      kCanSetNotFoundHandler: /* @__PURE__ */ Symbol("fastify.canSetNotFoundHandler"),
+      kFourOhFourLevelInstance: /* @__PURE__ */ Symbol("fastify.404LogLevelInstance"),
+      kFourOhFourContext: /* @__PURE__ */ Symbol("fastify.404ContextKey"),
+      kDefaultJsonParse: /* @__PURE__ */ Symbol("fastify.defaultJSONParse"),
       // Reply
-      kReply: Symbol("fastify.Reply"),
-      kReplySerializer: Symbol("fastify.reply.serializer"),
-      kReplyIsError: Symbol("fastify.reply.isError"),
-      kReplyHeaders: Symbol("fastify.reply.headers"),
-      kReplyTrailers: Symbol("fastify.reply.trailers"),
-      kReplyHasStatusCode: Symbol("fastify.reply.hasStatusCode"),
-      kReplyHijacked: Symbol("fastify.reply.hijacked"),
-      kReplyStartTime: Symbol("fastify.reply.startTime"),
-      kReplyNextErrorHandler: Symbol("fastify.reply.nextErrorHandler"),
-      kReplyEndTime: Symbol("fastify.reply.endTime"),
-      kReplyErrorHandlerCalled: Symbol("fastify.reply.errorHandlerCalled"),
-      kReplyIsRunningOnErrorHook: Symbol("fastify.reply.isRunningOnErrorHook"),
-      kReplySerializerDefault: Symbol("fastify.replySerializerDefault"),
-      kReplyCacheSerializeFns: Symbol("fastify.reply.cache.serializeFns"),
+      kReply: /* @__PURE__ */ Symbol("fastify.Reply"),
+      kReplySerializer: /* @__PURE__ */ Symbol("fastify.reply.serializer"),
+      kReplyIsError: /* @__PURE__ */ Symbol("fastify.reply.isError"),
+      kReplyHeaders: /* @__PURE__ */ Symbol("fastify.reply.headers"),
+      kReplyTrailers: /* @__PURE__ */ Symbol("fastify.reply.trailers"),
+      kReplyHasStatusCode: /* @__PURE__ */ Symbol("fastify.reply.hasStatusCode"),
+      kReplyHijacked: /* @__PURE__ */ Symbol("fastify.reply.hijacked"),
+      kReplyStartTime: /* @__PURE__ */ Symbol("fastify.reply.startTime"),
+      kReplyNextErrorHandler: /* @__PURE__ */ Symbol("fastify.reply.nextErrorHandler"),
+      kReplyEndTime: /* @__PURE__ */ Symbol("fastify.reply.endTime"),
+      kReplyErrorHandlerCalled: /* @__PURE__ */ Symbol("fastify.reply.errorHandlerCalled"),
+      kReplyIsRunningOnErrorHook: /* @__PURE__ */ Symbol("fastify.reply.isRunningOnErrorHook"),
+      kReplySerializerDefault: /* @__PURE__ */ Symbol("fastify.replySerializerDefault"),
+      kReplyCacheSerializeFns: /* @__PURE__ */ Symbol("fastify.reply.cache.serializeFns"),
       // This symbol is only meant to be used for fastify tests and should not be used for any other purpose
-      kTestInternals: Symbol("fastify.testInternals"),
-      kErrorHandler: Symbol("fastify.errorHandler"),
-      kErrorHandlerAlreadySet: Symbol("fastify.errorHandlerAlreadySet"),
-      kChildLoggerFactory: Symbol("fastify.childLoggerFactory"),
-      kHasBeenDecorated: Symbol("fastify.hasBeenDecorated"),
-      kKeepAliveConnections: Symbol("fastify.keepAliveConnections"),
-      kRouteByFastify: Symbol("fastify.routeByFastify"),
-      kLogController: Symbol("fastify.logController"),
-      kDiagnosticsStore: Symbol("fastify.diagnosticsStore")
+      kTestInternals: /* @__PURE__ */ Symbol("fastify.testInternals"),
+      kErrorHandler: /* @__PURE__ */ Symbol("fastify.errorHandler"),
+      kErrorHandlerAlreadySet: /* @__PURE__ */ Symbol("fastify.errorHandlerAlreadySet"),
+      kChildLoggerFactory: /* @__PURE__ */ Symbol("fastify.childLoggerFactory"),
+      kHasBeenDecorated: /* @__PURE__ */ Symbol("fastify.hasBeenDecorated"),
+      kKeepAliveConnections: /* @__PURE__ */ Symbol("fastify.keepAliveConnections"),
+      kRouteByFastify: /* @__PURE__ */ Symbol("fastify.routeByFastify"),
+      kLogController: /* @__PURE__ */ Symbol("fastify.logController"),
+      kDiagnosticsStore: /* @__PURE__ */ Symbol("fastify.diagnosticsStore")
     };
     module.exports = keys;
   }
@@ -6354,8 +6363,8 @@ var require_process_warning = __commonJS({
   "../../node_modules/.pnpm/process-warning@5.1.1/node_modules/process-warning/index.js"(exports, module) {
     "use strict";
     var { format: format2 } = __require("node:util");
-    var kWarningFn = Symbol("process-warning.fn");
-    var kWarningSpyData = Symbol("process-warning.spyData");
+    var kWarningFn = /* @__PURE__ */ Symbol("process-warning.fn");
+    var kWarningSpyData = /* @__PURE__ */ Symbol("process-warning.spyData");
     function spyWarning(warning) {
       if (warning[kWarningSpyData] === null) {
         const warningFn = warning[kWarningFn];
@@ -9253,7 +9262,7 @@ var require_handle_request = __commonJS({
       }
     }
     module.exports = handleRequest;
-    module.exports[Symbol.for("internals")] = { handler, preHandlerCallback };
+    module.exports[/* @__PURE__ */ Symbol.for("internals")] = { handler, preHandlerCallback };
   }
 });
 
@@ -10886,8 +10895,8 @@ var require_err_helpers = __commonJS({
 var require_err_proto = __commonJS({
   "../../node_modules/.pnpm/pino-std-serializers@7.1.0/node_modules/pino-std-serializers/lib/err-proto.js"(exports, module) {
     "use strict";
-    var seen = Symbol("circular-ref-tag");
-    var rawSymbol = Symbol("pino-raw-err-ref");
+    var seen = /* @__PURE__ */ Symbol("circular-ref-tag");
+    var rawSymbol = /* @__PURE__ */ Symbol("pino-raw-err-ref");
     var pinoErrProto = Object.create({}, {
       type: {
         enumerable: true,
@@ -11024,7 +11033,7 @@ var require_req = __commonJS({
       mapHttpRequest,
       reqSerializer
     };
-    var rawSymbol = Symbol("pino-raw-req-ref");
+    var rawSymbol = /* @__PURE__ */ Symbol("pino-raw-req-ref");
     var pinoReqProto = Object.create({}, {
       id: {
         enumerable: true,
@@ -11119,7 +11128,7 @@ var require_res = __commonJS({
       mapHttpResponse,
       resSerializer
     };
-    var rawSymbol = Symbol("pino-raw-res-ref");
+    var rawSymbol = /* @__PURE__ */ Symbol("pino-raw-res-ref");
     var pinoResProto = Object.create({}, {
       statusCode: {
         enumerable: true,
@@ -11366,7 +11375,7 @@ var require_redact = __commonJS({
       }
       return true;
     }
-    var PATH_NOT_FOUND = Symbol("PATH_NOT_FOUND");
+    var PATH_NOT_FOUND = /* @__PURE__ */ Symbol("PATH_NOT_FOUND");
     function getValueIfExists(obj2, parts) {
       let current = obj2;
       for (const part of parts) {
@@ -11667,38 +11676,38 @@ var require_redact = __commonJS({
 var require_symbols3 = __commonJS({
   "../../node_modules/.pnpm/pino@10.4.0/node_modules/pino/lib/symbols.js"(exports, module) {
     "use strict";
-    var setLevelSym = Symbol("pino.setLevel");
-    var getLevelSym = Symbol("pino.getLevel");
-    var levelValSym = Symbol("pino.levelVal");
-    var levelCompSym = Symbol("pino.levelComp");
-    var useLevelLabelsSym = Symbol("pino.useLevelLabels");
-    var useOnlyCustomLevelsSym = Symbol("pino.useOnlyCustomLevels");
-    var mixinSym = Symbol("pino.mixin");
-    var lsCacheSym = Symbol("pino.lsCache");
-    var chindingsSym = Symbol("pino.chindings");
-    var asJsonSym = Symbol("pino.asJson");
-    var writeSym = Symbol("pino.write");
-    var redactFmtSym = Symbol("pino.redactFmt");
-    var timeSym = Symbol("pino.time");
-    var timeSliceIndexSym = Symbol("pino.timeSliceIndex");
-    var streamSym = Symbol("pino.stream");
-    var stringifySym = Symbol("pino.stringify");
-    var stringifySafeSym = Symbol("pino.stringifySafe");
-    var stringifiersSym = Symbol("pino.stringifiers");
-    var endSym = Symbol("pino.end");
-    var formatOptsSym = Symbol("pino.formatOpts");
-    var messageKeySym = Symbol("pino.messageKey");
-    var errorKeySym = Symbol("pino.errorKey");
-    var nestedKeySym = Symbol("pino.nestedKey");
-    var nestedKeyStrSym = Symbol("pino.nestedKeyStr");
-    var mixinMergeStrategySym = Symbol("pino.mixinMergeStrategy");
-    var msgPrefixSym = Symbol("pino.msgPrefix");
-    var wildcardFirstSym = Symbol("pino.wildcardFirst");
-    var serializersSym = Symbol.for("pino.serializers");
-    var formattersSym = Symbol.for("pino.formatters");
-    var hooksSym = Symbol.for("pino.hooks");
-    var needsMetadataGsym = Symbol.for("pino.metadata");
-    var transportUsesMultistreamSym = Symbol.for("pino.transport.usesMultistream");
+    var setLevelSym = /* @__PURE__ */ Symbol("pino.setLevel");
+    var getLevelSym = /* @__PURE__ */ Symbol("pino.getLevel");
+    var levelValSym = /* @__PURE__ */ Symbol("pino.levelVal");
+    var levelCompSym = /* @__PURE__ */ Symbol("pino.levelComp");
+    var useLevelLabelsSym = /* @__PURE__ */ Symbol("pino.useLevelLabels");
+    var useOnlyCustomLevelsSym = /* @__PURE__ */ Symbol("pino.useOnlyCustomLevels");
+    var mixinSym = /* @__PURE__ */ Symbol("pino.mixin");
+    var lsCacheSym = /* @__PURE__ */ Symbol("pino.lsCache");
+    var chindingsSym = /* @__PURE__ */ Symbol("pino.chindings");
+    var asJsonSym = /* @__PURE__ */ Symbol("pino.asJson");
+    var writeSym = /* @__PURE__ */ Symbol("pino.write");
+    var redactFmtSym = /* @__PURE__ */ Symbol("pino.redactFmt");
+    var timeSym = /* @__PURE__ */ Symbol("pino.time");
+    var timeSliceIndexSym = /* @__PURE__ */ Symbol("pino.timeSliceIndex");
+    var streamSym = /* @__PURE__ */ Symbol("pino.stream");
+    var stringifySym = /* @__PURE__ */ Symbol("pino.stringify");
+    var stringifySafeSym = /* @__PURE__ */ Symbol("pino.stringifySafe");
+    var stringifiersSym = /* @__PURE__ */ Symbol("pino.stringifiers");
+    var endSym = /* @__PURE__ */ Symbol("pino.end");
+    var formatOptsSym = /* @__PURE__ */ Symbol("pino.formatOpts");
+    var messageKeySym = /* @__PURE__ */ Symbol("pino.messageKey");
+    var errorKeySym = /* @__PURE__ */ Symbol("pino.errorKey");
+    var nestedKeySym = /* @__PURE__ */ Symbol("pino.nestedKey");
+    var nestedKeyStrSym = /* @__PURE__ */ Symbol("pino.nestedKeyStr");
+    var mixinMergeStrategySym = /* @__PURE__ */ Symbol("pino.mixinMergeStrategy");
+    var msgPrefixSym = /* @__PURE__ */ Symbol("pino.msgPrefix");
+    var wildcardFirstSym = /* @__PURE__ */ Symbol("pino.wildcardFirst");
+    var serializersSym = /* @__PURE__ */ Symbol.for("pino.serializers");
+    var formattersSym = /* @__PURE__ */ Symbol.for("pino.formatters");
+    var hooksSym = /* @__PURE__ */ Symbol.for("pino.hooks");
+    var needsMetadataGsym = /* @__PURE__ */ Symbol.for("pino.metadata");
+    var transportUsesMultistreamSym = /* @__PURE__ */ Symbol.for("pino.transport.usesMultistream");
     module.exports = {
       setLevelSym,
       getLevelSym,
@@ -12831,7 +12840,7 @@ var require_thread_stream = __commonJS({
     } = require_indexes();
     var buffer = __require("buffer");
     var assert2 = __require("assert");
-    var kImpl = Symbol("kImpl");
+    var kImpl = /* @__PURE__ */ Symbol("kImpl");
     var MAX_STRING = buffer.constants.MAX_STRING_LENGTH;
     function noop() {
     }
@@ -14947,7 +14956,7 @@ ${originalIndentation}`;
 var require_multistream = __commonJS({
   "../../node_modules/.pnpm/pino@10.4.0/node_modules/pino/lib/multistream.js"(exports, module) {
     "use strict";
-    var metadata = Symbol.for("pino.metadata");
+    var metadata = /* @__PURE__ */ Symbol.for("pino.metadata");
     var { DEFAULT_LEVELS } = require_constants();
     var DEFAULT_INFO_LEVEL = DEFAULT_LEVELS.info;
     function multistream(streamsArray, opts) {
@@ -15514,7 +15523,7 @@ var require_schemas = __commonJS({
     "use strict";
     var fastClone = require_rfdc()({ circles: false, proto: true });
     var { kSchemaVisited, kSchemaResponse } = require_symbols2();
-    var kFluentSchema = Symbol.for("fluent-schema-object");
+    var kFluentSchema = /* @__PURE__ */ Symbol.for("fluent-schema-object");
     var {
       FST_ERR_SCH_MISSING_ID,
       FST_ERR_SCH_ALREADY_PRESENT,
@@ -16243,7 +16252,7 @@ var require_reply = __commonJS({
       preHandlerHookRunner,
       preSerializationHookRunner
     } = require_hooks();
-    var internals = require_handle_request()[Symbol.for("internals")];
+    var internals = require_handle_request()[/* @__PURE__ */ Symbol.for("internals")];
     var loggerUtils = require_logger_factory();
     var now = loggerUtils.now;
     var { handleError } = require_error_handler();
@@ -29629,7 +29638,7 @@ var require_standalone2 = __commonJS({
 var require_ajv_compiler = __commonJS({
   "../../node_modules/.pnpm/@fastify+ajv-compiler@4.0.7/node_modules/@fastify/ajv-compiler/index.js"(exports, module) {
     "use strict";
-    var AjvReference = Symbol.for("fastify.ajv-compiler.reference");
+    var AjvReference = /* @__PURE__ */ Symbol.for("fastify.ajv-compiler.reference");
     var ValidatorCompiler = require_validator_compiler();
     var SerializerCompiler = require_serializer_compiler();
     function AjvCompiler(opts) {
@@ -29760,7 +29769,7 @@ var require_json_schema_ref_resolver = __commonJS({
   "../../node_modules/.pnpm/json-schema-ref-resolver@3.0.1/node_modules/json-schema-ref-resolver/index.js"(exports, module) {
     "use strict";
     var { dequal: deepEqual } = require_dist3();
-    var jsonSchemaRefSymbol = Symbol.for("json-schema-ref");
+    var jsonSchemaRefSymbol = /* @__PURE__ */ Symbol.for("json-schema-ref");
     var RefResolver = class {
       #schemas;
       #derefSchemas;
@@ -34660,7 +34669,7 @@ var require_range = __commonJS({
 var require_comparator = __commonJS({
   "../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/classes/comparator.js"(exports, module) {
     "use strict";
-    var ANY = Symbol("SemVer ANY");
+    var ANY = /* @__PURE__ */ Symbol("SemVer ANY");
     var Comparator = class _Comparator {
       static get ANY() {
         return ANY;
@@ -35347,7 +35356,7 @@ var require_plugin_utils = __commonJS({
     "use strict";
     var semver = require_semver2();
     var assert2 = __require("node:assert");
-    var kRegisteredPlugins = Symbol.for("registered-plugin");
+    var kRegisteredPlugins = /* @__PURE__ */ Symbol.for("registered-plugin");
     var {
       kTestInternals
     } = require_symbols2();
@@ -35360,7 +35369,7 @@ var require_plugin_utils = __commonJS({
     } = require_errors2();
     var rcRegex = /-(?:rc|pre|alpha).+$/u;
     function getMeta(fn) {
-      return fn[Symbol.for("plugin-meta")];
+      return fn[/* @__PURE__ */ Symbol.for("plugin-meta")];
     }
     function getPluginName(func) {
       const display = getDisplayName(func);
@@ -35386,10 +35395,10 @@ var require_plugin_utils = __commonJS({
       return func.toString().split("\n", 2).map((s) => s.trim()).join(" -- ");
     }
     function getDisplayName(fn) {
-      return fn[Symbol.for("fastify.display-name")];
+      return fn[/* @__PURE__ */ Symbol.for("fastify.display-name")];
     }
     function shouldSkipOverride(fn) {
-      return !!fn[Symbol.for("skip-override")];
+      return !!fn[/* @__PURE__ */ Symbol.for("skip-override")];
     }
     function checkDependencies(fn) {
       const meta3 = getMeta(fn);
@@ -37194,7 +37203,7 @@ var require_pretty_print = __commonJS({
     "use strict";
     var deepEqual = require_fast_deep_equal();
     var httpMethodStrategy = require_http_method();
-    var treeDataSymbol = Symbol("treeData");
+    var treeDataSymbol = /* @__PURE__ */ Symbol("treeData");
     function printObjectTree(obj2, parentPrefix = "") {
       let tree = "";
       const keys = Object.keys(obj2);
@@ -37848,8 +37857,8 @@ var require_compiler = __commonJS({
     var SCAN_LOOP_MAX_LENGTH = 12;
     var SPLIT_LINES = 250;
     var FUNCTION_LINES = 400;
-    var FLAG = Symbol("find-my-way.compiled.flag");
-    var NO_MATCH = Symbol("find-my-way.compiled.no-match");
+    var FLAG = /* @__PURE__ */ Symbol("find-my-way.compiled.flag");
+    var NO_MATCH = /* @__PURE__ */ Symbol("find-my-way.compiled.no-match");
     var POSITION_PLACEHOLDER = "POS";
     var RETRY_PLACEHOLDER = "RETRY";
     var POSITION_PATTERN = new RegExp(`${POSITION_PLACEHOLDER}(?: \\+ (\\d+))?`, "g");
@@ -43512,9 +43521,9 @@ var require_fastify_plugin = __commonJS({
     "use strict";
     var getPluginName = require_getPluginName();
     var toCamelCase = require_toCamelCase();
-    var kSkipOverride = Symbol.for("skip-override");
-    var kDisplayName = Symbol.for("fastify.display-name");
-    var kPluginMeta = Symbol.for("plugin-meta");
+    var kSkipOverride = /* @__PURE__ */ Symbol.for("skip-override");
+    var kDisplayName = /* @__PURE__ */ Symbol.for("fastify.display-name");
+    var kPluginMeta = /* @__PURE__ */ Symbol.for("plugin-meta");
     var count = 0;
     function plugin(fn, options = {}) {
       let autoName = false;
@@ -43666,8 +43675,8 @@ var require_cookie = __commonJS({
     function parse6(header, options) {
       return cookieModule.parseCookie(header, options);
     }
-    var kReplySetCookies = Symbol("fastify.reply.setCookies");
-    var kReplySetCookiesHookRan = Symbol("fastify.reply.setCookiesHookRan");
+    var kReplySetCookies = /* @__PURE__ */ Symbol("fastify.reply.setCookies");
+    var kReplySetCookiesHookRan = /* @__PURE__ */ Symbol("fastify.reply.setCookiesHookRan");
     function fastifyCookieSetCookie(reply, name2, value, options) {
       parseCookies(reply.server, reply.request, reply);
       const opts = Object.assign({ sameSite: "lax" }, options);
@@ -44477,7 +44486,7 @@ var require_index_min = __commonJS({
       var Fs = typeof process == "object" && process ? process.env?.__MINIMATCH_TESTING_PLATFORM__ || process.platform : "posix", Ms = { win32: { sep: "\\" }, posix: { sep: "/" } };
       w.sep = Fs === "win32" ? Ms.win32.sep : Ms.posix.sep;
       w.minimatch.sep = w.sep;
-      w.GLOBSTAR = Symbol("globstar **");
+      w.GLOBSTAR = /* @__PURE__ */ Symbol("globstar **");
       w.minimatch.GLOBSTAR = w.GLOBSTAR;
       var ir = (n, t = {}) => (e) => (0, w.minimatch)(e, n, t);
       w.filter = ir;
@@ -45623,7 +45632,7 @@ var require_index_min = __commonJS({
       j.isReadable = vr;
       var _r = (n) => !!n && typeof n == "object" && n instanceof Ue.EventEmitter && typeof n.write == "function" && typeof n.end == "function";
       j.isWritable = _r;
-      var H = Symbol("EOF"), X = Symbol("maybeEmitEnd"), J = Symbol("emittedEnd"), $t = Symbol("emittingEnd"), pt = Symbol("emittedError"), qt = Symbol("closed"), Is = Symbol("read"), Ht = Symbol("flush"), Us = Symbol("flushChunk"), W = Symbol("encoding"), ot = Symbol("decoder"), A = Symbol("flowing"), mt = Symbol("paused"), at = Symbol("resume"), k = Symbol("buffer"), F = Symbol("pipes"), M = Symbol("bufferLength"), Le = Symbol("bufferPush"), Xt = Symbol("bufferShift"), P = Symbol("objectMode"), C = Symbol("destroyed"), We = Symbol("error"), Be = Symbol("emitData"), $s = Symbol("emitEnd"), ze = Symbol("emitEnd2"), G = Symbol("async"), Ge = Symbol("abort"), Kt = Symbol("aborted"), gt = Symbol("signal"), st = Symbol("dataListeners"), D = Symbol("discarded"), wt = (n) => Promise.resolve().then(n), Er = (n) => n(), Or = (n) => n === "end" || n === "finish" || n === "prefinish", Cr = (n) => n instanceof ArrayBuffer || !!n && typeof n == "object" && n.constructor && n.constructor.name === "ArrayBuffer" && n.byteLength >= 0, Ar = (n) => !Buffer.isBuffer(n) && ArrayBuffer.isView(n), Vt = class {
+      var H = /* @__PURE__ */ Symbol("EOF"), X = /* @__PURE__ */ Symbol("maybeEmitEnd"), J = /* @__PURE__ */ Symbol("emittedEnd"), $t = /* @__PURE__ */ Symbol("emittingEnd"), pt = /* @__PURE__ */ Symbol("emittedError"), qt = /* @__PURE__ */ Symbol("closed"), Is = /* @__PURE__ */ Symbol("read"), Ht = /* @__PURE__ */ Symbol("flush"), Us = /* @__PURE__ */ Symbol("flushChunk"), W = /* @__PURE__ */ Symbol("encoding"), ot = /* @__PURE__ */ Symbol("decoder"), A = /* @__PURE__ */ Symbol("flowing"), mt = /* @__PURE__ */ Symbol("paused"), at = /* @__PURE__ */ Symbol("resume"), k = /* @__PURE__ */ Symbol("buffer"), F = /* @__PURE__ */ Symbol("pipes"), M = /* @__PURE__ */ Symbol("bufferLength"), Le = /* @__PURE__ */ Symbol("bufferPush"), Xt = /* @__PURE__ */ Symbol("bufferShift"), P = /* @__PURE__ */ Symbol("objectMode"), C = /* @__PURE__ */ Symbol("destroyed"), We = /* @__PURE__ */ Symbol("error"), Be = /* @__PURE__ */ Symbol("emitData"), $s = /* @__PURE__ */ Symbol("emitEnd"), ze = /* @__PURE__ */ Symbol("emitEnd2"), G = /* @__PURE__ */ Symbol("async"), Ge = /* @__PURE__ */ Symbol("abort"), Kt = /* @__PURE__ */ Symbol("aborted"), gt = /* @__PURE__ */ Symbol("signal"), st = /* @__PURE__ */ Symbol("dataListeners"), D = /* @__PURE__ */ Symbol("discarded"), wt = (n) => Promise.resolve().then(n), Er = (n) => n(), Or = (n) => n === "end" || n === "finish" || n === "prefinish", Cr = (n) => n instanceof ArrayBuffer || !!n && typeof n == "object" && n.constructor && n.constructor.name === "ArrayBuffer" && n.byteLength >= 0, Ar = (n) => !Buffer.isBuffer(n) && ArrayBuffer.isView(n), Vt = class {
         src;
         dest;
         opts;
@@ -45973,7 +45982,7 @@ var require_index_min = __commonJS({
         }
       };
       E.ChildrenCache = se;
-      var ri = Symbol("PathScurry setAsCwd"), R = class {
+      var ri = /* @__PURE__ */ Symbol("PathScurry setAsCwd"), R = class {
         name;
         root;
         roots;
@@ -46718,7 +46727,7 @@ var require_index_min = __commonJS({
       "use strict";
       Object.defineProperty(ne, "__esModule", { value: true });
       ne.Pattern = void 0;
-      var Ur = Y(), $r = (n) => n.length >= 1, qr = (n) => n.length >= 1, Hr = Symbol.for("nodejs.util.inspect.custom"), Xe = class n {
+      var Ur = Y(), $r = (n) => n.length >= 1, qr = (n) => n.length >= 1, Hr = /* @__PURE__ */ Symbol.for("nodejs.util.inspect.custom"), Xe = class n {
         #t;
         #i;
         #e;
@@ -58757,7 +58766,7 @@ var require_dist6 = __commonJS({
     var http2 = __importStar(__require("http"));
     var https_1 = __require("https");
     __exportStar(require_helpers(), exports);
-    var INTERNAL = Symbol("AgentBaseInternalState");
+    var INTERNAL = /* @__PURE__ */ Symbol("AgentBaseInternalState");
     var Agent = class extends http2.Agent {
       constructor(opts) {
         super(opts);
@@ -72446,8 +72455,8 @@ function registry() {
 var globalRegistry = globalThis.__zod_globalRegistry;
 
 // ../../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/compile.js
-var INVALID = Symbol.for("zod.compile.invalid");
-var FALLBACK_FLAG = Symbol.for("zod.compile.fallback");
+var INVALID = /* @__PURE__ */ Symbol.for("zod.compile.invalid");
+var FALLBACK_FLAG = /* @__PURE__ */ Symbol.for("zod.compile.fallback");
 var ZodCompileAsyncError = class extends Error {
   constructor(message = "z.compile does not support async refinements, transforms, or checks") {
     super(message);
@@ -76235,7 +76244,7 @@ var nonoptionalProcessor = (schema2, ctx, _json, params) => {
   const seen = ctx.seen.get(schema2);
   seen.ref = def.innerType;
 };
-var UNREPRESENTABLE_DEFAULT = Symbol();
+var UNREPRESENTABLE_DEFAULT = /* @__PURE__ */ Symbol();
 function serializeDefaultValue(value, schema2, ctx, json2, params) {
   let unrepresentable = false;
   const serialized = JSON.stringify(value, (_, val) => {
@@ -78999,7 +79008,7 @@ function fromJSONSchema(schema2, params) {
 }
 
 // ../../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/visit.js
-var RESOLVING = Symbol("z.visit/resolving");
+var RESOLVING = /* @__PURE__ */ Symbol("z.visit/resolving");
 function visit(schema2, fnOrHandlers) {
   const fn = typeof fnOrHandlers === "function" ? fnOrHandlers : (node2, rewritten) => {
     const h = fnOrHandlers[node2._zod.def.type];
@@ -92465,6 +92474,9 @@ var AppError = class extends Error {
     this.code = code2;
     this.details = details;
   }
+  status;
+  code;
+  details;
 };
 var badRequest = (message, details) => new AppError(400, "bad_request", message, details);
 var unauthorized = (message = "Fa\xE7a login para continuar.") => new AppError(401, "unauthorized", message);
@@ -96354,6 +96366,9 @@ var MetaApiError = class extends Error {
     this.httpStatus = httpStatus;
     this.fbtraceId = fbtraceId;
   }
+  code;
+  httpStatus;
+  fbtraceId;
   get isTokenError() {
     return this.code === 190 || this.code === 102;
   }
@@ -96398,6 +96413,8 @@ var MetaClient = class {
     this.ctx = ctx;
     this.token = token;
   }
+  ctx;
+  token;
   get base() {
     return `${this.ctx.config.META_GRAPH_BASE_URL}/${this.ctx.config.META_GRAPH_VERSION}`;
   }
@@ -98417,6 +98434,8 @@ var FloodGuard = class {
     this.windowMs = windowMs;
     this.maxKeys = maxKeys;
   }
+  windowMs;
+  maxKeys;
   hits = /* @__PURE__ */ new Map();
   lastSweep = 0;
   /** true = pode seguir; false = passou do limite nesta janela */

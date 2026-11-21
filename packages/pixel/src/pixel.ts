@@ -142,7 +142,8 @@ import {
       const fbclid = getQueryParam('fbclid');
       if (fbclid && !u.searchParams.get('fbclid')) u.searchParams.set('fbclid', fbclid);
       const utms = getUtms();
-      for (const [k, v] of Object.entries(utms)) if (v && !u.searchParams.get(k)) u.searchParams.set(k, v);
+      // sem desestruturação: Safari < 15 (iOS 12–14) tem falhas com ela
+      for (const k of Object.keys(utms)) { const v = utms[k]; if (v && !u.searchParams.get(k)) u.searchParams.set(k, v); }
       if (utms.utm_source && !u.searchParams.get('src')) u.searchParams.set('src', utms.utm_source);
       // ordem de prioridade (o código tem no máximo 240 caracteres): primeiro o external_id (ponte de
       // identidade: o servidor recupera UTMs, fbp e fbc do visitante), depois a campanha/conjunto/anúncio;

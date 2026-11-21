@@ -9,6 +9,10 @@ export default defineConfig({
   },
   build: {
     sourcemap: false,
+    // Alvo explícito: o esbuild 0.28 (atualizado por alerta de segurança) recusa declarar Safari 14 por causa de
+    // desestruturação — que as bibliotecas (react-query etc.) já usavam e o esbuild antigo entregava igual.
+    // O código gerado é o mesmo; navegadores de 2021 em diante (Safari/iOS 15+).
+    target: ['es2020', 'chrome87', 'edge88', 'firefox78', 'safari15'],
     chunkSizeWarningLimit: 700,
     rollupOptions: {
       output: {

@@ -227,9 +227,9 @@ export function send(url: string, payload: Dict, opts: { beaconFirst?: boolean; 
   try {
     fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body, keepalive: true, credentials: 'omit' })
       .then((r) => r.json().catch(() => null).then((j) => ({ ok: r.ok, j })))
-      .then(({ ok, j }) => {
+      .then((res) => {
         delivered = true;
-        opts.onResult?.(ok, j as Dict | null);
+        opts.onResult?.(res.ok, res.j as Dict | null);
       })
       .catch(() => {
         if (!delivered) beacon();
@@ -303,7 +303,7 @@ export function testPanel(enabled: boolean, title: string): (text: string, statu
     h.textContent = title;
     box.appendChild(h);
     document.body.appendChild(box);
-    queue.splice(0).forEach(([t, s]) => row(t, s));
+    queue.splice(0).forEach((item) => row(item[0], item[1]));
   };
   return (text, status = 'info') => {
     if (!document.body) {

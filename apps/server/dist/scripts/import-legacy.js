@@ -12,7 +12,11 @@ var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require
   throw Error('Dynamic require of "' + x + '" is not supported');
 });
 var __commonJS = (cb, mod) => function __require2() {
-  return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+  try {
+    return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+  } catch (e) {
+    throw mod = 0, e;
+  }
 };
 var __copyProps = (to, from, except, desc) => {
   if (from && typeof from === "object" || typeof from === "function") {
@@ -17262,7 +17266,7 @@ var require_column_definition = __commonJS({
           decimals: this.decimals
         };
       }
-      [Symbol.for("nodejs.util.inspect.custom")](depth, inspectOptions, inspect) {
+      [/* @__PURE__ */ Symbol.for("nodejs.util.inspect.custom")](depth, inspectOptions, inspect) {
         const Types = require_types();
         const typeNames = [];
         for (const t in Types) {
@@ -17515,7 +17519,7 @@ var require_typed_parameter = __commonJS({
         this.value = value;
         this.unsigned = unsigned;
       }
-      [Symbol.for("nodejs.util.inspect.custom")]() {
+      [/* @__PURE__ */ Symbol.for("nodejs.util.inspect.custom")]() {
         const name = Types[this.type] || `0x${this.type.toString(16)}`;
         return `${name}${this.unsigned ? " UNSIGNED" : ""}(${String(this.value)})`;
       }
