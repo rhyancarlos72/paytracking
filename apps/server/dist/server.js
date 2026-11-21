@@ -3947,9 +3947,9 @@ var require_pg_pool = __commonJS({
     var EventEmitter7 = __require("events").EventEmitter;
     var NOOP = function() {
     };
-    var removeWhere = (list, predicate) => {
-      const i = list.findIndex(predicate);
-      return i === -1 ? void 0 : list.splice(i, 1)[0];
+    var removeWhere = (list2, predicate) => {
+      const i = list2.findIndex(predicate);
+      return i === -1 ? void 0 : list2.splice(i, 1)[0];
     };
     var IdleItem = class {
       constructor(client, idleListener, timeoutId) {
@@ -22321,8 +22321,8 @@ var require_utils3 = __commonJS({
     var HOST_DELIMS = { "@": "%40", "/": "%2F", "?": "%3F", "#": "%23", ":": "%3A" };
     var HOST_DELIM_RE = /[@/?#:]/g;
     var HOST_DELIM_NO_COLON_RE = /[@/?#]/g;
-    function reescapeHostDelimiters(host, isIP) {
-      const re = isIP ? HOST_DELIM_NO_COLON_RE : HOST_DELIM_RE;
+    function reescapeHostDelimiters(host, isIP2) {
+      const re = isIP2 ? HOST_DELIM_NO_COLON_RE : HOST_DELIM_RE;
       re.lastIndex = 0;
       return host.replace(re, (ch) => HOST_DELIMS[ch]);
     }
@@ -23019,12 +23019,12 @@ var require_fast_uri = __commonJS({
       const host = matches[4];
       return hasMalformedPercentEncoding(matches[3]) || host !== void 0 && !isIPLiteral(host) && hasMalformedPercentEncoding(host) || hasMalformedPercentEncoding(matches[6]) || hasMalformedPercentEncoding(matches[7]) || hasMalformedPercentEncoding(matches[8]);
     }
-    function canonicalizeHost(parsed, options, schemeHandler, isIP) {
-      if (hasForbiddenDomainHost(parsed, options, schemeHandler, isIP)) {
+    function canonicalizeHost(parsed, options, schemeHandler, isIP2) {
+      if (hasForbiddenDomainHost(parsed, options, schemeHandler, isIP2)) {
         parsed.error = parsed.error || MALFORMED_HOST_ERROR;
         return true;
       }
-      if (!options.unicodeSupport && (!schemeHandler || !schemeHandler.unicodeSupport) && parsed.host && !isIPLiteral(parsed.host) && (options.domainHost || schemeHandler && schemeHandler.domainHost) && isIP === false && nonSimpleDomain(parsed.host)) {
+      if (!options.unicodeSupport && (!schemeHandler || !schemeHandler.unicodeSupport) && parsed.host && !isIPLiteral(parsed.host) && (options.domainHost || schemeHandler && schemeHandler.domainHost) && isIP2 === false && nonSimpleDomain(parsed.host)) {
         let url2;
         try {
           url2 = new URL("http://" + parsed.host);
@@ -23040,9 +23040,9 @@ var require_fast_uri = __commonJS({
       }
       return false;
     }
-    function hasForbiddenDomainHost(parsed, options, schemeHandler, isIP) {
+    function hasForbiddenDomainHost(parsed, options, schemeHandler, isIP2) {
       return Boolean(
-        parsed.host && isIP === false && !isIPLiteral(parsed.host) && (options.domainHost || schemeHandler && schemeHandler.domainHost) && FORBIDDEN_DOMAIN_HOST_CHARACTER.test(parsed.host)
+        parsed.host && isIP2 === false && !isIPLiteral(parsed.host) && (options.domainHost || schemeHandler && schemeHandler.domainHost) && FORBIDDEN_DOMAIN_HOST_CHARACTER.test(parsed.host)
       );
     }
     function isHostOnlyURL(url2) {
@@ -23065,7 +23065,7 @@ var require_fast_uri = __commonJS({
       let malformedHost = false;
       let malformedIPLiteral = false;
       let malformedScheme = false;
-      let isIP = false;
+      let isIP2 = false;
       if (options.reference === "suffix") {
         if (options.scheme) {
           uri = options.scheme + ":" + uri;
@@ -23127,15 +23127,15 @@ var require_fast_uri = __commonJS({
             const bracketedIPLiteral = isIPLiteral(parsed.host);
             const hasIPLiteralBracket = parsed.host.indexOf("[") !== -1 || parsed.host.indexOf("]") !== -1;
             const ipv6result = normalizeIPv6(parsed.host);
-            isIP = ipv6result.isIPV6 || ipv6result.isIPVFuture === true;
+            isIP2 = ipv6result.isIPV6 || ipv6result.isIPVFuture === true;
             malformedIPLiteral = hasIPLiteralBracket && (!bracketedIPLiteral || ipv6result.error === true);
-            parsed.host = isIP ? ipv6result.host : ipv6result.host.toLowerCase();
+            parsed.host = isIP2 ? ipv6result.host : ipv6result.host.toLowerCase();
             if (malformedIPLiteral) {
               parsed.error = parsed.error || MALFORMED_HOST_ERROR;
               malformedAuthorityOrPort = true;
             }
           } else {
-            isIP = true;
+            isIP2 = true;
           }
         }
         if (parsed.scheme === void 0 && parsed.userinfo === void 0 && parsed.host === void 0 && parsed.port === void 0 && parsed.query === void 0 && !parsed.path) {
@@ -23152,14 +23152,14 @@ var require_fast_uri = __commonJS({
         }
         const schemeHandler = getSchemeHandler(options.scheme || parsed.scheme);
         if (!malformedIPLiteral) {
-          malformedHost = canonicalizeHost(parsed, options, schemeHandler, isIP);
+          malformedHost = canonicalizeHost(parsed, options, schemeHandler, isIP2);
         }
         if (uri.indexOf("%") !== -1 && parsed.host !== void 0 && !malformedIPLiteral) {
-          let host = isIP ? parsed.host : normalizePercentEncoding(parsed.host, true);
-          if (!isIP) {
+          let host = isIP2 ? parsed.host : normalizePercentEncoding(parsed.host, true);
+          if (!isIP2) {
             host = normalizePercentEncoding(host.toLowerCase());
           }
-          parsed.host = isIP || options.scheme !== "null" ? reescapeHostDelimiters(host, isIP) : host;
+          parsed.host = isIP2 || options.scheme !== "null" ? reescapeHostDelimiters(host, isIP2) : host;
         }
         if (!schemeHandler || schemeHandler && !schemeHandler.skipNormalize) {
           if (parsed.path) {
@@ -27841,8 +27841,8 @@ var require_utils4 = __commonJS({
     }
     var IP_HOST_DELIMS = { "@": "%40", "/": "%2F", "?": "%3F", "#": "%23" };
     var IP_HOST_DELIM_RE = /[@/?#]/g;
-    function encodeHost(host, isIP, allowNonAscii = false) {
-      if (!isIP) {
+    function encodeHost(host, isIP2, allowNonAscii = false) {
+      if (!isIP2) {
         if (isLiteralRegName(host)) return host;
         return encodeComponent(host, isRegNameCharacter, allowNonAscii);
       }
@@ -28868,13 +28868,13 @@ var require_fast_uri2 = __commonJS({
       const host = matches[4];
       return hasMalformedPercentEncoding(matches[3]) || host !== void 0 && !isIPLiteral(host) && hasMalformedPercentEncoding(host) || hasMalformedPercentEncoding(matches[6]) || hasMalformedPercentEncoding(matches[7]) || hasMalformedPercentEncoding(matches[8]);
     }
-    function canonicalizeHost(parsed, options, schemeHandler, isIP) {
+    function canonicalizeHost(parsed, options, schemeHandler, isIP2) {
       const bracketedIPLiteral = parsed.host && parsed.host[0] === "[" && parsed.host[parsed.host.length - 1] === "]";
-      if (hasForbiddenDomainHost(parsed, options, schemeHandler, isIP)) {
+      if (hasForbiddenDomainHost(parsed, options, schemeHandler, isIP2)) {
         parsed.error = parsed.error || MALFORMED_HOST_ERROR;
         return true;
       }
-      if (!options.unicodeSupport && (!schemeHandler || !schemeHandler.unicodeSupport) && parsed.host && !isIPLiteral(parsed.host) && (options.domainHost || schemeHandler && schemeHandler.domainHost) && isIP === false && !bracketedIPLiteral && nonSimpleDomain(parsed.host)) {
+      if (!options.unicodeSupport && (!schemeHandler || !schemeHandler.unicodeSupport) && parsed.host && !isIPLiteral(parsed.host) && (options.domainHost || schemeHandler && schemeHandler.domainHost) && isIP2 === false && !bracketedIPLiteral && nonSimpleDomain(parsed.host)) {
         let url2;
         try {
           url2 = new URL("http://" + parsed.host);
@@ -28890,9 +28890,9 @@ var require_fast_uri2 = __commonJS({
       }
       return false;
     }
-    function hasForbiddenDomainHost(parsed, options, schemeHandler, isIP) {
+    function hasForbiddenDomainHost(parsed, options, schemeHandler, isIP2) {
       return Boolean(
-        parsed.host && isIP === false && !isIPLiteral(parsed.host) && (options.domainHost || schemeHandler && schemeHandler.domainHost) && FORBIDDEN_DOMAIN_HOST_CHARACTER.test(parsed.host)
+        parsed.host && isIP2 === false && !isIPLiteral(parsed.host) && (options.domainHost || schemeHandler && schemeHandler.domainHost) && FORBIDDEN_DOMAIN_HOST_CHARACTER.test(parsed.host)
       );
     }
     function isHostOnlyURL(url2) {
@@ -28916,7 +28916,7 @@ var require_fast_uri2 = __commonJS({
       let malformedHost = false;
       let malformedIPLiteral = false;
       let malformedScheme = false;
-      let isIP = false;
+      let isIP2 = false;
       if (options.reference === "suffix") {
         if (options.scheme) {
           uri = options.scheme + ":" + uri;
@@ -28981,10 +28981,10 @@ var require_fast_uri2 = __commonJS({
             const bracketedIPLiteral = isIPLiteral(parsed.host);
             const hasIPLiteralBracket = parsed.host.indexOf("[") !== -1 || parsed.host.indexOf("]") !== -1;
             const ipv6result = normalizeIPv6(parsed.host);
-            isIP = ipv6result.isIPV6 || ipv6result.isIPVFuture === true;
+            isIP2 = ipv6result.isIPV6 || ipv6result.isIPVFuture === true;
             malformedIPLiteral = hasIPLiteralBracket && (!bracketedIPLiteral || ipv6result.error === true);
-            parsed.host = isIP ? ipv6result.host : ipv6result.host.toLowerCase();
-            if (isIP && ipv6result.isIPV6 === true && parsed.host.indexOf("%") !== -1) {
+            parsed.host = isIP2 ? ipv6result.host : ipv6result.host.toLowerCase();
+            if (isIP2 && ipv6result.isIPV6 === true && parsed.host.indexOf("%") !== -1) {
               parsed.ipv6Zone = parsed.host.slice(parsed.host.indexOf("%") + 1);
             }
             if (malformedIPLiteral) {
@@ -28992,7 +28992,7 @@ var require_fast_uri2 = __commonJS({
               malformedAuthorityOrPort = true;
             }
           } else {
-            isIP = true;
+            isIP2 = true;
           }
         }
         if (parsed.scheme === void 0 && parsed.userinfo === void 0 && parsed.host === void 0 && parsed.port === void 0 && parsed.query === void 0 && !parsed.path) {
@@ -29009,17 +29009,17 @@ var require_fast_uri2 = __commonJS({
         }
         const schemeHandler = getSchemeHandler(options.scheme || parsed.scheme);
         if (!malformedIPLiteral) {
-          malformedHost = canonicalizeHost(parsed, options, schemeHandler, isIP);
+          malformedHost = canonicalizeHost(parsed, options, schemeHandler, isIP2);
         }
         if (parsed.host !== void 0 && !malformedIPLiteral) {
           let host = parsed.host;
-          if (uri.indexOf("%") !== -1 && !isIP) {
+          if (uri.indexOf("%") !== -1 && !isIP2) {
             host = normalizePercentEncoding(host, true);
             host = normalizePercentEncoding(host.toLowerCase());
           }
           if (options.scheme !== "null") {
             const allowNonAsciiHost = options.unicodeSupport === true || Boolean(schemeHandler && schemeHandler.unicodeSupport);
-            parsed.host = encodeHost(host, isIP, allowNonAsciiHost);
+            parsed.host = encodeHost(host, isIP2, allowNonAsciiHost);
           } else {
             parsed.host = host;
           }
@@ -29401,8 +29401,8 @@ var require_dist2 = __commonJS({
         return ajv;
       }
       const [formats, exportName] = opts.mode === "fast" ? [formats_1.fastFormats, fastName] : [formats_1.fullFormats, fullName];
-      const list = opts.formats || formats_1.formatNames;
-      addFormats(ajv, list, formats, exportName);
+      const list2 = opts.formats || formats_1.formatNames;
+      addFormats(ajv, list2, formats, exportName);
       if (opts.keywords)
         (0, limit_1.default)(ajv);
       return ajv;
@@ -29414,11 +29414,11 @@ var require_dist2 = __commonJS({
         throw new Error(`Unknown format "${name2}"`);
       return f;
     };
-    function addFormats(ajv, list, fs4, exportName) {
+    function addFormats(ajv, list2, fs4, exportName) {
       var _a3;
       var _b;
       (_a3 = (_b = ajv.opts.code).formats) !== null && _a3 !== void 0 ? _a3 : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
-      for (const f of list)
+      for (const f of list2)
         ajv.addFormat(f, fs4[f]);
     }
     module.exports = exports = formatsPlugin;
@@ -34021,7 +34021,7 @@ var require_sort = __commonJS({
   "../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/sort.js"(exports, module) {
     "use strict";
     var compareBuild = require_compare_build();
-    var sort = (list, loose) => list.sort((a, b) => compareBuild(a, b, loose));
+    var sort = (list2, loose) => list2.sort((a, b) => compareBuild(a, b, loose));
     module.exports = sort;
   }
 });
@@ -34031,7 +34031,7 @@ var require_rsort = __commonJS({
   "../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/rsort.js"(exports, module) {
     "use strict";
     var compareBuild = require_compare_build();
-    var rsort = (list, loose) => list.sort((a, b) => compareBuild(b, a, loose));
+    var rsort = (list2, loose) => list2.sort((a, b) => compareBuild(b, a, loose));
     module.exports = rsort;
   }
 });
@@ -75708,8 +75708,8 @@ var contributors = {
 function aggregateChecks(schema2) {
   const agg = {};
   const def = schema2._zod.def;
-  const list = schema2._zod.traits.has("$ZodCheck") ? [schema2, ...def.checks ?? []] : def.checks ?? [];
-  for (const ch of list)
+  const list2 = schema2._zod.traits.has("$ZodCheck") ? [schema2, ...def.checks ?? []] : def.checks ?? [];
+  for (const ch of list2)
     contributors[ch._zod.def.check]?.(agg, ch._zod.def);
   const bag = schema2._zod.bag;
   if (bag.minimum !== void 0)
@@ -83389,7 +83389,7 @@ function buildHeaderValue(structured) {
   return value + (paramsArray.length ? "; " + paramsArray.join("; ") : "");
 }
 function buildHeaderParam(key, data, maxLength) {
-  const list = [];
+  const list2 = [];
   let encodedStr = typeof data === "string" ? data : (data || "").toString();
   let chr;
   let line;
@@ -83406,13 +83406,13 @@ function buildHeaderParam(key, data, maxLength) {
       ];
     }
     encodedStr = encodedStr.replace(new RegExp(".{" + maxLength + "}", "g"), (str2) => {
-      list.push({
+      list2.push({
         line: str2
       });
       return "";
     });
     if (encodedStr) {
-      list.push({
+      list2.push({
         line: encodedStr
       });
     }
@@ -83442,7 +83442,7 @@ function buildHeaderParam(key, data, maxLength) {
         chr = chr === " " ? chr : safeEncodeURIComponent(chr);
         if (chr !== encodedStr[i]) {
           if ((safeEncodeURIComponent(line) + chr).length >= maxLength) {
-            list.push({
+            list2.push({
               line,
               encoded
             });
@@ -83457,7 +83457,7 @@ function buildHeaderParam(key, data, maxLength) {
         }
       }
       if ((line + chr).length >= maxLength) {
-        list.push({
+        list2.push({
           line,
           encoded
         });
@@ -83473,13 +83473,13 @@ function buildHeaderParam(key, data, maxLength) {
       }
     }
     if (line) {
-      list.push({
+      list2.push({
         line,
         encoded
       });
     }
   }
-  return list.map((item, i2) => ({
+  return list2.map((item, i2) => ({
     // encoded lines: {name}*{part}*
     // unencoded lines: {name}*{part}
     // if any line needs to be encoded then the first line (part==0) is always encoded
@@ -84247,10 +84247,10 @@ var Tokenizer = class {
       this.checkChar(str2.charAt(i), i);
     }
     this._closeText(len);
-    const list = this.list;
-    const slots = list.slots;
+    const list2 = this.list;
+    const slots = list2.slots;
     let kept = 0;
-    for (let i = 0, count = list.length; i < count; i++) {
+    for (let i = 0, count = list2.length; i < count; i++) {
       const kind = slots[i * 3];
       let start = slots[i * 3 + 1];
       let end = slots[i * 3 + 2];
@@ -84259,7 +84259,7 @@ var Tokenizer = class {
         if (!value) {
           continue;
         }
-        list.cleaned.set(kept, value);
+        list2.cleaned.set(kept, value);
       } else if (!(kind & TOKEN_OPERATOR)) {
         while (start < end && _isSpaceCode(str2.charCodeAt(start))) {
           start++;
@@ -84276,8 +84276,8 @@ var Tokenizer = class {
       slots[kept * 3 + 2] = end;
       kept++;
     }
-    list.length = kept;
-    return list;
+    list2.length = kept;
+    return list2;
   }
   /**
    * Ends the text run being collected, if there is one
@@ -84466,10 +84466,10 @@ var Tokenizer = class {
     this.innerEscaped = false;
   }
 };
-function _mergeNameFragments(list) {
+function _mergeNameFragments(list2) {
   const merged = [];
-  for (let i = list.length - 1; i >= 0; i--) {
-    const current = list[i];
+  for (let i = list2.length - 1; i >= 0; i--) {
+    const current = list2[i];
     const next = merged.length ? merged[merged.length - 1] : null;
     if (next && current.address === "" && current.name && !current.group && next.address && next.name) {
       next.name = current.name + ", " + next.name;
@@ -84519,8 +84519,8 @@ function addressparser(str2, options) {
   const parsedAddresses = _parseAddressList(str2);
   if (options?.flatten) {
     const flatAddresses = [];
-    const walkAddressList = (list) => {
-      list.forEach((entry) => {
+    const walkAddressList = (list2) => {
+      list2.forEach((entry) => {
         if (entry.group) {
           return walkAddressList(entry.group);
         }
@@ -85288,17 +85288,17 @@ var MimeNode = class _MimeNode {
    * @return SMTP envelope in the form of {from: 'from@example.com', to: ['to@example.com']}
    */
   setEnvelope(envelope) {
-    let list;
+    let list2;
     this._envelope = {
       from: false,
       to: []
     };
     if (envelope.from) {
-      list = [];
-      this._convertAddresses(this._parseEnvelopeAddresses(envelope.from), list);
-      list = list.filter((address) => address && address.address);
-      if (list.length && list[0]) {
-        this._envelope.from = list[0].address;
+      list2 = [];
+      this._convertAddresses(this._parseEnvelopeAddresses(envelope.from), list2);
+      list2 = list2.filter((address) => address && address.address);
+      if (list2.length && list2[0]) {
+        this._envelope.from = list2[0].address;
       }
     }
     const seenRecipients = /* @__PURE__ */ new Set();
@@ -85349,11 +85349,11 @@ var MimeNode = class _MimeNode {
     const seenRecipients = /* @__PURE__ */ new Set();
     const recipients = [];
     this._headers.forEach((header) => {
-      const list = [];
+      const list2 = [];
       if (header.key === "From" || !envelope.from && ["Reply-To", "Sender"].includes(header.key)) {
-        this._convertAddresses(this._parseAddresses(header.value), list);
-        if (list.length && list[0]) {
-          envelope.from = list[0].address;
+        this._convertAddresses(this._parseAddresses(header.value), list2);
+        if (list2.length && list2[0]) {
+          envelope.from = list2[0].address;
         }
       } else if (["To", "Cc", "Bcc"].includes(header.key)) {
         this._convertAddresses(this._parseAddresses(header.value), recipients, seenRecipients);
@@ -85507,10 +85507,10 @@ var MimeNode = class _MimeNode {
     const flattened = [];
     const seen = /* @__PURE__ */ new WeakSet();
     const stack = [];
-    const enter = (list) => {
-      if (!seen.has(list)) {
-        seen.add(list);
-        stack.push({ list, pos: 0 });
+    const enter = (list2) => {
+      if (!seen.has(list2)) {
+        seen.add(list2);
+        stack.push({ list: list2, pos: 0 });
       }
     };
     enter(Array.isArray(addresses) ? addresses : [addresses]);
@@ -87835,8 +87835,8 @@ var CLOSE_TIMEOUT = 5 * 1e3;
 var KEEPALIVE_DELAY = 30 * 1e3;
 var TEARDOWN_NOOP = () => {
 };
-function shuffle(list) {
-  const result = list.slice();
+function shuffle(list2) {
+  const result = list2.slice();
   for (let i = result.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [result[i], result[j]] = [result[j], result[i]];
@@ -94454,9 +94454,9 @@ var pixelInput = external_exports.object({
   sendRefundEvent: external_exports.boolean().default(true),
   allowedOrigins: external_exports.array(external_exports.string().url()).max(50).default([])
 });
-function normalizeProductIds(list) {
+function normalizeProductIds(list2) {
   const out = /* @__PURE__ */ new Set();
-  for (const raw of list) for (const p of raw.split(/[\s,;]+/)) if (p.trim()) out.add(p.trim());
+  for (const raw of list2) for (const p of raw.split(/[\s,;]+/)) if (p.trim()) out.add(p.trim());
   return [...out];
 }
 function pixelDto(p, ctx) {
@@ -94524,8 +94524,8 @@ async function setProducts(c, orgId, pixelId, ids) {
       [orgId, pixelId, ids]
     );
     if (clash.rowCount) {
-      const list = clash.rows.map((r) => `${r.product_id} (pixel "${r.name}")`).join(", ");
-      throw conflict(`Produto j\xE1 vinculado a outro pixel: ${list}. Remova de l\xE1 antes.`);
+      const list2 = clash.rows.map((r) => `${r.product_id} (pixel "${r.name}")`).join(", ");
+      throw conflict(`Produto j\xE1 vinculado a outro pixel: ${list2}. Remova de l\xE1 antes.`);
     }
   }
   await c.query("DELETE FROM pixel_products WHERE pixel_id = $1 AND NOT (product_id = ANY($2))", [pixelId, ids]);
@@ -96267,14 +96267,14 @@ async function storeRate(db, date5, base2, quote, rate, source, overwrite = true
 }
 var recentHistoryFetch = /* @__PURE__ */ new Map();
 async function ensureFxRates(ctx, currencies, since, until) {
-  const list = [...new Set(currencies.map((c) => String(c ?? "").trim().toUpperCase()).filter((c) => /^[A-Z]{3}$/.test(c) && c !== "EUR"))];
-  if (!list.length) return;
+  const list2 = [...new Set(currencies.map((c) => String(c ?? "").trim().toUpperCase()).filter((c) => /^[A-Z]{3}$/.test(c) && c !== "EUR"))];
+  if (!list2.length) return;
   const covered = await ctx.db.query(
     `SELECT quote FROM fx_rates WHERE base = 'EUR' AND quote = ANY($1) AND rate_date BETWEEN ($2::date - $3::int) AND $2::date GROUP BY quote`,
-    [list, since, LOOKBACK_DAYS]
+    [list2, since, LOOKBACK_DAYS]
   );
   const have = new Set(covered.rows.map((r) => r.quote));
-  const missing = list.filter((c) => !have.has(c));
+  const missing = list2.filter((c) => !have.has(c));
   if (!missing.length) return;
   const key = `${missing.sort().join(",")}:${since}:${until}`;
   const last = recentHistoryFetch.get(key) ?? 0;
@@ -96306,13 +96306,13 @@ var FxTable = class _FxTable {
   }
   static async load(db, currencies, since, until) {
     const t = new _FxTable();
-    const list = [...new Set(currencies.filter((c) => c && c !== "EUR"))];
-    if (list.length) {
+    const list2 = [...new Set(currencies.filter((c) => c && c !== "EUR"))];
+    if (list2.length) {
       const r = await db.query(
         `SELECT rate_date::text AS date, quote, rate::text AS rate, source FROM fx_rates
           WHERE base = 'EUR' AND quote = ANY($1) AND rate_date BETWEEN ($2::date - $4::int) AND $3::date
           ORDER BY quote, rate_date`,
-        [list, since, until, LOOKBACK_DAYS]
+        [list2, since, until, LOOKBACK_DAYS]
       );
       for (const row of r.rows) {
         const arr = t.byQuote.get(row.quote) ?? [];
@@ -97647,8 +97647,8 @@ function reportRoutes(app, ctx) {
         else r.unconverted += s.n;
       }
     }
-    const list = [...rows.values()].sort((x, y) => y.revenueMinor > x.revenueMinor ? 1 : y.revenueMinor < x.revenueMinor ? -1 : y.pageViews - x.pageViews);
-    return jsonSafe({ dimension: dim, reportingCurrency: a.org.reporting_currency, rows: list.slice(0, 500) });
+    const list2 = [...rows.values()].sort((x, y) => y.revenueMinor > x.revenueMinor ? 1 : y.revenueMinor < x.revenueMinor ? -1 : y.pageViews - x.pageViews);
+    return jsonSafe({ dimension: dim, reportingCurrency: a.org.reporting_currency, rows: list2.slice(0, 500) });
   });
   app.get("/v1/alerts", async (req) => {
     const a = requireRole(req, "viewer");
@@ -98451,6 +98451,30 @@ var FLOOD_LIMITS = [
   { prefix: "/v1/meta/callback", group: "oauth", limit: 30 }
 ];
 
+// src/lib/cloudflare.ts
+import { BlockList, isIP } from "node:net";
+var IPV4 = ["173.245.48.0/20", "103.21.244.0/22", "103.22.200.0/22", "103.31.4.0/22", "141.101.64.0/18", "108.162.192.0/18", "190.93.240.0/20", "188.114.96.0/20", "197.234.240.0/22", "198.41.128.0/17", "162.158.0.0/15", "104.16.0.0/13", "104.24.0.0/14", "172.64.0.0/13", "131.0.72.0/22"];
+var IPV6 = ["2400:cb00::/32", "2606:4700::/32", "2803:f800::/32", "2405:b500::/32", "2405:8100::/32", "2a06:98c0::/29", "2c0f:f248::/32"];
+var list = new BlockList();
+for (const c of IPV4) {
+  const [net8, bits] = c.split("/");
+  list.addSubnet(net8, Number(bits), "ipv4");
+}
+for (const c of IPV6) {
+  const [net8, bits] = c.split("/");
+  list.addSubnet(net8, Number(bits), "ipv6");
+}
+function isCloudflareIp(addr) {
+  let a = String(addr ?? "").trim();
+  if (a.startsWith("::ffff:") && isIP(a.slice(7)) === 4) a = a.slice(7);
+  const v = isIP(a);
+  if (!v) return false;
+  return list.check(a, v === 4 ? "ipv4" : "ipv6");
+}
+function trustHopsAndCloudflare(hops) {
+  return (addr, i) => i < hops || isCloudflareIp(addr);
+}
+
 // src/app.ts
 var SEVERITY = { trace: "DEBUG", debug: "DEBUG", info: "INFO", warn: "WARNING", error: "ERROR", fatal: "CRITICAL" };
 var PUBLIC_PREFIXES = ["/v1/webhooks", "/api/", "/v1/collect", "/v1/pixel-config", "/v1/meta/callback", "/v1/public/", "/healthz", "/pixel.js", "/utms.js", "/checkout-loader"];
@@ -98483,7 +98507,8 @@ async function buildApp(ctx) {
       }
     },
     // número = confia só nos N últimos saltos (o que o proxy acrescentou), igual ao proxy-addr
-    trustProxy: typeof ctx.config.TRUST_PROXY === "number" ? /* @__PURE__ */ ((hops) => (_addr, i) => i < hops)(ctx.config.TRUST_PROXY) : ctx.config.TRUST_PROXY,
+    // N saltos da hospedagem + saltos da Cloudflare (quando o domínio estiver atrás dela): req.ip = IP real do visitante
+    trustProxy: typeof ctx.config.TRUST_PROXY === "number" ? trustHopsAndCloudflare(ctx.config.TRUST_PROXY) : ctx.config.TRUST_PROXY,
     bodyLimit: 1048576,
     // conexões ociosas/lentas não ficam presas (cada conexão aberta pesa no limite de processos da hospedagem)
     connectionTimeout: 6e4,

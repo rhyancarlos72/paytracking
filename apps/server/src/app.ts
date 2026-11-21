@@ -31,6 +31,7 @@ import { supportRoutes } from './support/routes.js';
 import { AppError } from './lib/errors.js';
 import { FLOOD_LIMITS, FloodGuard } from './lib/flood.js';
 import { SESSION_COOKIE } from './lib/http.js';
+import { trustHopsAndCloudflare } from './lib/cloudflare.js';
 
 /** Rotas públicas chamadas por terceiros (gateways, navegador do visitante, Meta). */
 const SEVERITY: Record<string, string> = { trace: 'DEBUG', debug: 'DEBUG', info: 'INFO', warn: 'WARNING', error: 'ERROR', fatal: 'CRITICAL' };
@@ -68,8 +69,9 @@ export async function buildApp(ctx: Ctx): Promise<FastifyInstance> {
       },
     },
     // número = confia só nos N últimos saltos (o que o proxy acrescentou), igual ao proxy-addr
+    // N saltos da hospedagem + saltos da Cloudflare (quando o domínio estiver atrás dela): req.ip = IP real do visitante
     trustProxy: typeof ctx.config.TRUST_PROXY === 'number'
-      ? ((hops: number) => (_addr: string, i: number) => i < hops)(ctx.config.TRUST_PROXY)
+      ? trustHopsAndCloudflare(ctx.config.TRUST_PROXY)
       : ctx.config.TRUST_PROXY,
     bodyLimit: 1_048_576,
     // conexões ociosas/lentas não ficam presas (cada conexão aberta pesa no limite de processos da hospedagem)
