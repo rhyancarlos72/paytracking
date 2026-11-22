@@ -4,6 +4,7 @@ import { tx } from '@pt/db';
 import { BROWSER_EVENTS, buildServerEvent, mapEventName, normalizeCurrency, parseAmount, UTM_KEYS } from '@pt/domain';
 import type { Ctx } from '../context.js';
 import { enqueueCapi } from '../capi/outbox.js';
+import { wakeDispatcher } from '../capi/wake.js';
 import { sha256Hex } from '../lib/crypto.js';
 import { findIdentity, rememberIdentity } from '../tracking/identity.js';
 
@@ -47,7 +48,22 @@ function cors(req: FastifyRequest, reply: FastifyReply) {
 const str = (v: unknown, n = 500): string | null => (typeof v === 'string' && v.trim() ? v.trim().slice(0, n) : typeof v === 'number' ? String(v) : null);
 
 export function collectRoutes(app: FastifyInstance, ctx: Ctx) {
+  /**
+   * Cache em memória da chave → pixel (60 s, inclusive chave inválida): cada evento do navegador deixava de
+   * ir ao banco só para descobrir o pixel. Na hospedagem compartilhada cada pedido em andamento ocupa uma vaga
+   * de processo — pedidos mais curtos = menos processos (o excesso liga o captcha da Hostinger).
+   */
+  const pixelCache = new Map<string, { at: number; row: PixelRow | null }>();
   async function pixelByKey(key: string, legacyToken: string): Promise<PixelRow | null> {
+    const ck = `${key}|${legacyToken}`;
+    const hit = pixelCache.get(ck);
+    if (hit && Date.now() - hit.at < 60_000) return hit.row;
+    const row = await pixelByKeyDb(key, legacyToken);
+    if (pixelCache.size > 5000) pixelCache.clear();
+    pixelCache.set(ck, { at: Date.now(), row });
+    return row;
+  }
+  async function pixelByKeyDb(key: string, legacyToken: string): Promise<PixelRow | null> {
     const cols = 'p.id, p.org_id, p.meta_pixel_id, p.currency, p.country, p.active, p.capi_token_enc, p.allowed_origins';
     if (key && !key.startsWith('itk_')) {
       const r = await ctx.db.query(`SELECT ${cols} FROM pixels p WHERE p.public_key = $1`, [key]);
@@ -107,42 +123,53 @@ export function collectRoutes(app: FastifyInstance, ctx: Ctx) {
     const pageUrl = str(body.event_source_url, 1000) ?? str(req.headers.referer, 1000);
 
     // visitante que volta: completa com o que ele já deixou antes (fbp/fbc de outra página, e-mail digitado no checkout)
-    const known = str(body.external_id, 100) ? await findIdentity(ctx.db, pixel.org_id, { xid: str(body.external_id, 100) }).catch(() => null) : null;
-    const event = buildServerEvent({
-      eventName, eventId, eventTime: Math.floor(ctx.now().getTime() / 1000), eventSourceUrl: pageUrl,
-      customer: {
-        email: str(body.email, 190) ?? known?.email_hash ?? null, phone: str(body.phone, 40), firstName: str(body.first_name, 80), lastName: str(body.last_name, 120),
-        document: str(body.document, 30) ?? str(body.cpf, 30), externalId: str(body.external_id, 100),
-        city: str(body.city, 80), state: str(body.state, 80), zip: str(body.zip, 20),
-        country: str(body.country, 2) ?? countryHeader ?? known?.country ?? pixel.country?.trim() ?? null,
-      },
-      tracking: { fbp: str(body.fbp, 255) ?? known?.fbp ?? null, fbc: str(body.fbc, 255) ?? known?.fbc ?? null, clientIp: req.ip, userAgent: ua },
-      valueMinor, currency, products, utms,
-    });
+    const work = async (): Promise<{ duplicate: boolean; queued: boolean }> => {
+      const known = str(body.external_id, 100) ? await findIdentity(ctx.db, pixel.org_id, { xid: str(body.external_id, 100) }).catch(() => null) : null;
+      const event = buildServerEvent({
+        eventName, eventId, eventTime: Math.floor(ctx.now().getTime() / 1000), eventSourceUrl: pageUrl,
+        customer: {
+          email: str(body.email, 190) ?? known?.email_hash ?? null, phone: str(body.phone, 40), firstName: str(body.first_name, 80), lastName: str(body.last_name, 120),
+          document: str(body.document, 30) ?? str(body.cpf, 30), externalId: str(body.external_id, 100),
+          city: str(body.city, 80), state: str(body.state, 80), zip: str(body.zip, 20),
+          country: str(body.country, 2) ?? countryHeader ?? known?.country ?? pixel.country?.trim() ?? null,
+        },
+        tracking: { fbp: str(body.fbp, 255) ?? known?.fbp ?? null, fbc: str(body.fbc, 255) ?? known?.fbc ?? null, clientIp: req.ip, userAgent: ua },
+        valueMinor, currency, products, utms,
+      });
 
-    const result = await tx(ctx.db, async (c) => {
-      const te = await c.query(
-        `INSERT INTO tracking_events(org_id, pixel_id, event_name, event_id, source, value_minor, currency, page_url,
-                                     utm_source, utm_medium, utm_campaign, utm_content, utm_term, utm_id, match_keys)
-         VALUES ($1,$2,$3,$4,'browser',$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
-         ON CONFLICT (pixel_id, event_name, event_id) DO NOTHING RETURNING id`,
-        [pixel.org_id, pixel.id, eventName, eventId, valueMinor, currency, pageUrl,
-          ...UTM_KEYS.map((k) => utms[k]), Object.keys(event.user_data)],
-      );
-      if (!te.rowCount) return { duplicate: true, queued: false };
-      const xid = str(body.external_id, 100);
-      if (xid) {
-        await rememberIdentity(c, pixel.org_id, {
-          xid, fbp: str(body.fbp, 255), fbc: str(body.fbc, 255), ip: req.ip, userAgent: ua, country: countryHeader ?? null,
-          email: str(body.email, 190), phone: str(body.phone, 40), sourceUrl: pageUrl, utms,
-          checkoutSeen: eventName === 'InitiateCheckout' || eventName === 'AddPaymentInfo',
-        });
-      }
-      const queued = pixel.capi_token_enc
-        ? (await enqueueCapi(c, { orgId: pixel.org_id, pixelId: pixel.id, event, trackingEventId: te.rows[0].id })) !== null
-        : false;
-      return { duplicate: false, queued };
-    });
+      return tx(ctx.db, async (c) => {
+        const te = await c.query(
+          `INSERT INTO tracking_events(org_id, pixel_id, event_name, event_id, source, value_minor, currency, page_url,
+                                       utm_source, utm_medium, utm_campaign, utm_content, utm_term, utm_id, match_keys)
+           VALUES ($1,$2,$3,$4,'browser',$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+           ON CONFLICT (pixel_id, event_name, event_id) DO NOTHING RETURNING id`,
+          [pixel.org_id, pixel.id, eventName, eventId, valueMinor, currency, pageUrl,
+            ...UTM_KEYS.map((k) => utms[k]), Object.keys(event.user_data)],
+        );
+        if (!te.rowCount) return { duplicate: true, queued: false };
+        const xid = str(body.external_id, 100);
+        if (xid) {
+          await rememberIdentity(c, pixel.org_id, {
+            xid, fbp: str(body.fbp, 255), fbc: str(body.fbc, 255), ip: req.ip, userAgent: ua, country: countryHeader ?? null,
+            email: str(body.email, 190), phone: str(body.phone, 40), sourceUrl: pageUrl, utms,
+            checkoutSeen: eventName === 'InitiateCheckout' || eventName === 'AddPaymentInfo',
+          });
+        }
+        const queued = pixel.capi_token_enc
+          ? (await enqueueCapi(c, { orgId: pixel.org_id, pixelId: pixel.id, event, trackingEventId: te.rows[0].id })) !== null
+          : false;
+        return { duplicate: false, queued };
+      });
+    };
+    if (ctx.config.COLLECT_ASYNC) {
+      // responde na hora e grava logo em seguida (o navegador não espera o banco; a vaga de processo é liberada já)
+      void reply.send({ success: true, accepted: true, queued: true, event_id: eventId });
+      work()
+        .then((r) => { if (r.queued) wakeDispatcher(); }) // evento gravado: envia à Meta na hora
+        .catch((e) => ctx.log.error({ err: String(e), event: eventName }, 'falha ao gravar evento do navegador'));
+      return reply;
+    }
+    const result = await work();
     return reply.send({ success: true, ...result, event_id: eventId });
   }
 

@@ -65,6 +65,7 @@ export async function setup(overrides: Record<string, string> = {}): Promise<Tes
     WOOVI_APP_ID: 'woovi-app', WOOVI_WEBHOOK_SECRET: 'woovi-secret',
     PLATFORM_ADMIN_EMAILS: 'root@paytracking.test',
     TRUST_PROXY: 'true',
+    COLLECT_ASYNC: 'false', // os testes conferem o resultado da gravação na própria resposta
     ...overrides,
   });
   const fake = new FakeFetch();

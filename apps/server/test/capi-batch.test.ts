@@ -83,3 +83,23 @@ describe('CAPI em lote por pixel', () => {
     expect((await statuses(acc.orgId)).every((r) => r.status === 'sent')).toBe(true);
   });
 });
+
+describe('evento do navegador em modo rápido (padrão em produção)', () => {
+  it('responde na hora, grava em seguida e a fila da Meta recebe o evento', async () => {
+    const acc = await newAccount(env);
+    const px = await newPixel(acc.client);
+    const prev = env.ctx.config.COLLECT_ASYNC;
+    (env.ctx.config as { COLLECT_ASYNC: boolean }).COLLECT_ASYNC = true;
+    try {
+      const r = await env.app.inject({ method: 'POST', url: `/v1/collect?k=${px.publicKey}`, payload: JSON.stringify({ event: 'page_view', event_id: 'async-1', external_id: 'x-a' }), headers: { 'content-type': 'text/plain' } });
+      expect(r.json()).toMatchObject({ success: true, accepted: true, event_id: 'async-1' });
+      let n = 0;
+      for (let i = 0; i < 40 && n === 0; i++) { await new Promise((ok) => setTimeout(ok, 50)); n = (await env.db.query(`SELECT count(*)::int n FROM capi_outbox WHERE org_id = $1 AND event_id = 'async-1'`, [acc.orgId])).rows[0].n; }
+      expect(n).toBe(1);
+      // chave inválida continua recusada na hora
+      expect((await env.app.inject({ method: 'POST', url: '/v1/collect?k=pt_px_nao_existe', payload: '{}', headers: { 'content-type': 'text/plain' } })).statusCode).toBe(401);
+    } finally {
+      (env.ctx.config as { COLLECT_ASYNC: boolean }).COLLECT_ASYNC = prev;
+    }
+  });
+});

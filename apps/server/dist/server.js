@@ -79309,6 +79309,8 @@ var schema = external_exports.object({
   /** WhatsApp de suporte padrão (o Admin pode trocar pelo painel) */
   SUPPORT_WHATSAPP: external_exports.string().default(""),
   /** Tempo máximo de um pedido (ms) antes de responder 503 — evita pedidos presos consumindo processos. */
+  /** Eventos do navegador (/v1/collect): responde na hora e grava em segundo plano (padrão). false = espera gravar (testes). */
+  COLLECT_ASYNC: external_exports.enum(["true", "false"]).default("true").transform((v) => v === "true"),
   REQUEST_TIMEOUT_MS: external_exports.coerce.number().int().min(100).max(12e4).default(25e3),
   WEBHOOK_BODY_RETENTION_DAYS: external_exports.coerce.number().int().min(1).default(30),
   /** Recibos de webhook sem valor de auditoria (rejeitados, ignorados, duplicados, falhas) são apagados após N dias.
@@ -95911,7 +95913,17 @@ function cors(req, reply) {
 }
 var str = (v, n = 500) => typeof v === "string" && v.trim() ? v.trim().slice(0, n) : typeof v === "number" ? String(v) : null;
 function collectRoutes(app, ctx) {
+  const pixelCache = /* @__PURE__ */ new Map();
   async function pixelByKey(key, legacyToken) {
+    const ck = `${key}|${legacyToken}`;
+    const hit2 = pixelCache.get(ck);
+    if (hit2 && Date.now() - hit2.at < 6e4) return hit2.row;
+    const row = await pixelByKeyDb(key, legacyToken);
+    if (pixelCache.size > 5e3) pixelCache.clear();
+    pixelCache.set(ck, { at: Date.now(), row });
+    return row;
+  }
+  async function pixelByKeyDb(key, legacyToken) {
     const cols = "p.id, p.org_id, p.meta_pixel_id, p.currency, p.country, p.active, p.capi_token_enc, p.allowed_origins";
     if (key && !key.startsWith("itk_")) {
       const r2 = await ctx.db.query(`SELECT ${cols} FROM pixels p WHERE p.public_key = $1`, [key]);
@@ -95969,68 +95981,78 @@ function collectRoutes(app, ctx) {
       priceMinor: currency ? parseAmount(p?.price, currency, "major") : null
     })) : [];
     const pageUrl = str(body.event_source_url, 1e3) ?? str(req.headers.referer, 1e3);
-    const known = str(body.external_id, 100) ? await findIdentity(ctx.db, pixel.org_id, { xid: str(body.external_id, 100) }).catch(() => null) : null;
-    const event = buildServerEvent({
-      eventName,
-      eventId,
-      eventTime: Math.floor(ctx.now().getTime() / 1e3),
-      eventSourceUrl: pageUrl,
-      customer: {
-        email: str(body.email, 190) ?? known?.email_hash ?? null,
-        phone: str(body.phone, 40),
-        firstName: str(body.first_name, 80),
-        lastName: str(body.last_name, 120),
-        document: str(body.document, 30) ?? str(body.cpf, 30),
-        externalId: str(body.external_id, 100),
-        city: str(body.city, 80),
-        state: str(body.state, 80),
-        zip: str(body.zip, 20),
-        country: str(body.country, 2) ?? countryHeader ?? known?.country ?? pixel.country?.trim() ?? null
-      },
-      tracking: { fbp: str(body.fbp, 255) ?? known?.fbp ?? null, fbc: str(body.fbc, 255) ?? known?.fbc ?? null, clientIp: req.ip, userAgent: ua },
-      valueMinor,
-      currency,
-      products,
-      utms
-    });
-    const result = await tx(ctx.db, async (c) => {
-      const te = await c.query(
-        `INSERT INTO tracking_events(org_id, pixel_id, event_name, event_id, source, value_minor, currency, page_url,
-                                     utm_source, utm_medium, utm_campaign, utm_content, utm_term, utm_id, match_keys)
-         VALUES ($1,$2,$3,$4,'browser',$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
-         ON CONFLICT (pixel_id, event_name, event_id) DO NOTHING RETURNING id`,
-        [
-          pixel.org_id,
-          pixel.id,
-          eventName,
-          eventId,
-          valueMinor,
-          currency,
-          pageUrl,
-          ...UTM_KEYS.map((k) => utms[k]),
-          Object.keys(event.user_data)
-        ]
-      );
-      if (!te.rowCount) return { duplicate: true, queued: false };
-      const xid3 = str(body.external_id, 100);
-      if (xid3) {
-        await rememberIdentity(c, pixel.org_id, {
-          xid: xid3,
-          fbp: str(body.fbp, 255),
-          fbc: str(body.fbc, 255),
-          ip: req.ip,
-          userAgent: ua,
-          country: countryHeader ?? null,
-          email: str(body.email, 190),
+    const work = async () => {
+      const known = str(body.external_id, 100) ? await findIdentity(ctx.db, pixel.org_id, { xid: str(body.external_id, 100) }).catch(() => null) : null;
+      const event = buildServerEvent({
+        eventName,
+        eventId,
+        eventTime: Math.floor(ctx.now().getTime() / 1e3),
+        eventSourceUrl: pageUrl,
+        customer: {
+          email: str(body.email, 190) ?? known?.email_hash ?? null,
           phone: str(body.phone, 40),
-          sourceUrl: pageUrl,
-          utms,
-          checkoutSeen: eventName === "InitiateCheckout" || eventName === "AddPaymentInfo"
-        });
-      }
-      const queued = pixel.capi_token_enc ? await enqueueCapi(c, { orgId: pixel.org_id, pixelId: pixel.id, event, trackingEventId: te.rows[0].id }) !== null : false;
-      return { duplicate: false, queued };
-    });
+          firstName: str(body.first_name, 80),
+          lastName: str(body.last_name, 120),
+          document: str(body.document, 30) ?? str(body.cpf, 30),
+          externalId: str(body.external_id, 100),
+          city: str(body.city, 80),
+          state: str(body.state, 80),
+          zip: str(body.zip, 20),
+          country: str(body.country, 2) ?? countryHeader ?? known?.country ?? pixel.country?.trim() ?? null
+        },
+        tracking: { fbp: str(body.fbp, 255) ?? known?.fbp ?? null, fbc: str(body.fbc, 255) ?? known?.fbc ?? null, clientIp: req.ip, userAgent: ua },
+        valueMinor,
+        currency,
+        products,
+        utms
+      });
+      return tx(ctx.db, async (c) => {
+        const te = await c.query(
+          `INSERT INTO tracking_events(org_id, pixel_id, event_name, event_id, source, value_minor, currency, page_url,
+                                       utm_source, utm_medium, utm_campaign, utm_content, utm_term, utm_id, match_keys)
+           VALUES ($1,$2,$3,$4,'browser',$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+           ON CONFLICT (pixel_id, event_name, event_id) DO NOTHING RETURNING id`,
+          [
+            pixel.org_id,
+            pixel.id,
+            eventName,
+            eventId,
+            valueMinor,
+            currency,
+            pageUrl,
+            ...UTM_KEYS.map((k) => utms[k]),
+            Object.keys(event.user_data)
+          ]
+        );
+        if (!te.rowCount) return { duplicate: true, queued: false };
+        const xid3 = str(body.external_id, 100);
+        if (xid3) {
+          await rememberIdentity(c, pixel.org_id, {
+            xid: xid3,
+            fbp: str(body.fbp, 255),
+            fbc: str(body.fbc, 255),
+            ip: req.ip,
+            userAgent: ua,
+            country: countryHeader ?? null,
+            email: str(body.email, 190),
+            phone: str(body.phone, 40),
+            sourceUrl: pageUrl,
+            utms,
+            checkoutSeen: eventName === "InitiateCheckout" || eventName === "AddPaymentInfo"
+          });
+        }
+        const queued = pixel.capi_token_enc ? await enqueueCapi(c, { orgId: pixel.org_id, pixelId: pixel.id, event, trackingEventId: te.rows[0].id }) !== null : false;
+        return { duplicate: false, queued };
+      });
+    };
+    if (ctx.config.COLLECT_ASYNC) {
+      void reply.send({ success: true, accepted: true, queued: true, event_id: eventId });
+      work().then((r) => {
+        if (r.queued) wakeDispatcher();
+      }).catch((e) => ctx.log.error({ err: String(e), event: eventName }, "falha ao gravar evento do navegador"));
+      return reply;
+    }
+    const result = await work();
     return reply.send({ success: true, ...result, event_id: eventId });
   }
   for (const path5 of ["/v1/collect", "/api/track.php"]) {
