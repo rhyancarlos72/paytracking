@@ -280,7 +280,9 @@ export function SignupPage() {
     password,
     confirm: z.string(),
   }).refine((v) => v.password === v.confirm, { path: ['confirm'], message: 'As senhas não coincidem' });
-  const f = useForm<z.infer<typeof schema>>({ resolver: zodResolver(schema) });
+  // e-mail vindo do link (?email=…, ex.: assistente de IA abrindo o cadastro) já preenchido
+  const presetEmail = (() => { try { const e = new URLSearchParams(location.search).get('email') ?? ''; return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e) ? e.slice(0, 190) : undefined; } catch { return undefined; } })();
+  const f = useForm<z.infer<typeof schema>>({ resolver: zodResolver(schema), defaultValues: presetEmail ? { email: presetEmail } : undefined });
   const err = f.formState.errors;
   const pw = f.watch('password') ?? '';
   return (

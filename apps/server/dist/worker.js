@@ -24623,6 +24623,8 @@ var schema = external_exports.object({
   PLATFORM_PIXEL_BROWSER: external_exports.enum(["auto", "on", "off"]).default("auto"),
   /** WhatsApp de suporte padrão (o Admin pode trocar pelo painel) */
   SUPPORT_WHATSAPP: external_exports.string().default(""),
+  /** Perfis públicos da empresa (Instagram, YouTube, LinkedIn...), separados por vírgula — vão no sameAs do JSON-LD. */
+  SOCIAL_PROFILES: external_exports.string().default(""),
   /** Tempo máximo de um pedido (ms) antes de responder 503 — evita pedidos presos consumindo processos. */
   /** Eventos do navegador (/v1/collect): responde na hora e grava em segundo plano (padrão). false = espera gravar (testes). */
   COLLECT_ASYNC: external_exports.enum(["true", "false"]).default("true").transform((v) => v === "true"),

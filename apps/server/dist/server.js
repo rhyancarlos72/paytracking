@@ -79308,6 +79308,8 @@ var schema = external_exports.object({
   PLATFORM_PIXEL_BROWSER: external_exports.enum(["auto", "on", "off"]).default("auto"),
   /** WhatsApp de suporte padrão (o Admin pode trocar pelo painel) */
   SUPPORT_WHATSAPP: external_exports.string().default(""),
+  /** Perfis públicos da empresa (Instagram, YouTube, LinkedIn...), separados por vírgula — vão no sameAs do JSON-LD. */
+  SOCIAL_PROFILES: external_exports.string().default(""),
   /** Tempo máximo de um pedido (ms) antes de responder 503 — evita pedidos presos consumindo processos. */
   /** Eventos do navegador (/v1/collect): responde na hora e grava em segundo plano (padrão). false = espera gravar (testes). */
   COLLECT_ASYNC: external_exports.enum(["true", "false"]).default("true").transform((v) => v === "true"),
@@ -98450,6 +98452,266 @@ function supportRoutes(app, ctx) {
   });
 }
 
+// src/discovery/agent.ts
+var SPA_ROUTE = /^\/(?:|entrar|criar-conta|esqueci-senha|redefinir-senha|verificar-email|convite|conheca|campanhas|vendas|vendas\/[\w-]{1,64}|eventos|atribuicao|diagnostico|pixels|integracoes|integracoes\/meta|configuracoes|financeiro|admin|ajuda)\/?$/;
+var isSpaRoute = (path5) => SPA_ROUTE.test(path5);
+var INDEXABLE = /* @__PURE__ */ new Set(["/", "/conheca", "/criar-conta", "/entrar"]);
+var money = (minor) => `R$ ${(minor / 100).toFixed(2).replace(".", ",")}`;
+async function siteFacts(ctx) {
+  const l = legalInfo(ctx);
+  const support = await supportSettings(ctx).catch(() => ({ whatsapp: null }));
+  return {
+    base: l.appUrl,
+    name: "PayTracking",
+    price: money(l.priceMinor),
+    priceNumber: (l.priceMinor / 100).toFixed(2),
+    trialDays: l.trialDays,
+    email: l.contactEmail,
+    whatsapp: support.whatsapp,
+    operator: ctx.config.LEGAL_NAME || "PayTracking",
+    sameAs: ctx.config.SOCIAL_PROFILES.split(",").map((s) => s.trim()).filter((s) => /^https:\/\/\S+$/.test(s))
+  };
+}
+var GATEWAYS = "Hotmart, Kiwify, Kirvano, Cakto e checkout pr\xF3prio";
+var faq = (f) => [
+  ["Preciso de cart\xE3o para testar?", `N\xE3o. Voc\xEA cria a conta e usa tudo por ${f.trialDays} dias, sem cadastrar cart\xE3o.`],
+  ["Como funciona o pagamento?", `\xC9 um pagamento \xFAnico por m\xEAs (${f.price}), feito por PIX dentro do painel. N\xE3o existe cobran\xE7a autom\xE1tica.`],
+  ["Tem taxa por venda ou limite de vendas?", "N\xE3o. O valor mensal \xE9 fixo e as vendas s\xE3o ilimitadas. N\xE3o cobramos porcentagem sobre o faturamento."],
+  ["Quais plataformas s\xE3o suportadas?", `${GATEWAYS}, com Pixel e Conversions API da Meta. A conta de an\xFAncios da Meta pode ser conectada para mostrar investimento, ROAS e lucro.`],
+  ["O pixel deixa minha p\xE1gina lenta?", "N\xE3o. O script \xE9 pequeno, carrega de forma ass\xEDncrona e \xE9 entregue comprimido e em cache."]
+];
+function homeMarkdown(f) {
+  return [
+    "# PayTracking \u2014 rastreamento de vendas para Meta Ads",
+    "",
+    `> Saiba qual an\xFAncio realmente vende. O PayTracking recebe as vendas confirmadas dos gateways (${GATEWAYS}), atribui cada venda \xE0 campanha, ao conjunto e ao an\xFAncio e envia o Purchase \xE0 Meta pela Conversions API \u2014 sem duplicar com o Pixel.`,
+    "",
+    "## O que ele faz",
+    "",
+    "- **Purchase s\xF3 com pagamento aprovado**: PIX ou boleto gerado n\xE3o vira venda.",
+    "- **Pixel + Conversions API sem duplicar**: o mesmo ID de evento no navegador e no servidor.",
+    "- **ROAS e lucro reais**: gasto da Meta lado a lado com as vendas confirmadas, por campanha, conjunto e an\xFAncio.",
+    "- **Reembolso e chargeback registrados**: o faturamento \xE9 abatido automaticamente.",
+    "- **Aviso de venda no celular** e app para Android.",
+    "",
+    "## Pre\xE7o",
+    "",
+    `- **${f.price} por m\xEAs**, pre\xE7o fixo, vendas ilimitadas e **sem taxa por venda**.`,
+    `- **${f.trialDays} dias gr\xE1tis**, sem cart\xE3o.`,
+    "",
+    "## Perguntas frequentes",
+    "",
+    ...faq(f).flatMap(([q, a]) => [`**${q}** ${a}`, ""]),
+    "## Links",
+    "",
+    `- [Criar conta gr\xE1tis](${f.base}/criar-conta)`,
+    `- [Entrar](${f.base}/entrar)`,
+    `- [Sobre o PayTracking](${f.base}/sobre)`,
+    `- [Contato](${f.base}/contato)`,
+    `- [Termos de Uso](${f.base}/termos) \xB7 [Pol\xEDtica de Privacidade](${f.base}/privacidade)`,
+    "",
+    `Contato: ${f.email}${f.whatsapp ? ` \xB7 WhatsApp +${f.whatsapp}` : ""}`,
+    ""
+  ].join("\n");
+}
+function homeStaticHtml(f) {
+  const li = (t) => `<li>${t}</li>`;
+  return `<main data-prerender style="max-width:760px;margin:40px auto;padding:0 20px;font-family:system-ui,sans-serif;line-height:1.6">
+<h1>PayTracking \u2014 rastreamento de vendas para Meta Ads</h1>
+<p><strong>Saiba qual an\xFAncio realmente vende.</strong> O PayTracking recebe as vendas confirmadas dos gateways (${esc3(GATEWAYS)}), atribui cada venda \xE0 campanha, ao conjunto e ao an\xFAncio e envia o Purchase \xE0 Meta pela Conversions API, sem duplicar com o Pixel.</p>
+<h2>O que ele faz</h2>
+<ul>${[
+    "Purchase s\xF3 com pagamento aprovado: PIX ou boleto gerado n\xE3o vira venda.",
+    "Pixel + Conversions API sem duplicar: o mesmo ID de evento no navegador e no servidor.",
+    "ROAS e lucro reais: gasto da Meta lado a lado com as vendas confirmadas, por campanha, conjunto e an\xFAncio.",
+    "Reembolso e chargeback registrados: o faturamento \xE9 abatido automaticamente.",
+    "Aviso de venda no celular e app para Android."
+  ].map((t) => li(esc3(t))).join("")}</ul>
+<h2>Pre\xE7o</h2>
+<p><strong>${esc3(f.price)} por m\xEAs</strong>, pre\xE7o fixo, vendas ilimitadas e sem taxa por venda. <strong>${f.trialDays} dias gr\xE1tis</strong>, sem cart\xE3o. <a href="/criar-conta">Criar conta gr\xE1tis</a> \xB7 <a href="/entrar">Entrar</a></p>
+<h2>Perguntas frequentes</h2>
+${faq(f).map(([q, a]) => `<h3>${esc3(q)}</h3><p>${esc3(a)}</p>`).join("\n")}
+<footer><p><a href="/sobre">Sobre</a> \xB7 <a href="/contato">Contato</a> \xB7 <a href="/termos">Termos de Uso</a> \xB7 <a href="/privacidade">Pol\xEDtica de Privacidade</a></p>
+<p>Contato: <a href="mailto:${esc3(f.email)}">${esc3(f.email)}</a>${f.whatsapp ? ` \xB7 <a href="https://wa.me/${esc3(f.whatsapp)}">WhatsApp</a> \xB7 <a href="tel:+${esc3(f.whatsapp)}">+${esc3(f.whatsapp)}</a>` : ""}</p></footer>
+</main>`;
+}
+function homeJsonLd(f, path5) {
+  const org = {
+    "@type": "Organization",
+    "@id": `${f.base}/#organization`,
+    name: f.name,
+    legalName: f.operator,
+    url: `${f.base}/`,
+    logo: `${f.base}/icons/icon-512.png`,
+    email: f.email,
+    ...f.whatsapp ? { telephone: `+${f.whatsapp}` } : {},
+    contactPoint: [{ "@type": "ContactPoint", contactType: "customer support", email: f.email, ...f.whatsapp ? { telephone: `+${f.whatsapp}`, url: `https://wa.me/${f.whatsapp}` } : {}, availableLanguage: ["pt-BR"] }],
+    sameAs: f.sameAs.length ? f.sameAs : [`${f.base}/sobre`]
+  };
+  const graph = [
+    org,
+    { "@type": "WebSite", "@id": `${f.base}/#website`, url: `${f.base}/`, name: f.name, inLanguage: "pt-BR", publisher: { "@id": `${f.base}/#organization` } },
+    { "@type": "WebPage", "@id": `${f.base}${path5}#webpage`, url: `${f.base}${path5}`, name: "PayTracking \xB7 Rastreamento de vendas para Meta Ads", isPartOf: { "@id": `${f.base}/#website` }, about: { "@id": `${f.base}/#software` }, inLanguage: "pt-BR" },
+    {
+      "@type": "SoftwareApplication",
+      "@id": `${f.base}/#software`,
+      name: f.name,
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web, Android",
+      description: `Rastreamento de vendas para Meta Ads: Purchase s\xF3 com pagamento aprovado, Pixel + Conversions API sem duplicar e ROAS real. Integra ${GATEWAYS}.`,
+      url: `${f.base}/`,
+      publisher: { "@id": `${f.base}/#organization` },
+      offers: { "@type": "Offer", price: f.priceNumber, priceCurrency: "BRL", url: `${f.base}/criar-conta`, description: `Assinatura mensal com ${f.trialDays} dias gr\xE1tis, vendas ilimitadas e sem taxa por venda.` }
+    },
+    { "@type": "FAQPage", "@id": `${f.base}/#faq`, mainEntity: faq(f).map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })) }
+  ];
+  return JSON.stringify({ "@context": "https://schema.org", "@graph": graph }).replace(/</g, "\\u003c");
+}
+var LINK_HEADER = [
+  '</llms.txt>; rel="describedby"; type="text/markdown"',
+  '</>; rel="alternate"; type="text/markdown"',
+  '</sitemap.xml>; rel="sitemap"; type="application/xml"',
+  '</.well-known/mcp/server-card.json>; rel="mcp-server-card"; type="application/json"'
+].join(", ");
+async function renderSpa(ctx, req, reply, indexHtml) {
+  const path5 = req.url.split("?")[0].replace(/\/+$/, "") || "/";
+  const known = isSpaRoute(path5);
+  const f = await siteFacts(ctx);
+  const accept = String(req.headers.accept ?? "");
+  reply.header("Vary", "Accept");
+  if ((path5 === "/" || path5 === "/conheca") && /text\/markdown/i.test(accept) && !/text\/html/i.test(accept)) {
+    return reply.type("text/markdown; charset=utf-8").header("Cache-Control", "public, max-age=3600").header("Link", LINK_HEADER).send(homeMarkdown(f));
+  }
+  let html = indexHtml;
+  if (INDEXABLE.has(path5)) {
+    html = html.replace(/<meta name="robots" content="[^"]*"\s*\/?>/, '<meta name="robots" content="index, follow" />').replace("</head>", `  <link rel="canonical" href="${esc3(f.base + (path5 === "/" ? "/" : path5))}" />
+    <link rel="alternate" type="text/markdown" href="/llms.txt" />
+    <script type="application/ld+json">${homeJsonLd(f, path5 === "/" ? "/" : path5)}</script>
+  </head>`);
+    if (path5 === "/" || path5 === "/conheca") {
+      html = html.replace('<div id="root"></div>', `<div id="root">${homeStaticHtml(f)}</div>`);
+      reply.header("Link", LINK_HEADER);
+    }
+  }
+  return reply.code(known ? 200 : 404).type("text/html").header("Cache-Control", "no-cache").send(html);
+}
+var MCP_PROTOCOL = "2025-06-18";
+var MCP_TOOLS = [
+  { name: "get_product_info", title: "O que \xE9 o PayTracking", description: "Explica o que o PayTracking faz, quais gateways integra e como funciona o rastreamento de vendas para Meta Ads.", inputSchema: { type: "object", properties: {}, additionalProperties: false } },
+  { name: "get_pricing", title: "Pre\xE7o e teste gr\xE1tis", description: "Pre\xE7o mensal, dias de teste gr\xE1tis e condi\xE7\xF5es (sem taxa por venda, vendas ilimitadas).", inputSchema: { type: "object", properties: {}, additionalProperties: false } },
+  { name: "get_contact", title: "Contato e suporte", description: "E-mail e WhatsApp de suporte, e links para as p\xE1ginas Sobre, Contato, Termos e Privacidade.", inputSchema: { type: "object", properties: {}, additionalProperties: false } }
+];
+async function mcpTool(ctx, name2) {
+  const f = await siteFacts(ctx);
+  if (name2 === "get_product_info") return homeMarkdown(f);
+  if (name2 === "get_pricing") return `PayTracking: ${f.price} por m\xEAs, pre\xE7o fixo, vendas ilimitadas e sem taxa por venda. ${f.trialDays} dias gr\xE1tis sem cart\xE3o. Pagamento por PIX no painel, sem cobran\xE7a autom\xE1tica. Criar conta: ${f.base}/criar-conta`;
+  if (name2 === "get_contact") return `E-mail: ${f.email}${f.whatsapp ? `
+WhatsApp: https://wa.me/${f.whatsapp} (+${f.whatsapp})` : ""}
+Sobre: ${f.base}/sobre
+Contato: ${f.base}/contato
+Termos: ${f.base}/termos
+Privacidade: ${f.base}/privacidade`;
+  return null;
+}
+function agentRoutes(app, ctx) {
+  const base2 = () => ctx.config.APP_URL.replace(/\/+$/, "");
+  app.get("/robots.txt", async (_req, reply) => {
+    reply.type("text/plain; charset=utf-8").header("Cache-Control", "public, max-age=86400");
+    return [
+      "# PayTracking \u2014 pol\xEDtica de rastreamento",
+      "User-agent: *",
+      // Content Signals (contentsignals.org): pode aparecer em buscas e respostas; não pode treinar modelos
+      "Content-Signal: search=yes, ai-input=yes, ai-train=no",
+      "Allow: /",
+      "Disallow: /v1/",
+      "Disallow: /api/",
+      "Disallow: /mcp",
+      ...["campanhas", "vendas", "eventos", "atribuicao", "diagnostico", "pixels", "integracoes", "configuracoes", "financeiro", "admin", "ajuda", "convite", "redefinir-senha", "verificar-email"].map((p) => `Disallow: /${p}`),
+      "",
+      `Sitemap: ${base2()}/sitemap.xml`,
+      ""
+    ].join("\n");
+  });
+  app.get("/sitemap.xml", async (_req, reply) => {
+    reply.type("application/xml; charset=utf-8").header("Cache-Control", "public, max-age=86400");
+    const urls = ["/", "/criar-conta", "/entrar", "/sobre", "/contato", "/termos", "/privacidade", "/llms.txt"];
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls.map((u) => `  <url><loc>${base2()}${u}</loc><changefreq>${u === "/" ? "weekly" : "monthly"}</changefreq><priority>${u === "/" ? "1.0" : "0.6"}</priority></url>`).join("\n")}
+</urlset>
+`;
+  });
+  const sendPage = (reply, html) => reply.type("text/html; charset=utf-8").header("Cache-Control", "public, max-age=3600").header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'").send(html);
+  app.get("/sobre", async (_req, reply) => {
+    const f = await siteFacts(ctx);
+    const body = `<h2>O que \xE9 o PayTracking</h2>
+<p>O PayTracking \xE9 um sistema brasileiro de rastreamento de vendas para quem anuncia na Meta (Facebook e Instagram). Ele recebe as vendas confirmadas dos gateways (${esc3(GATEWAYS)}), descobre qual campanha, conjunto e an\xFAncio trouxe cada venda e envia a convers\xE3o \xE0 Meta pela Conversions API, sem duplicar com o Pixel.</p>
+<h2>Para quem \xE9</h2>
+<p>Produtores digitais, infoprodutores, ag\xEAncias e lojas que vendem com tr\xE1fego pago e querem saber o ROAS e o lucro reais de cada an\xFAncio.</p>
+<h2>Como cobramos</h2>
+<p>${esc3(f.price)} por m\xEAs, pre\xE7o fixo, vendas ilimitadas e sem taxa por venda, com ${f.trialDays} dias gr\xE1tis sem cart\xE3o.</p>
+<h2>Quem opera</h2>
+<p>${esc3(f.operator)}. Contato: <a href="mailto:${esc3(f.email)}">${esc3(f.email)}</a>${f.whatsapp ? ` \xB7 WhatsApp <a href="https://wa.me/${esc3(f.whatsapp)}">+${esc3(f.whatsapp)}</a>` : ""}.</p>
+<p><a href="/">P\xE1gina inicial</a> \xB7 <a href="/contato">Contato</a> \xB7 <a href="/termos">Termos de Uso</a> \xB7 <a href="/privacidade">Pol\xEDtica de Privacidade</a></p>`;
+    return sendPage(reply, layout("Sobre o PayTracking", "Quem somos, o que o PayTracking faz e para quem ele \xE9 feito.", body, legalInfo(ctx), "/sobre"));
+  });
+  app.get("/contato", async (_req, reply) => {
+    const f = await siteFacts(ctx);
+    const body = `<h2>Fale com a gente</h2>
+<ul>
+<li>E-mail: <a href="mailto:${esc3(f.email)}">${esc3(f.email)}</a></li>
+${f.whatsapp ? `<li>WhatsApp: <a href="https://wa.me/${esc3(f.whatsapp)}">+${esc3(f.whatsapp)}</a> (<a href="tel:+${esc3(f.whatsapp)}">ligar</a>)</li>` : ""}
+<li>Clientes: pelo bot\xE3o de suporte dentro do painel.</li>
+</ul>
+<p>Dados pessoais e LGPD: veja a <a href="/privacidade">Pol\xEDtica de Privacidade</a>. Condi\xE7\xF5es de uso: <a href="/termos">Termos de Uso</a>.</p>
+<p><a href="/">P\xE1gina inicial</a> \xB7 <a href="/sobre">Sobre</a></p>`;
+    return sendPage(reply, layout("Contato", "Como falar com o PayTracking: e-mail e WhatsApp de suporte.", body, legalInfo(ctx), "/contato"));
+  });
+  app.get("/.well-known/mcp/server-card.json", async (_req, reply) => {
+    reply.type("application/json; charset=utf-8").header("Cache-Control", "public, max-age=3600").header("Access-Control-Allow-Origin", "*");
+    return {
+      $schema: "https://modelcontextprotocol.io/schemas/server-card/v1.json",
+      name: "br.com.paytracking/public",
+      title: "PayTracking",
+      description: "Informa\xE7\xF5es p\xFAblicas do PayTracking (produto, pre\xE7o e contato) para agentes. S\xF3 leitura, sem dados de clientes.",
+      version: "1.0.0",
+      protocolVersion: MCP_PROTOCOL,
+      websiteUrl: `${base2()}/`,
+      endpoints: [{ transport: "streamable-http", url: `${base2()}/mcp` }],
+      transport: { type: "streamable-http", url: `${base2()}/mcp` },
+      capabilities: { tools: { listChanged: false } },
+      authentication: { required: false },
+      tools: MCP_TOOLS.map(({ name: name2, title, description }) => ({ name: name2, title, description }))
+    };
+  });
+  app.post("/mcp", async (req, reply) => {
+    reply.header("Access-Control-Allow-Origin", "*").header("Cache-Control", "no-store");
+    const msg2 = req.body && typeof req.body === "object" ? req.body : null;
+    if (!msg2 || msg2.jsonrpc !== "2.0" || typeof msg2.method !== "string") {
+      return reply.code(400).send({ jsonrpc: "2.0", id: null, error: { code: -32600, message: "Invalid Request" } });
+    }
+    if (msg2.id === void 0) return reply.code(202).send();
+    const ok = (result) => ({ jsonrpc: "2.0", id: msg2.id, result });
+    switch (msg2.method) {
+      case "initialize":
+        return ok({ protocolVersion: MCP_PROTOCOL, capabilities: { tools: { listChanged: false } }, serverInfo: { name: "paytracking-public", title: "PayTracking", version: "1.0.0" }, instructions: "Informa\xE7\xF5es p\xFAblicas do PayTracking. Use get_product_info, get_pricing e get_contact." });
+      case "ping":
+        return ok({});
+      case "tools/list":
+        return ok({ tools: MCP_TOOLS });
+      case "tools/call": {
+        const text = await mcpTool(ctx, String(msg2.params?.name ?? ""));
+        if (text === null) return { jsonrpc: "2.0", id: msg2.id, error: { code: -32602, message: "Unknown tool" } };
+        return ok({ content: [{ type: "text", text }], isError: false });
+      }
+      default:
+        return { jsonrpc: "2.0", id: msg2.id, error: { code: -32601, message: "Method not found" } };
+    }
+  });
+  app.get("/mcp", async (_req, reply) => reply.code(405).header("Allow", "POST").send({ error: "Use POST (MCP Streamable HTTP)." }));
+  app.options("/mcp", async (_req, reply) => reply.code(204).header("Access-Control-Allow-Origin", "*").header("Access-Control-Allow-Methods", "POST, GET, OPTIONS").header("Access-Control-Allow-Headers", "Content-Type, Accept, Mcp-Session-Id, Mcp-Protocol-Version").send());
+}
+
 // src/lib/flood.ts
 var FloodGuard = class {
   constructor(windowMs = 6e4, maxKeys = 5e4) {
@@ -98695,6 +98957,7 @@ Canonical: ${ctx.config.APP_URL.replace(/\/$/, "")}/.well-known/security.txt
   pushRoutes(app, ctx);
   saleSoundRoutes(app, ctx);
   legalRoutes(app, ctx);
+  agentRoutes(app, ctx);
   platformTrackingRoutes(app, ctx);
   supportRoutes(app, ctx);
   const here2 = path4.dirname(fileURLToPath2(import.meta.url));
@@ -98781,7 +99044,7 @@ Canonical: ${ctx.config.APP_URL.replace(/\/$/, "")}/.well-known/security.txt
           ...ctx.config.isProd ? ["upgrade-insecure-requests"] : []
         ].join("; "));
         reply.header("Cross-Origin-Opener-Policy", "same-origin");
-        return reply.type("text/html").header("Cache-Control", "no-cache").send(indexHtml);
+        return renderSpa(ctx, req, reply, indexHtml);
       }
       return reply.code(404).send({ error: { code: "not_found", message: "Rota n\xE3o encontrada." } });
     });

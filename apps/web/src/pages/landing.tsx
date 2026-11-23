@@ -10,6 +10,7 @@ import { Logo, LogoMark } from '../components/logo';
 import { get } from '../lib/api';
 import { SupportButton } from '../components/support';
 import { usePlatformPixel } from '../lib/platform-pixel';
+import { registerLandingTools } from '../lib/webmcp';
 
 /**
  * Página de vendas (tela inicial para quem não está logado).
@@ -503,6 +504,8 @@ function Footer() {
         <nav className="flex flex-wrap items-center gap-5" aria-label="Rodapé">
           <a href="#preco" className="hover:text-fg">Preço</a>
           <a href="#duvidas" className="hover:text-fg">Dúvidas</a>
+          <a href="/sobre" className="hover:text-fg">Sobre</a>
+          <a href="/contato" className="hover:text-fg">Contato</a>
           <a href="/privacidade" className="hover:text-fg">Privacidade</a>
           <a href="/termos" className="hover:text-fg">Termos</a>
           <Link to="/entrar" className="hover:text-fg">Entrar</Link>
@@ -541,6 +544,10 @@ export default function LandingPage() {
     if (!matchMedia('(prefers-reduced-motion: reduce)').matches) root.style.scrollBehavior = 'smooth';
     return () => { root.style.scrollBehavior = ''; };
   }, []);
+  // ferramentas para agentes de IA no navegador (WebMCP)
+  const planRef = useRef<Plan | undefined>(undefined);
+  planRef.current = plan.data;
+  useEffect(() => registerLandingTools(() => planRef.current), []);
   return (
     <div className="min-h-screen bg-bg text-fg">
       <a href="#conteudo" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-xl focus:bg-surface focus:px-4 focus:py-2">Pular para o conteúdo</a>

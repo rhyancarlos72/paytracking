@@ -26,6 +26,7 @@ import { adminUserRoutes } from './admin/users.js';
 import { pushRoutes } from './notifications/routes.js';
 import { saleSoundRoutes } from './notifications/sound.js';
 import { legalRoutes } from './legal/pages.js';
+import { agentRoutes, renderSpa } from './discovery/agent.js';
 import { platformTrackingRoutes } from './platform/tracking.js';
 import { supportRoutes } from './support/routes.js';
 import { AppError } from './lib/errors.js';
@@ -237,6 +238,7 @@ export async function buildApp(ctx: Ctx): Promise<FastifyInstance> {
   pushRoutes(app, ctx);
   saleSoundRoutes(app, ctx);
   legalRoutes(app, ctx);
+  agentRoutes(app, ctx);
   platformTrackingRoutes(app, ctx);
   supportRoutes(app, ctx);
 
@@ -328,7 +330,8 @@ export async function buildApp(ctx: Ctx): Promise<FastifyInstance> {
           ...(ctx.config.isProd ? ['upgrade-insecure-requests'] : []),
         ].join('; '));
         reply.header('Cross-Origin-Opener-Policy', 'same-origin');
-        return reply.type('text/html').header('Cache-Control', 'no-cache').send(indexHtml);
+        // por rota: robots/canonical/JSON-LD/conteúdo da página inicial, Markdown para agentes e 404 real para rota inexistente
+        return renderSpa(ctx, req, reply, indexHtml);
       }
       return reply.code(404).send({ error: { code: 'not_found', message: 'Rota não encontrada.' } });
     });

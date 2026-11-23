@@ -9,11 +9,11 @@ import type { Ctx } from '../context.js';
  */
 const UPDATED = '30 de outubro de 2026';
 
-const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+export const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 
-interface Legal { operator: string; contactEmail: string; appUrl: string; priceMinor: number; trialDays: number; trackingDays: number; webhookDays: number; eventDays: number; purchaseDays: number }
+export interface Legal { operator: string; contactEmail: string; appUrl: string; priceMinor: number; trialDays: number; trackingDays: number; webhookDays: number; eventDays: number; purchaseDays: number }
 
-function legalInfo(ctx: Ctx): Legal {
+export function legalInfo(ctx: Ctx): Legal {
   const c = ctx.config;
   const fromMailFrom = (/<([^>]+)>/.exec(c.MAIL_FROM)?.[1] ?? c.MAIL_FROM).trim();
   const contact = (c.PRIVACY_CONTACT || c.SECURITY_CONTACT.replace(/^mailto:/i, '') || fromMailFrom).trim();
@@ -26,7 +26,7 @@ function legalInfo(ctx: Ctx): Legal {
 
 const LOGO = `<svg viewBox="0 0 100 100" width="34" height="34" aria-hidden="true"><defs><linearGradient id="f" x1=".1" y1="0" x2=".8" y2="1"><stop offset="0" stop-color="#7c5cff"/><stop offset=".45" stop-color="#a588ff"/><stop offset=".75" stop-color="#ab8cff"/><stop offset="1" stop-color="#7c3aed"/></linearGradient><linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c4a5ff"/><stop offset="1" stop-color="#6d28d9"/></linearGradient><linearGradient id="a" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#7c3aed"/><stop offset="1" stop-color="#d86bff"/></linearGradient></defs><path d="M24 27V13h36a27.5 27.5 0 0 1 0 55h-8V55h8a14.5 14.5 0 0 0 0-29H38v1Z" fill="url(#f)"/><path d="M24 27h13v57a6 6 0 0 1-6 6h-1a6 6 0 0 1-6-6Z" fill="url(#s)"/><rect x="40.5" y="43" width="8" height="14" rx="2.5" fill="#a06bff"/><rect x="51" y="36" width="8" height="16" rx="2.5" fill="#a06bff"/><rect x="61.5" y="30" width="8" height="15" rx="2.5" fill="#a06bff"/><path d="M26 88C36 66 52 63 71 44.5" fill="none" stroke="url(#a)" stroke-width="7.5" stroke-linecap="round"/><path d="M84 30l-3.5 21.5-17-14Z" fill="#d86bff"/></svg>`;
 
-function layout(title: string, lead: string, body: string, l: Legal, canonical: string): string {
+export function layout(title: string, lead: string, body: string, l: Legal, canonical: string): string {
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
