@@ -1,0 +1,83 @@
+services:
+  app:
+    image: node:22-bookworm-slim
+    restart: unless-stopped
+    working_dir: /app
+    command: ["node", "--env-file=/run/pt.env", "/app/server.js"]
+    environment:
+      PORT: "3000"
+      TRUST_PROXY: "1"
+      NODE_ENV: production
+    volumes:
+      - /opt/paytracking/app:/app:ro
+      - /opt/paytracking/pt.env:/run/pt.env:ro
+    ports:
+      - "127.0.0.1:3000:3000"
+    labels:
+      - traefik.enable=true
+      - traefik.http.services.paytracking.loadbalancer.server.port=3000
+      - "traefik.http.routers.pt-test.rule=Host(`paytracking.srv2188467.hstgr.cloud`)"
+      - traefik.http.routers.pt-test.entrypoints=websecure
+      - traefik.http.routers.pt-test.tls.certresolver=letsencrypt
+      - traefik.http.routers.pt-test.service=paytracking
+      - "traefik.http.routers.pt-apex.rule=Host(`paytracking.com.br`)"
+      - traefik.http.routers.pt-apex.entrypoints=websecure
+      - traefik.http.routers.pt-apex.tls.certresolver=letsencrypt
+      - traefik.http.routers.pt-apex.service=paytracking
+      - "traefik.http.routers.pt-www.rule=Host(`www.paytracking.com.br`)"
+      - traefik.http.routers.pt-www.entrypoints=websecure
+      - traefik.http.routers.pt-www.tls.certresolver=letsencrypt
+      - traefik.http.routers.pt-www.service=paytracking
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  updater:
+    image: alpine:3.20
+    restart: unless-stopped
+    depends_on: [app]
+    volumes:
+      - /opt/paytracking:/opt/paytracking
+      - /var/run/docker.sock:/var/run/docker.sock
+    command:
+      - sh
+      - -c
+      - |
+        # Atualizador do PayTracking no VPS: acompanha a main do GitHub (repo público) e publica apps/server/dist.
+        set -u
+        REPO=https://github.com/rhyancarlos72/paytracking.git
+        SRC=/opt/paytracking/src
+        APP=/opt/paytracking/app
+        PREV=/opt/paytracking/app.prev
+        apk add --no-cache git rsync docker-cli curl >/dev/null
+        if [ ! -d "$$SRC/.git" ]; then
+          rm -rf "$$SRC"
+          git clone --depth 1 --filter=blob:none --sparse --branch main "$$REPO" "$$SRC" && git -C "$$SRC" sparse-checkout set apps/server/dist
+        fi
+        while true; do
+          if git -C "$$SRC" fetch -q --depth 1 origin main && git -C "$$SRC" reset -q --hard origin/main; then
+            NEW="$$SRC/apps/server/dist/"
+            HEAD=$$(git -C "$$SRC" rev-parse --short HEAD)
+            if [ "$$HEAD" != "$$(cat /opt/paytracking/bad.rev 2>/dev/null)" ] && [ -f "$$NEW/server.js" ] && [ -n "$$(rsync -rlc --delete --dry-run --itemize-changes "$$NEW" "$$APP/")" ]; then
+              echo "$$(date -u +%FT%TZ) nova versao $$(git -C "$$SRC" rev-parse --short HEAD), publicando"
+              rsync -a --delete "$$APP/" "$$PREV/"
+              rsync -rlc --delete "$$NEW" "$$APP/"
+              docker restart paytracking-app-1 >/dev/null
+              ok=0; i=0
+              while [ $$i -lt 30 ]; do i=$$((i+1)); sleep 2; curl -sf -m 3 http://app:3000/healthz >/dev/null && { ok=1; break; }; done
+              if [ $$ok = 1 ]; then echo "$$(date -u +%FT%TZ) publicado e saudavel"
+              else
+                echo "$$(date -u +%FT%TZ) versao nova nao subiu, voltando a anterior"
+                echo "$$HEAD" > /opt/paytracking/bad.rev
+                rsync -a --delete "$$PREV/" "$$APP/"; docker restart paytracking-app-1 >/dev/null
+              fi
+            fi
+          fi
+          sleep 120
+        done
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
