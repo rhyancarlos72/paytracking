@@ -97816,7 +97816,7 @@ function billingRoutes(app, ctx) {
         const exists = await c.query("SELECT 1 FROM billing_charges WHERE correlation_id = $1", [correlationID]);
         return { status: 200, body: { ok: true, duplicate: !!exists.rowCount, unknown: !exists.rowCount } };
       }
-      if (value && BigInt(value) < BigInt(row.amount_minor)) {
+      if (!Number.isFinite(value) || value <= 0 || BigInt(Math.round(value)) < BigInt(row.amount_minor)) {
         throw new AppError(400, "amount_mismatch", "Valor pago menor que o da cobran\xE7a");
       }
       await c.query(
