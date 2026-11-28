@@ -106,7 +106,8 @@ export function billingRoutes(app: FastifyInstance, ctx: Ctx) {
         const exists = await c.query('SELECT 1 FROM billing_charges WHERE correlation_id = $1', [correlationID]);
         return { status: 200, body: { ok: true, duplicate: !!exists.rowCount, unknown: !exists.rowCount } };
       }
-      if (value && BigInt(value) < BigInt(row.amount_minor)) {
+      // valor pago precisa vir no aviso e cobrir a cobrança (aviso sem valor não renova)
+      if (!Number.isFinite(value) || value <= 0 || BigInt(Math.round(value)) < BigInt(row.amount_minor)) {
         throw new AppError(400, 'amount_mismatch', 'Valor pago menor que o da cobrança');
       }
       await c.query(

@@ -223,6 +223,13 @@ describe('assinatura Woovi — renovação idempotente (P-07)', () => {
       const raw = JSON.stringify({ event, charge: { correlationID: corr, status: 'COMPLETED', value: 4700 } });
       return env.app.inject({ method: 'POST', url: '/v1/webhooks/woovi', payload: raw, headers: { 'content-type': 'application/json', 'x-webhook-signature': wooviSignature(raw, 'woovi-secret') } });
     };
+    // aviso assinado mas sem valor, ou com valor menor: não renova (e a cobrança continua em aberto)
+    for (const charge of [{ correlationID: corr, status: 'COMPLETED' }, { correlationID: corr, status: 'COMPLETED', value: 1 }]) {
+      const raw = JSON.stringify({ event: 'OPENPIX:CHARGE_COMPLETED', charge });
+      const r = await env.app.inject({ method: 'POST', url: '/v1/webhooks/woovi', payload: raw, headers: { 'content-type': 'application/json', 'x-webhook-signature': wooviSignature(raw, 'woovi-secret') } });
+      expect(r.statusCode).toBe(400);
+    }
+    expect((await env.db.query('SELECT status FROM billing_charges WHERE correlation_id = $1', [corr])).rows[0].status).not.toBe('paid');
     expect((await send('OPENPIX:CHARGE_COMPLETED')).json()).toMatchObject({ renewed: true });
     expect((await send('OPENPIX:CHARGE_COMPLETED')).json()).toMatchObject({ duplicate: true });
     expect((await send('OPENPIX:TRANSACTION_RECEIVED')).json()).toMatchObject({ duplicate: true });
